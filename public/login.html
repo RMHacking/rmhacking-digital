@@ -62,7 +62,11 @@
   <!-- ── Tela de Login ── -->
   <div class="screen active" id="screenLogin">
     <div class="alert error" id="loginError"></div>
-    <label for="pwd">Senha de Acesso</label>
+    <label for="username">Usuário</label>
+    <div class="input-wrap">
+      <input type="text" id="username" placeholder="Nome de usuário" autocomplete="username" style="padding-right:16px">
+    </div>
+    <label for="pwd">Senha</label>
     <div class="input-wrap">
       <input type="password" id="pwd" placeholder="Digite sua senha" autocomplete="current-password">
       <span class="eye" id="eyeLogin">👁</span>
@@ -119,6 +123,9 @@
   makeEye('eyeNew',     'newPwd');
   makeEye('eyeConfirm', 'confirmPwd');
 
+  document.getElementById('username').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('pwd').focus();
+  });
   document.getElementById('pwd').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') login();
   });
@@ -141,14 +148,16 @@
 
   // ── Login ──────────────────────────────────────────────────────
   async function login() {
+    var username = document.getElementById('username').value.trim();
     var password = document.getElementById('pwd').value;
+    if (!username) { showAlert('loginError', 'Digite o usuário.'); return; }
     if (!password) { showAlert('loginError', 'Digite a senha.'); return; }
     setLoginLoading(true);
     try {
       var r = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: password })
+        body: JSON.stringify({ username: username, password: password })
       });
       var d = await r.json();
       if (d.success) {

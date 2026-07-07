@@ -1,6 +1,7 @@
 'use strict';
 
 const express      = require('express');
+const crypto       = require('crypto');
 const cookieSession = require('cookie-session');
 const path         = require('path');
 const admin        = require('firebase-admin');
@@ -46,12 +47,43 @@ async function nextWlId() {
   return max + 1;
 }
 
+// ── Senha segura (PBKDF2) ─────────────────────────────────────────────────────
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+  return salt + ':' + hash;
+}
+function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(':')) return password === stored; // legado
+  const [salt, hash] = stored.split(':');
+  return crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex') === hash;
+}
+
+// ── Criar admin inicial se nao houver usuarios ────────────────────────────────
+async function initUsers() {
+  const snap = await fdb.collection('users').limit(1).get();
+  if (snap.empty) {
+    const adminUser = {
+      id: 'admin_' + Date.now(),
+      username: (process.env.ADMIN_USERNAME || 'admin').toLowerCase(),
+      password_hash: hashPassword(ACCESS_PASSWORD),
+      role: 'admin',
+      created_at: now()
+    };
+    await fdb.collection('users').doc(adminUser.id).set(adminUser);
+    console.log('Admin criado:', adminUser.username);
+  }
+}
+
 // ── Load password from Firestore ──────────────────────────────────────────────
 let _dbReady = null;
 function ensureDB() {
-  if (!_dbReady) _dbReady = fdb.collection('config').doc('app').get()
-    .then(d => { if (d.exists && d.data().password) ACCESS_PASSWORD = d.data().password; })
-    .catch(() => {});
+  if (!_dbReady) _dbReady = Promise.all([
+    fdb.collection('config').doc('app').get()
+      .then(d => { if (d.exists && d.data().password) ACCESS_PASSWORD = d.data().password; })
+      .catch(() => {}),
+    initUsers().catch(() => {})
+  ]);
   return _dbReady;
 }
 
@@ -74,6 +106,11 @@ function requireAuth(req, res, next) {
   res.redirect('/login');
 }
 
+function requireAdmin(req, res, next) {
+  if (req.session && req.session.role === 'admin') return next();
+  res.status(403).json({ error: 'Acesso restrito ao administrador' });
+}
+
 // ── Upload (arq temporários — use Vercel Blob para persistência) ──────────────
 const upload = multer({
   storage: multer.diskStorage({
@@ -93,13 +130,30 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-app.post('/api/login', (req, res) => {
-  if (req.body.password === ACCESS_PASSWORD) {
-    req.session.auth = true;
-    res.json({ success: true });
-  } else {
-    res.status(401).json({ success: false, message: 'Senha incorreta' });
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  // Login com username + senha
+  if (username) {
+    const snap = await fdb.collection('users').where('username','==',username.toLowerCase().trim()).limit(1).get();
+    if (!snap.empty) {
+      const user = snap.docs[0].data();
+      if (verifyPassword(password, user.password_hash)) {
+        req.session.auth = true;
+        req.session.userId = user.id;
+        req.session.username = user.username;
+        req.session.role = user.role;
+        return res.json({ success: true, role: user.role });
+      }
+    }
+    return res.status(401).json({ success: false, message: 'Usuário ou senha incorretos.' });
   }
+  // Legado: só senha (compatibilidade)
+  if (password === ACCESS_PASSWORD) {
+    req.session.auth = true;
+    req.session.role = 'admin';
+    return res.json({ success: true, role: 'admin' });
+  }
+  res.status(401).json({ success: false, message: 'Senha incorreta' });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -107,13 +161,63 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/change-password', requireAuth, async (req, res) => {
-  if (req.body.current_password !== ACCESS_PASSWORD)
-    return res.status(401).json({ success:false, message:'Senha atual incorreta.' });
-  if (!req.body.new_password || req.body.new_password.length < 6)
+app.post('/api/change-password', async (req, res) => {
+  const { current_password, new_password } = req.body;
+  if (!new_password || new_password.length < 6)
     return res.status(400).json({ success:false, message:'Minimo 6 caracteres.' });
-  ACCESS_PASSWORD = req.body.new_password;
+  // Usuário autenticado com conta
+  if (req.session && req.session.auth && req.session.userId) {
+    const doc = await fdb.collection('users').doc(req.session.userId).get();
+    if (!doc.exists) return res.status(404).json({ success:false, message:'Usuário não encontrado.' });
+    if (!verifyPassword(current_password, doc.data().password_hash))
+      return res.status(401).json({ success:false, message:'Senha atual incorreta.' });
+    await fdb.collection('users').doc(req.session.userId).update({ password_hash: hashPassword(new_password) });
+    return res.json({ success: true });
+  }
+  // Legado: senha master
+  if (current_password !== ACCESS_PASSWORD)
+    return res.status(401).json({ success:false, message:'Senha atual incorreta.' });
+  ACCESS_PASSWORD = new_password;
   await fdb.collection('config').doc('app').set({ password: ACCESS_PASSWORD }, { merge:true });
+  res.json({ success: true });
+});
+
+// ── Gestão de Usuários ────────────────────────────────────────────────────────
+app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
+  const snap = await fdb.collection('users').get();
+  const users = snap.docs.map(d => {
+    const u = d.data();
+    return { id:u.id, username:u.username, role:u.role, created_at:u.created_at };
+  });
+  res.json(users);
+});
+
+app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
+  const { username, password, role } = req.body;
+  if (!username || !password) return res.status(400).json({ error:'Username e senha obrigatórios' });
+  if (password.length < 6) return res.status(400).json({ error:'Senha mínimo 6 caracteres' });
+  const existing = await fdb.collection('users').where('username','==',username.toLowerCase().trim()).get();
+  if (!existing.empty) return res.status(400).json({ error:'Usuário já existe' });
+  const user = { id:'u_'+Date.now(), username:username.toLowerCase().trim(), password_hash:hashPassword(password), role:role||'user', created_at:now() };
+  await fdb.collection('users').doc(user.id).set(user);
+  res.json({ id:user.id, username:user.username, role:user.role, created_at:user.created_at });
+});
+
+app.put('/api/users/:id/password', requireAuth, requireAdmin, async (req, res) => {
+  const { new_password } = req.body;
+  if (!new_password || new_password.length < 6) return res.status(400).json({ error:'Mínimo 6 caracteres' });
+  await fdb.collection('users').doc(req.params.id).update({ password_hash: hashPassword(new_password) });
+  res.json({ success: true });
+});
+
+app.delete('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  const doc = await fdb.collection('users').doc(req.params.id).get();
+  if (!doc.exists) return res.status(404).json({ error:'Não encontrado' });
+  if (doc.data().role === 'admin') {
+    const admins = await fdb.collection('users').where('role','==','admin').get();
+    if (admins.size <= 1) return res.status(400).json({ error:'Não é possível excluir o único administrador' });
+  }
+  await fdb.collection('users').doc(req.params.id).delete();
   res.json({ success: true });
 });
 
