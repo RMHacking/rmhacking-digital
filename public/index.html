@@ -257,6 +257,11 @@ let investigations = [];
 let filterSt = null;
 let selectedColor = COLORS[0];
 
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function toast(msg, duration=3000) {
   const el = document.getElementById('toast');
