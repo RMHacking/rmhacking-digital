@@ -169,16 +169,28 @@ app.post('/api/change-password', async (req, res) => {
   if (req.session && req.session.auth && req.session.userId) {
     const doc = await fdb.collection('users').doc(req.session.userId).get();
     if (!doc.exists) return res.status(404).json({ success:false, message:'Usuário não encontrado.' });
-    if (!verifyPassword(current_password, doc.data().password_hash))
-      return res.status(401).json({ success:false, message:'Senha atual incorreta.' });
+    if (!verifyPassword(current_password, doc.data().password_hash)) {
+      // Tenta fallback com ACCESS_PASSWORD para conta admin sem hash migrado
+      if (doc.data().role !== 'admin' || current_password !== ACCESS_PASSWORD)
+        return res.status(401).json({ success:false, message:'Senha atual incorreta.' });
+    }
     await fdb.collection('users').doc(req.session.userId).update({ password_hash: hashPassword(new_password) });
+    // Se for admin, atualiza ACCESS_PASSWORD também
+    if (doc.data().role === 'admin') {
+      ACCESS_PASSWORD = new_password;
+      await fdb.collection('config').doc('app').set({ password: new_password }, { merge:true });
+    }
     return res.json({ success: true });
   }
   // Legado: senha master
   if (current_password !== ACCESS_PASSWORD)
     return res.status(401).json({ success:false, message:'Senha atual incorreta.' });
   ACCESS_PASSWORD = new_password;
+  const newHash = hashPassword(new_password);
+  // Atualiza config e hash de todos os admins no Firestore
   await fdb.collection('config').doc('app').set({ password: ACCESS_PASSWORD }, { merge:true });
+  const adminSnap = await fdb.collection('users').where('role','==','admin').get();
+  await Promise.all(adminSnap.docs.map(d => fdb.collection('users').doc(d.id).update({ password_hash: newHash })));
   res.json({ success: true });
 });
 
