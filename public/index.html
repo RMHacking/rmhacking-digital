@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RMHacking — Investigação Digital</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{position:fixed;top:0;left:0;width:240px;height:100vh;background:#09090f;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;z-index:100}
+.sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sidebar-logo h1{font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+.sidebar-logo p{font-size:11px;color:#4b5563;margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+.sidebar-nav{padding:16px 12px;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:#6b7280;transition:all .15s;text-decoration:none;margin-bottom:2px}
+.nav-item:hover,.nav-item.active{background:rgba(79,70,229,.12);color:#a5b4fc}
+.nav-item .icon{width:18px;text-align:center}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,.06)}
+.user-badge{display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(79,70,229,.08);border-radius:8px;border:1px solid rgba(79,70,229,.2)}
+.user-badge .avatar{width:28px;height:28px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.user-badge .info{flex:1;min-width:0}
+.user-badge .name{font-size:12px;font-weight:600;color:#c7d2fe;truncate:ellipsis}
+.user-badge .role{font-size:10px;color:#6b7280}
+.logout-btn{background:none;border:none;cursor:pointer;color:#6b7280;font-size:12px;padding:0;transition:color .2s}
+.logout-btn:hover{color:#ef4444}
+
+/* ── Main ── */
+.main{margin-left:240px;min-height:100vh}
+.topbar{background:rgba(9,9,15,.8);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.06);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar h2{font-size:18px;font-weight:600;color:#fff}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.search-bar{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 14px;width:260px}
+.search-bar input{background:none;border:none;outline:none;color:#e2e8f0;font-size:13px;width:100%}
+.search-bar input::placeholder{color:#4b5563}
+.btn-primary{background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;border-radius:8px;padding:9px 16px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;white-space:nowrap}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+
+/* ── Stats ── */
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:24px 28px 0}
+.stat-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:16px 20px}
+.stat-card .num{font-size:28px;font-weight:700;color:#fff;margin-bottom:2px}
+.stat-card .label{font-size:12px;color:#6b7280}
+.stat-card.open .num{color:#4f46e5}
+.stat-card.todo .num{color:#f59e0b}
+.stat-card.closed .num{color:#10b981}
+
+/* ── Board ── */
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:24px 28px 40px}
+.col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.col-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.8px}
+.col-count{background:rgba(255,255,255,.08);border-radius:20px;padding:2px 8px;font-size:11px;color:#9ca3af}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.open{background:#4f46e5}
+.dot.todo{background:#f59e0b}
+.dot.closed{background:#10b981}
+.col-add{background:none;border:none;cursor:pointer;color:#4b5563;font-size:16px;padding:2px 6px;border-radius:4px;transition:color .2s}
+.col-add:hover{color:#a5b4fc}
+
+/* ── Cards ── */
+.inv-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.inv-card:hover{background:rgba(255,255,255,.05);border-color:rgba(79,70,229,.3);transform:translateY(-2px)}
+.inv-card-accent{position:absolute;top:0;left:0;bottom:0;width:3px;border-radius:12px 0 0 12px}
+.inv-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.inv-card h3{font-size:14px;font-weight:600;color:#e2e8f0;line-height:1.3}
+.inv-card-actions{display:flex;gap:4px;opacity:0;transition:opacity .2s}
+.inv-card:hover .inv-card-actions{opacity:1}
+.card-btn{background:rgba(255,255,255,.06);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;color:#9ca3af;transition:all .15s}
+.card-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+.card-btn.delete:hover{background:rgba(239,68,68,.15);color:#ef4444}
+.inv-card p{font-size:12px;color:#6b7280;line-height:1.4;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.inv-card-footer{display:flex;align-items:center;justify-content:space-between}
+.tags{display:flex;gap:4px;flex-wrap:wrap}
+.tag{background:rgba(79,70,229,.1);border:1px solid rgba(79,70,229,.2);border-radius:4px;padding:2px 7px;font-size:10px;color:#a5b4fc}
+.priority-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
+.priority-badge.high{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.priority-badge.medium{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+.priority-badge.low{background:rgba(16,185,129,.1);color:#34d399;border:1px solid rgba(16,185,129,.2)}
+.date{font-size:10px;color:#374151}
+.empty-col{text-align:center;padding:32px 16px;border:1px dashed rgba(255,255,255,.06);border-radius:12px;color:#374151;font-size:12px}
+.empty-col .emoji{font-size:24px;margin-bottom:8px}
+
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.overlay.hidden{display:none}
+.modal{background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:700;color:#fff;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;cursor:pointer;color:#6b7280;font-size:20px;line-height:1;padding:0}
+.modal-close:hover{color:#fff}
+.form-row{margin-bottom:16px}
+.form-row label{display:block;font-size:12px;font-weight:600;color:#9ca3af;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px}
+.form-row input,.form-row textarea,.form-row select{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 14px;color:#e2e8f0;font-size:13px;outline:none;font-family:inherit;transition:border-color .2s}
+.form-row input:focus,.form-row textarea:focus,.form-row select:focus{border-color:rgba(79,70,229,.5)}
+.form-row textarea{resize:vertical;min-height:80px}
+.form-row select option{background:#1a1a2e;color:#e2e8f0}
+.color-row{display:flex;gap:8px;flex-wrap:wrap}
+.color-opt{width:24px;height:24px;border-radius:50%;cursor:pointer;transition:transform .2s;border:2px solid transparent}
+.color-opt:hover,.color-opt.selected{transform:scale(1.2);border-color:#fff}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+.btn-secondary{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 18px;color:#9ca3af;font-size:13px;cursor:pointer;transition:all .2s}
+.btn-secondary:hover{background:rgba(255,255,255,.1);color:#fff}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;right:24px;background:#1e1e2e;border:1px solid rgba(79,70,229,.4);border-radius:10px;padding:12px 18px;color:#c7d2fe;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+
+@media(max-width:900px){.sidebar{transform:translateX(-100%)}.main{margin-left:0}.board{grid-template-columns:1fr}.stats-bar{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>🔍 RMHacking</h1>
+    <p>Investigação Digital</p>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item active" href="/">
+      <span class="icon">📋</span> Dashboard
+    </a>
+    <a class="nav-item" href="#" onclick="filterStatus('open')">
+      <span class="icon">🟣</span> Abertas
+    </a>
+    <a class="nav-item" href="#" onclick="filterStatus('todo')">
+      <span class="icon">🟡</span> Para Fazer
+    </a>
+    <a class="nav-item" href="#" onclick="filterStatus('closed')">
+      <span class="icon">🟢</span> Finalizadas
+    </a>
+    <div style="height:1px;background:rgba(255,255,255,.06);margin:12px 4px"></div>
+    <a class="nav-item" href="#" onclick="showCreateModal()">
+      <span class="icon">➕</span> Nova Investigação
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-badge">
+      <div class="avatar">RM</div>
+      <div class="info">
+        <div class="name">Rafael Moreno</div>
+        <div class="role">Investigador</div>
+      </div>
+      <button class="logout-btn" onclick="logout()" title="Sair">⏻</button>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+  <div class="topbar">
+    <h2 id="pageTitle">Todas as Investigações</h2>
+    <div class="topbar-right">
+      <div class="search-bar">
+        <span style="color:#4b5563">🔎</span>
+        <input type="text" id="searchInput" placeholder="Buscar investigações..." oninput="renderBoard()">
+      </div>
+      <button class="btn-primary" onclick="showCreateModal()">
+        + Nova Investigação
+      </button>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">Total</div></div>
+    <div class="stat-card open"><div class="num" id="statOpen">0</div><div class="label">🟣 Abertas</div></div>
+    <div class="stat-card todo"><div class="num" id="statTodo">0</div><div class="label">🟡 Para Fazer</div></div>
+    <div class="stat-card closed"><div class="num" id="statClosed">0</div><div class="label">🟢 Finalizadas</div></div>
+  </div>
+
+  <div class="board">
+    <div>
+      <div class="col-header">
+        <div class="col-title"><div class="dot open"></div>Abertas<span class="col-count" id="countOpen">0</span></div>
+        <button class="col-add" onclick="showCreateModal('open')" title="Nova">+</button>
+      </div>
+      <div id="col-open"></div>
+    </div>
+    <div>
+      <div class="col-header">
+        <div class="col-title"><div class="dot todo"></div>Para Fazer<span class="col-count" id="countTodo">0</span></div>
+        <button class="col-add" onclick="showCreateModal('todo')" title="Nova">+</button>
+      </div>
+      <div id="col-todo"></div>
+    </div>
+    <div>
+      <div class="col-header">
+        <div class="col-title"><div class="dot closed"></div>Finalizadas<span class="col-count" id="countClosed">0</span></div>
+        <button class="col-add" onclick="showCreateModal('closed')" title="Nova">+</button>
+      </div>
+      <div id="col-closed"></div>
+    </div>
+  </div>
+</main>
+
+<!-- Modal Nova Investigação -->
+<div class="overlay hidden" id="createOverlay">
+  <div class="modal">
+    <h3>
+      <span id="modalTitle">Nova Investigação</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </h3>
+    <input type="hidden" id="editId">
+    <div class="form-row">
+      <label>Título *</label>
+      <input type="text" id="fTitle" placeholder="Nome da investigação">
+    </div>
+    <div class="form-row">
+      <label>Alvo / Suspeito</label>
+      <input type="text" id="fTarget" placeholder="Ex: João Silva, empresa XYZ, IP 192.168.1.1">
+    </div>
+    <div class="form-row">
+      <label>Descrição</label>
+      <textarea id="fDesc" placeholder="Descreva os objetivos e contexto da investigação..."></textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-row">
+        <label>Status</label>
+        <select id="fStatus">
+          <option value="open">🟣 Aberta</option>
+          <option value="todo">🟡 Para Fazer</option>
+          <option value="closed">🟢 Finalizada</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Prioridade</label>
+        <select id="fPriority">
+          <option value="high">🔴 Alta</option>
+          <option value="medium" selected>🟡 Média</option>
+          <option value="low">🟢 Baixa</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Tags (separadas por vírgula)</label>
+      <input type="text" id="fTags" placeholder="OSINT, Forense, Phishing...">
+    </div>
+    <div class="form-row">
+      <label>Cor</label>
+      <div class="color-row" id="colorPicker"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveInvestigation()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const COLORS = ['#4f46e5','#7c3aed','#db2777','#dc2626','#d97706','#059669','#0891b2','#6b7280'];
+let investigations = [];
+let filterSt = null;
+let selectedColor = COLORS[0];
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  await loadAll();
+  renderColorPicker();
+}
+
+async function apiFetch(url, opts) {
+  const r = await fetch(url, opts);
+  if (r.status === 401) { window.location.href = '/login'; throw new Error('401'); }
+  return r;
+}
+
+async function loadAll() {
+  try {
+    const r = await apiFetch('/api/investigations');
+    const invs = await r.json();
+    if (!Array.isArray(invs)) { window.location.href = '/login'; return; }
+    investigations = invs;
+    const total  = invs.length;
+    const open   = invs.filter(i=>i.status==='open').length;
+    const todo   = invs.filter(i=>i.status==='todo').length;
+    const closed = invs.filter(i=>i.status==='closed').length;
+    document.getElementById('statTotal').textContent  = total;
+    document.getElementById('statOpen').textContent   = open;
+    document.getElementById('statTodo').textContent   = todo;
+    document.getElementById('statClosed').textContent = closed;
+    renderBoard();
+  } catch(e) { if (e.message !== '401') console.error(e); }
+}
+
+function renderBoard() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let list = investigations;
+  if (filterSt) list = list.filter(i=>i.status===filterSt);
+  if (q) list = list.filter(i=>
+    i.title.toLowerCase().includes(q) ||
+    (i.description||'').toLowerCase().includes(q) ||
+    (i.tags||'').toLowerCase().includes(q) ||
+    (i.target||'').toLowerCase().includes(q)
+  );
+
+  const cols = { open:[], todo:[], closed:[] };
+  list.forEach(i => (cols[i.status]||cols.open).push(i));
+
+  ['open','todo','closed'].forEach(s => {
+    document.getElementById(`countOpen`+(s==='open'?'':'')); // skip
+    document.getElementById('count'+s.charAt(0).toUpperCase()+s.slice(1)).textContent = cols[s].length;
+    document.getElementById('col-'+s).innerHTML = cols[s].length
+      ? cols[s].map(cardHTML).join('')
+      : `<div class="empty-col"><div class="emoji">${s==='closed'?'✅':s==='todo'?'📋':'🔍'}</div>Nenhuma investigação</div>`;
+  });
+}
+
+function cardHTML(inv) {
+  const tags = inv.tags ? inv.tags.split(',').filter(t=>t.trim()).slice(0,3).map(t=>`<span class="tag">${t.trim()}</span>`).join('') : '';
+  const pri = inv.priority || 'medium';
+  const priMap = {high:'🔴 Alta',medium:'🟡 Média',low:'🟢 Baixa'};
+  const date = new Date(inv.updated_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+  return `
+  <div class="inv-card" onclick="openInv(${inv.id})">
+    <div class="inv-card-accent" style="background:${inv.color||'#4f46e5'}"></div>
+    <div class="inv-card-header">
+      <h3>${esc(inv.title)}</h3>
+      <div class="inv-card-actions" onclick="event.stopPropagation()">
+        <button class="card-btn" onclick="editInv(${inv.id})">✏️</button>
+        <button class="card-btn delete" onclick="deleteInv(${inv.id})">🗑</button>
+      </div>
+    </div>
+    ${inv.target ? `<p style="color:#a5b4fc;font-size:11px;margin-bottom:6px">🎯 ${esc(inv.target)}</p>` : ''}
+    ${inv.description ? `<p>${esc(inv.description)}</p>` : ''}
+    <div class="inv-card-footer">
+      <div class="tags">${tags}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="priority-badge ${pri}">${priMap[pri]}</span>
+        <span class="date">${date}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openInv(id) {
+  window.location.href = `/investigacao.html?id=${id}`;
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function showCreateModal(status='open') {
+  document.getElementById('modalTitle').textContent = 'Nova Investigação';
+  document.getElementById('editId').value = '';
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fTarget').value = '';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fStatus').value = status;
+  document.getElementById('fPriority').value = 'medium';
+  document.getElementById('fTags').value = '';
+  selectedColor = COLORS[0];
+  renderColorPicker();
+  document.getElementById('createOverlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('fTitle').focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById('createOverlay').classList.add('hidden');
+}
+
+function renderColorPicker() {
+  document.getElementById('colorPicker').innerHTML = COLORS.map(c=>`
+    <div class="color-opt ${c===selectedColor?'selected':''}" style="background:${c}" onclick="selectColor('${c}')"></div>
+  `).join('');
+}
+
+function selectColor(c) {
+  selectedColor = c;
+  renderColorPicker();
+}
+
+async function saveInvestigation() {
+  const id = document.getElementById('editId').value;
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) { toast('Digite um título'); return; }
+  const body = {
+    title,
+    target: document.getElementById('fTarget').value.trim(),
+    description: document.getElementById('fDesc').value.trim(),
+    status: document.getElementById('fStatus').value,
+    priority: document.getElementById('fPriority').value,
+    tags: document.getElementById('fTags').value,
+    color: selectedColor,
+  };
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? `/api/investigations/${id}` : '/api/investigations';
+  try {
+    const r = await apiFetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (!r.ok) { toast('Erro ao salvar. Tente novamente.'); return; }
+  } catch(e) { if (e.message !== '401') toast('Erro de conexão.'); return; }
+  closeModal();
+  toast(id ? 'Investigação atualizada!' : 'Investigação criada!');
+  await loadAll();
+}
+
+async function editInv(id) {
+  const inv = investigations.find(i=>i.id===id);
+  if (!inv) return;
+  document.getElementById('modalTitle').textContent = 'Editar Investigação';
+  document.getElementById('editId').value = id;
+  document.getElementById('fTitle').value = inv.title;
+  document.getElementById('fTarget').value = inv.target||'';
+  document.getElementById('fDesc').value = inv.description||'';
+  document.getElementById('fStatus').value = inv.status;
+  document.getElementById('fPriority').value = inv.priority||'medium';
+  document.getElementById('fTags').value = inv.tags||'';
+  selectedColor = inv.color||COLORS[0];
+  renderColorPicker();
+  document.getElementById('createOverlay').classList.remove('hidden');
+}
+
+async function deleteInv(id) {
+  if (!confirm('Deletar esta investigação e todos os dados associados?')) return;
+  await fetch(`/api/investigations/${id}`, { method:'DELETE' });
+  toast('Investigação deletada');
+  await loadAll();
+}
+
+function filterStatus(s) {
+  filterSt = filterSt===s ? null : s;
+  const titles = {open:'Investigações Abertas',todo:'Para Fazer',closed:'Finalizadas'};
+  document.getElementById('pageTitle').textContent = filterSt ? titles[filterSt] : 'Todas as Investigações';
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  renderBoard();
+}
+
+async function logout() {
+  await fetch('/api/logout',{method:'POST'});
+  window.location.href='/login';
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+document.getElementById('createOverlay').addEventListener('click',e=>{
+  if(e.target===e.currentTarget) closeModal();
+});
+
+init();
+</script>
+</body>
+</html>

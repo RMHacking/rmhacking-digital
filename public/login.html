@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RMHacking — Acesso Seguro</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{min-height:100vh;background:#0a0a0f;display:flex;align-items:center;justify-content:center;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+  .bg{position:fixed;inset:0;background:radial-gradient(ellipse at 20% 50%,#1e0a3c 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,#0a1e3c 0%,transparent 50%);z-index:0}
+  .grid{position:fixed;inset:0;background-image:linear-gradient(rgba(79,70,229,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(79,70,229,.08) 1px,transparent 1px);background-size:40px 40px;z-index:0}
+  .card{position:relative;z-index:1;background:rgba(15,15,25,.9);border:1px solid rgba(79,70,229,.3);border-radius:20px;padding:48px 40px;width:100%;max-width:420px;backdrop-filter:blur(20px);box-shadow:0 0 60px rgba(79,70,229,.15),0 0 120px rgba(79,70,229,.05);transition:all .3s}
+  .logo{text-align:center;margin-bottom:32px}
+  .logo-icon{width:64px;height:64px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;box-shadow:0 0 30px rgba(79,70,229,.4)}
+  .logo h1{font-size:22px;font-weight:700;color:#fff;letter-spacing:.5px}
+  .logo p{font-size:12px;color:#6b7280;margin-top:4px;letter-spacing:2px;text-transform:uppercase}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:20px;padding:4px 12px;font-size:11px;color:#ef4444;margin-top:8px;letter-spacing:1px}
+  .badge::before{content:'●';font-size:8px;animation:blink 1.5s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+  .screen{display:none}
+  .screen.active{display:block}
+  label{display:block;font-size:12px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+  .input-wrap{position:relative;margin-bottom:20px}
+  .input-wrap input{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 44px 14px 16px;color:#fff;font-size:15px;outline:none;transition:all .2s}
+  .input-wrap input:focus{border-color:rgba(79,70,229,.6);background:rgba(79,70,229,.05);box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+  .eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;color:#6b7280;font-size:18px;user-select:none;transition:color .2s}
+  .eye:hover{color:#9ca3af}
+  .btn-main{width:100%;background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;border-radius:10px;padding:15px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.5px}
+  .btn-main:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(79,70,229,.4)}
+  .btn-main:active{transform:translateY(0)}
+  .btn-secondary{width:100%;background:none;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px;color:#6b7280;font-size:13px;cursor:pointer;transition:all .2s;margin-top:10px}
+  .btn-secondary:hover{border-color:rgba(255,255,255,.2);color:#9ca3af}
+  .btn-danger{width:100%;background:linear-gradient(135deg,#dc2626,#b91c1c);border:none;border-radius:10px;padding:15px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:4px}
+  .btn-danger:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(220,38,38,.3)}
+  .alert{border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none}
+  .alert.error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444}
+  .alert.success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#34d399}
+  .divider{display:flex;align-items:center;gap:12px;margin:20px 0}
+  .divider span{font-size:11px;color:#374151;white-space:nowrap}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06)}
+  .screen-title{font-size:15px;font-weight:700;color:#fff;margin-bottom:6px}
+  .screen-sub{font-size:12px;color:#4b5563;margin-bottom:20px}
+  .strength-bar{height:4px;border-radius:2px;background:rgba(255,255,255,.06);margin-top:6px;overflow:hidden}
+  .strength-fill{height:100%;border-radius:2px;transition:all .3s;width:0}
+  .strength-label{font-size:11px;margin-top:4px;color:#6b7280}
+  .footer{text-align:center;margin-top:20px;font-size:11px;color:#374151}
+  .spinner{display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="grid"></div>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🔍</div>
+    <h1>RMHacking</h1>
+    <p>Investigação Digital</p>
+    <div class="badge">ACESSO RESTRITO</div>
+  </div>
+
+  <!-- ── Tela de Login ── -->
+  <div class="screen active" id="screenLogin">
+    <div class="alert error" id="loginError"></div>
+    <label for="pwd">Senha de Acesso</label>
+    <div class="input-wrap">
+      <input type="password" id="pwd" placeholder="Digite sua senha" autocomplete="current-password">
+      <span class="eye" id="eyeLogin">👁</span>
+    </div>
+    <button class="btn-main" id="loginBtn" onclick="login()">
+      <span id="loginText">Entrar</span>
+      <div class="spinner" id="loginSpinner"></div>
+    </button>
+    <div class="divider"><span>ou</span></div>
+    <button class="btn-secondary" onclick="showScreen('screenChange')">🔑 Alterar Senha</button>
+    <div class="footer">🔐 Sessão expira em 8 horas</div>
+  </div>
+
+  <!-- ── Tela de Alterar Senha ── -->
+  <div class="screen" id="screenChange">
+    <div class="screen-title">🔑 Alterar Senha</div>
+    <div class="screen-sub">Digite a senha atual para confirmar a alteração</div>
+    <div class="alert error" id="changeError"></div>
+    <div class="alert success" id="changeSuccess"></div>
+    <label>Senha Atual</label>
+    <div class="input-wrap">
+      <input type="password" id="currentPwd" placeholder="Senha atual">
+      <span class="eye" id="eyeCurrent">👁</span>
+    </div>
+    <label>Nova Senha</label>
+    <div class="input-wrap">
+      <input type="password" id="newPwd" placeholder="Nova senha (mín. 6 caracteres)" oninput="checkStrength()">
+      <span class="eye" id="eyeNew">👁</span>
+    </div>
+    <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+    <div class="strength-label" id="strengthLabel"></div>
+    <br>
+    <label>Confirmar Nova Senha</label>
+    <div class="input-wrap">
+      <input type="password" id="confirmPwd" placeholder="Repita a nova senha">
+      <span class="eye" id="eyeConfirm">👁</span>
+    </div>
+    <button class="btn-danger" onclick="changePassword()">🔒 Confirmar Alteração</button>
+    <button class="btn-secondary" onclick="showScreen('screenLogin')">← Voltar ao Login</button>
+  </div>
+</div>
+
+<script>
+  // Toggle de visibilidade de senha
+  function makeEye(eyeId, inputId) {
+    document.getElementById(eyeId).addEventListener('click', function() {
+      var input = document.getElementById(inputId);
+      input.type = input.type === 'password' ? 'text' : 'password';
+      this.textContent = input.type === 'password' ? '👁' : '🙈';
+    });
+  }
+  makeEye('eyeLogin',   'pwd');
+  makeEye('eyeCurrent', 'currentPwd');
+  makeEye('eyeNew',     'newPwd');
+  makeEye('eyeConfirm', 'confirmPwd');
+
+  document.getElementById('pwd').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') login();
+  });
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+    hideAlerts();
+  }
+
+  function hideAlerts() {
+    document.querySelectorAll('.alert').forEach(function(a) { a.style.display = 'none'; });
+  }
+
+  function showAlert(id, msg) {
+    var el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  // ── Login ──────────────────────────────────────────────────────
+  async function login() {
+    var password = document.getElementById('pwd').value;
+    if (!password) { showAlert('loginError', 'Digite a senha.'); return; }
+    setLoginLoading(true);
+    try {
+      var r = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password })
+      });
+      var d = await r.json();
+      if (d.success) {
+        window.location.href = '/';
+      } else {
+        showAlert('loginError', 'Senha incorreta. Tente novamente.');
+        document.getElementById('pwd').value = '';
+        document.getElementById('pwd').focus();
+      }
+    } catch(e) {
+      showAlert('loginError', 'Erro de conexão. Verifique o servidor.');
+    }
+    setLoginLoading(false);
+  }
+
+  function setLoginLoading(v) {
+    document.getElementById('loginText').style.display = v ? 'none' : 'block';
+    document.getElementById('loginSpinner').style.display = v ? 'block' : 'none';
+    document.getElementById('loginBtn').disabled = v;
+  }
+
+  // ── Força da senha ─────────────────────────────────────────────
+  function checkStrength() {
+    var pwd = document.getElementById('newPwd').value;
+    var fill = document.getElementById('strengthFill');
+    var label = document.getElementById('strengthLabel');
+    var score = 0;
+    if (pwd.length >= 6)  score++;
+    if (pwd.length >= 10) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    var levels = [
+      { pct: '0%',   color: 'transparent', text: '' },
+      { pct: '25%',  color: '#ef4444',     text: '🔴 Senha fraca' },
+      { pct: '50%',  color: '#f59e0b',     text: '🟡 Senha razoável' },
+      { pct: '75%',  color: '#3b82f6',     text: '🔵 Senha boa' },
+      { pct: '90%',  color: '#10b981',     text: '🟢 Senha forte' },
+      { pct: '100%', color: '#10b981',     text: '🟢 Senha muito forte' },
+    ];
+    var lv = levels[score];
+    fill.style.width = lv.pct;
+    fill.style.background = lv.color;
+    label.textContent = lv.text;
+  }
+
+  // ── Alterar Senha ──────────────────────────────────────────────
+  async function changePassword() {
+    var current = document.getElementById('currentPwd').value;
+    var newPwd  = document.getElementById('newPwd').value;
+    var confirm = document.getElementById('confirmPwd').value;
+
+    hideAlerts();
+
+    if (!current) { showAlert('changeError', 'Digite a senha atual.'); return; }
+    if (!newPwd)   { showAlert('changeError', 'Digite a nova senha.'); return; }
+    if (newPwd.length < 6) { showAlert('changeError', 'A nova senha precisa ter pelo menos 6 caracteres.'); return; }
+    if (newPwd !== confirm) { showAlert('changeError', 'A confirmação não coincide com a nova senha.'); return; }
+
+    try {
+      var r = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: current, new_password: newPwd })
+      });
+      var d = await r.json();
+      if (d.success) {
+        showAlert('changeSuccess', '✅ Senha alterada com sucesso! Faça login com a nova senha.');
+        document.getElementById('currentPwd').value = '';
+        document.getElementById('newPwd').value = '';
+        document.getElementById('confirmPwd').value = '';
+        document.getElementById('strengthFill').style.width = '0';
+        document.getElementById('strengthLabel').textContent = '';
+        setTimeout(function() { showScreen('screenLogin'); }, 2500);
+      } else {
+        showAlert('changeError', d.message || 'Erro ao alterar senha.');
+      }
+    } catch(e) {
+      showAlert('changeError', 'Erro de conexão com o servidor.');
+    }
+  }
+</script>
+</body>
+</html>

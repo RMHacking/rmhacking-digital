@@ -1,0 +1,3278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<title>RMHacking — Investigação</title>
+<!-- Mapa mental implementado sem dependências externas -->
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+/* Topbar */
+.topbar{background:rgba(9,9,15,.95);border-bottom:1px solid rgba(255,255,255,.07);padding:0 24px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
+.back-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 12px;color:#9ca3af;font-size:13px;cursor:pointer;text-decoration:none;transition:all .2s}
+.back-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+.inv-title{font-size:15px;font-weight:600;color:#fff;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status-pill{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.status-pill.open{background:rgba(79,70,229,.15);color:#a5b4fc;border:1px solid rgba(79,70,229,.3)}
+.status-pill.todo{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3)}
+.status-pill.closed{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3)}
+.btn-sm{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:6px 12px;color:#9ca3af;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px}
+.btn-sm:hover{background:rgba(255,255,255,.1);color:#fff}
+.btn-primary{background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;border-radius:7px;padding:7px 14px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s}
+.btn-primary:hover{opacity:.9}
+/* Tabs */
+.app-body{display:flex;height:calc(100vh - 56px);overflow:hidden}
+.sidebar-brand{margin-top:auto;padding:14px 10px 10px;border-top:1px solid rgba(255,255,255,.06);text-align:center}
+.sidebar-brand-name{font-size:11px;font-weight:700;color:#a5b4fc;letter-spacing:.3px}
+.sidebar-brand-role{font-size:10px;color:#4b5563;margin-top:2px;line-height:1.4}
+.sidebar-brand-badge{display:inline-block;margin-top:6px;font-size:9px;background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);color:#818cf8;border-radius:4px;padding:2px 7px;letter-spacing:.5px;text-transform:uppercase}
+.tabs{background:#09090f;border-right:1px solid rgba(255,255,255,.07);width:170px;flex-shrink:0;display:flex;flex-direction:column;gap:2px;padding:10px 8px;overflow-y:auto;scrollbar-width:thin}
+.tab{padding:9px 12px;font-size:12px;cursor:pointer;color:#6b7280;border-radius:8px;border:none;white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:8px}
+.tab:hover{color:#9ca3af}
+.tab.active{color:#a5b4fc;background:rgba(79,70,229,.15);font-weight:600}
+/* Content */
+.content{padding:20px 24px;max-width:1400px;flex:1;overflow-y:auto;height:100%}
+.section{display:none}
+.section.active{display:block}
+/* Cards */
+.panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px;margin-bottom:16px}
+.panel-title{font-size:13px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+/* Forms */
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:11px;font-weight:600;color:#6b7280;letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px}
+.form-row input,.form-row textarea,.form-row select{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:8px;padding:9px 13px;color:#e2e8f0;font-size:13px;outline:none;font-family:inherit;transition:border-color .2s}
+.form-row input:focus,.form-row textarea:focus,.form-row select:focus{border-color:rgba(79,70,229,.5)}
+.form-row textarea{resize:vertical;min-height:70px}
+.form-row select option{background:#1a1a2e}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+/* Lists */
+.item-list{display:flex;flex-direction:column;gap:8px}
+.item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;transition:all .2s}
+.item:hover{border-color:rgba(255,255,255,.12)}
+.item-body{flex:1;min-width:0}
+.item-title{font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:3px}
+.item-meta{font-size:11px;color:#4b5563}
+.item-content{font-size:12px;color:#9ca3af;margin-top:6px;white-space:pre-wrap;word-break:break-word}
+.item-actions{display:flex;gap:4px;flex-shrink:0}
+.del-btn{background:none;border:none;cursor:pointer;color:#374151;font-size:14px;padding:2px 5px;border-radius:4px;transition:all .2s}
+.del-btn:hover{background:rgba(239,68,68,.1);color:#ef4444}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+/* Mind Map */
+#mindmap-container{width:100%;height:580px;background:#07070e;border-radius:12px;border:1px solid rgba(255,255,255,.08);position:relative;overflow:hidden;cursor:default}
+#mindmap-container canvas{display:block}
+.mm-toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.mm-toolbar input{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:7px;padding:7px 12px;color:#e2e8f0;font-size:13px;outline:none;flex:1;min-width:140px}
+.mm-toolbar input:focus{border-color:rgba(79,70,229,.4)}
+.mm-mode{display:flex;gap:4px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:3px}
+.mm-mode button{background:none;border:none;cursor:pointer;padding:5px 12px;border-radius:6px;font-size:12px;color:#6b7280;transition:all .2s}
+.mm-mode button.active{background:rgba(79,70,229,.2);color:#a5b4fc}
+/* Evidence */
+.ev-type-badge{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase}
+.ev-type-badge.text{background:rgba(79,70,229,.1);color:#a5b4fc}
+.ev-type-badge.url{background:rgba(6,182,212,.1);color:#67e8f9}
+.ev-type-badge.hash{background:rgba(16,185,129,.1);color:#34d399}
+.ev-type-badge.ip{background:rgba(245,158,11,.1);color:#fbbf24}
+.ev-type-badge.email{background:rgba(239,68,68,.1);color:#f87171}
+.ev-type-badge.log{background:rgba(156,163,175,.1);color:#9ca3af}
+.hash-value{font-family:monospace;font-size:11px;color:#34d399;word-break:break-all;margin-top:4px;background:rgba(16,185,129,.05);padding:4px 8px;border-radius:4px}
+/* OSINT */
+.osint-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px}
+.osint-tool{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px;cursor:pointer;transition:all .2s;text-decoration:none;display:block}
+.osint-tool:hover{border-color:rgba(79,70,229,.4);background:rgba(79,70,229,.06);transform:translateY(-2px)}
+.osint-tool .tool-icon{font-size:22px;margin-bottom:6px}
+.osint-tool .tool-name{font-size:12px;font-weight:600;color:#e2e8f0;margin-bottom:2px}
+.osint-tool .tool-desc{font-size:11px;color:#4b5563}
+/* Timeline */
+.timeline{position:relative;padding-left:28px}
+.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:rgba(79,70,229,.2)}
+.tl-item{position:relative;margin-bottom:20px}
+.tl-dot{position:absolute;left:-24px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid #4f46e5;background:#0d0d14;z-index:1}
+.tl-dot.high{border-color:#ef4444}
+.tl-dot.normal{border-color:#4f46e5}
+.tl-dot.low{border-color:#6b7280}
+.tl-content{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:12px 14px}
+.tl-title{font-size:13px;font-weight:600;color:#e2e8f0}
+.tl-date{font-size:11px;color:#4f46e5;margin-bottom:4px}
+.tl-desc{font-size:12px;color:#6b7280}
+/* Forense */
+.forense-result{background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:8px;padding:12px;margin-top:10px;font-family:monospace;font-size:12px;color:#34d399;white-space:pre-wrap;word-break:break-all;display:none}
+.forense-result.error{background:rgba(239,68,68,.05);border-color:rgba(239,68,68,.15);color:#f87171}
+.exif-table{width:100%;border-collapse:collapse;margin-top:10px}
+.exif-table th,.exif-table td{padding:7px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}
+.exif-table th{color:#6b7280;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.8px}
+.exif-table td{color:#e2e8f0}
+.exif-table tr:last-child td{border-bottom:none}
+/* Relatório */
+.report-preview{background:#0a0a12;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:28px;font-size:13px;line-height:1.8;color:#cbd5e1;margin-top:16px}
+.report-preview h2{color:#a5b4fc;font-size:16px;margin-bottom:12px}
+.report-preview h3{color:#e2e8f0;font-size:14px;margin:16px 0 8px}
+.report-preview .report-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:rgba(79,70,229,.15);color:#a5b4fc;margin-right:6px}
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;background:#1e1e2e;border:1px solid rgba(79,70,229,.4);border-radius:10px;padding:12px 18px;color:#c7d2fe;font-size:13px;z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;max-width:300px}
+.toast.show{transform:translateY(0);opacity:1}
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.overlay.hidden{display:none}
+.modal{background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px;width:100%;max-width:500px}
+.modal h3{font-size:15px;font-weight:700;color:#fff;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;cursor:pointer;color:#6b7280;font-size:20px}
+.modal-close:hover{color:#fff}
+/* Anexos */
+.attach-zone{border:2px dashed rgba(79,70,229,.3);border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:all .2s;margin-top:6px;background:rgba(79,70,229,.03)}
+.attach-zone:hover{border-color:rgba(79,70,229,.6);background:rgba(79,70,229,.07)}
+.attach-zone input[type=file]{display:none}
+.attach-preview{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.attach-chip{display:flex;align-items:center;gap:5px;background:rgba(79,70,229,.1);border:1px solid rgba(79,70,229,.25);border-radius:6px;padding:4px 10px;font-size:11px;color:#a5b4fc}
+.attach-chip button{background:none;border:none;color:#6b7280;cursor:pointer;padding:0;font-size:13px;line-height:1}
+.attach-chip button:hover{color:#f87171}
+.attach-thumb{width:100%;max-height:120px;object-fit:cover;border-radius:6px;margin-top:6px;cursor:pointer}
+.attach-file-link{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:5px 10px;font-size:11px;color:#a5b4fc;text-decoration:none;margin-top:6px}
+.attach-file-link:hover{background:rgba(79,70,229,.1)}
+.attach-upload-progress{font-size:11px;color:#6b7280;text-align:center;padding:4px}
+@media print{.topbar,.tabs,.mm-toolbar,.item-actions,.btn-primary,.btn-sm{display:none!important}.section{display:block!important}.content{padding:0}}
+/* ── Modo Claro ─────────────────────────────────────────────────────────── */
+[data-theme="light"] body{background:#eef1f7;color:#1e293b}
+[data-theme="light"] .topbar{background:rgba(248,250,252,.97);border-bottom-color:rgba(0,0,0,.09)}
+[data-theme="light"] .inv-title{color:#1e293b}
+[data-theme="light"] .back-btn{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.1);color:#475569}
+[data-theme="light"] .back-btn:hover{background:rgba(0,0,0,.08);color:#1e293b}
+[data-theme="light"] .btn-sm{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.1);color:#475569}
+[data-theme="light"] .btn-sm:hover{background:rgba(0,0,0,.09);color:#1e293b}
+[data-theme="light"] .tabs{background:#f1f5fb;border-right-color:rgba(0,0,0,.08)}
+[data-theme="light"] .sidebar-brand{border-top-color:rgba(0,0,0,.08)}
+[data-theme="light"] .sidebar-brand-name{color:#4f46e5}
+[data-theme="light"] .sidebar-brand-role{color:#94a3b8}
+[data-theme="light"] .tab{color:#64748b}
+[data-theme="light"] .tab:hover{color:#334155}
+[data-theme="light"] .tab.active{color:#4f46e5;border-bottom-color:#4f46e5}
+[data-theme="light"] .panel{background:#ffffff;border-color:rgba(0,0,0,.08);box-shadow:0 1px 4px rgba(0,0,0,.05)}
+[data-theme="light"] .panel-title{color:#64748b}
+[data-theme="light"] .form-row label{color:#64748b}
+[data-theme="light"] .form-row input,[data-theme="light"] .form-row textarea,[data-theme="light"] .form-row select{background:#f8fafc;border-color:rgba(0,0,0,.1);color:#1e293b}
+[data-theme="light"] .form-row select option{background:#fff;color:#1e293b}
+[data-theme="light"] .item{background:#ffffff;border-color:rgba(0,0,0,.07)}
+[data-theme="light"] .item:hover{border-color:rgba(79,70,229,.3)}
+[data-theme="light"] .item-title{color:#1e293b}
+[data-theme="light"] .item-meta{color:#94a3b8}
+[data-theme="light"] .item-content{color:#475569}
+[data-theme="light"] .del-btn{color:#b0b8c8}
+[data-theme="light"] .tl-content{background:#ffffff;border-color:rgba(0,0,0,.07)}
+[data-theme="light"] .tl-title{color:#1e293b}
+[data-theme="light"] .tl-desc{color:#64748b}
+[data-theme="light"] .tl-dot{background:#eef1f7}
+[data-theme="light"] .timeline::before{background:rgba(79,70,229,.15)}
+[data-theme="light"] .osint-tool{background:#ffffff;border-color:rgba(0,0,0,.07)}
+[data-theme="light"] .osint-tool .tool-name{color:#1e293b}
+[data-theme="light"] .osint-tool .tool-desc{color:#94a3b8}
+[data-theme="light"] .report-preview{background:#ffffff;border-color:rgba(0,0,0,.08);color:#334155}
+[data-theme="light"] .report-preview h3{color:#1e293b}
+[data-theme="light"] .modal{background:#ffffff;border-color:rgba(0,0,0,.1)}
+[data-theme="light"] .modal h3{color:#1e293b}
+[data-theme="light"] .modal-close{color:#94a3b8}
+[data-theme="light"] .modal-close:hover{color:#1e293b}
+[data-theme="light"] #mindmap-container{background:#dde3f0;border-color:rgba(0,0,0,.1)}
+[data-theme="light"] .mm-toolbar input{background:#f8fafc;border-color:rgba(0,0,0,.1);color:#1e293b}
+[data-theme="light"] .mm-mode{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.08)}
+[data-theme="light"] .mm-mode button{color:#64748b}
+[data-theme="light"] .mm-mode button.active{background:rgba(79,70,229,.15);color:#4f46e5}
+[data-theme="light"] .hash-value{background:rgba(16,185,129,.07);color:#059669}
+[data-theme="light"] .attach-zone{border-color:rgba(79,70,229,.25);background:rgba(79,70,229,.02)}
+[data-theme="light"] .exif-table th{color:#64748b}
+[data-theme="light"] .exif-table td{color:#1e293b}
+[data-theme="light"] .exif-table th,[data-theme="light"] .exif-table td{border-bottom-color:rgba(0,0,0,.05)}
+[data-theme="light"] .forense-result{background:rgba(16,185,129,.07);border-color:rgba(16,185,129,.2);color:#047857}
+[data-theme="light"] .overlay{background:rgba(0,0,0,.5)}
+@media print{.topbar,.tabs,.mm-toolbar,.item-actions,.btn-primary,.btn-sm{display:none!important}.section{display:block!important}.content{padding:0}}
+
+/* ── Responsivo Mobile ────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .app-body { flex-direction: column; height: auto; }
+  .tabs { width: 100%; flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 6px 8px; border-right: none; border-bottom: 1px solid rgba(255,255,255,.07); height: auto; flex-shrink: 0; }
+  .tab { white-space: nowrap; flex-shrink: 0; }
+  .content { height: auto; overflow-y: visible; }
+  .topbar { padding: 0 10px; gap: 6px; height: 50px; }
+  .inv-title { font-size: 12px; }
+  .status-pill { display: none; }
+  .topbar > div { gap: 4px !important; }
+  .topbar .btn-primary { padding: 5px 8px; font-size: 11px; }
+  .topbar .btn-sm { padding: 5px 7px; font-size: 11px; }
+  .tabs { padding: 0 4px; }
+  .tab { padding: 10px 7px; font-size: 11px; gap: 2px; }
+  .content { padding: 10px; }
+  .grid-2 { grid-template-columns: 1fr !important; }
+  .grid-3 { grid-template-columns: 1fr 1fr !important; }
+  #sec-overview > div[style] { display: flex !important; flex-direction: column !important; gap: 14px !important; }
+  #sec-notes > div[style] { display: flex !important; flex-direction: column !important; gap: 14px !important; }
+  #sec-evidence > div[style] { display: flex !important; flex-direction: column !important; gap: 14px !important; }
+  #sec-timeline > div[style] { display: flex !important; flex-direction: column !important; gap: 14px !important; }
+  #sec-empresa > div[style] { display: flex !important; flex-direction: column !important; gap: 14px !important; }
+  #sec-forensics > div[style] { display: flex !important; flex-direction: column !important; gap: 14px !important; }
+  #sec-osint > div[style] { display: flex !important; flex-direction: column !important; gap: 14px !important; }
+  #activitySummary { display: grid !important; grid-template-columns: 1fr 1fr !important; }
+  .osint-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  #mindmap-container { height: 300px; }
+  .mm-toolbar { gap: 5px; }
+  .mm-toolbar input[type=text] { min-width: 80px; flex: 1; }
+  .btn-sm, .btn-primary { min-height: 34px; }
+  .overlay { padding: 8px; }
+  .modal { max-height: 90vh; overflow-y: auto; }
+  #sec-report > div:first-child { flex-direction: column !important; }
+  #cnpjFields { grid-template-columns: 1fr !important; }
+  #nodeInfo .grid-3 { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 480px) {
+  .inv-title { font-size: 11px; max-width: 90px; }
+  .tab { padding: 10px 5px; font-size: 10px; }
+  .grid-3 { grid-template-columns: 1fr !important; }
+  .mm-toolbar { flex-wrap: wrap; }
+  #mindmap-container { height: 260px; }
+}
+
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="back-btn" href="/">← Voltar</a>
+  <div class="inv-title" id="invTitle">Carregando...</div>
+  <span class="status-pill" id="statusPill">...</span>
+  <div style="display:flex;gap:6px;align-items:center">
+    <button class="btn-sm" id="themeBtn" onclick="toggleTheme()" title="Alternar modo claro/escuro" style="font-size:15px;padding:5px 10px">🌙</button>
+    <button class="btn-sm" onclick="exportReport()">📄 Relatório PDF</button>
+    <button class="btn-primary" onclick="openEditModal()">✏️ Editar</button>
+  </div>
+</div>
+
+<div class="app-body">
+<div class="tabs" id="tabsBar">
+  <div class="tab active" onclick="switchTab('overview',this)">📋 Visão Geral</div>
+  <div class="tab" onclick="switchTab('empresa',this)">🏢 Empresa</div>
+  <div class="tab" onclick="switchTab('pessoa',this)">👤 Pessoa</div>
+  <div class="tab" onclick="switchTab('osint',this)">🌐 OSINT</div>
+  <div class="tab" onclick="switchTab('notes',this)">📝 Notas</div>
+  <div class="tab" onclick="switchTab('evidence',this)">🔒 Evidências</div>
+  <div class="tab" onclick="switchTab('timeline',this)">📅 Linha do Tempo</div>
+  <div class="tab" onclick="switchTab('mindmap',this)">🧠 Mapa Mental</div>
+  <div class="tab" onclick="switchTab('entidades',this)">⚡ Entidades</div>
+  <div class="tab" onclick="switchTab('mapa',this)">🗺️ Mapa</div>
+  <div class="tab" onclick="switchTab('forensics',this)">🔬 Forense</div>
+  <div class="tab" onclick="switchTab('watchlist',this)">👁️ Watchlist</div>
+  <div class="tab" onclick="switchTab('custodia',this)">🔐 Custódia</div>
+  <div class="tab" onclick="switchTab('report',this)">📊 Relatório</div>
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-name">Rafael Moreno</div>
+    <div class="sidebar-brand-role">Investigador Digital</div>
+    <div class="sidebar-brand-badge">🔒 RMHacking</div>
+  </div>
+</div>
+<div class="content">
+
+<!-- ══ VISÃO GERAL ══════════════════════════════════════════════════════════════ -->
+<div class="section active" id="sec-overview">
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px">
+    <div>
+      <div class="panel">
+        <div class="panel-title">Detalhes da Investigação</div>
+        <div id="overviewDetails" style="font-size:13px;line-height:1.8;color:#9ca3af">
+          Carregando...
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Resumo de Atividade</div>
+        <div id="activitySummary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center">
+          <div><div style="font-size:24px;font-weight:700;color:#a5b4fc" id="sumNodes">0</div><div style="font-size:11px;color:#4b5563">Nós no mapa</div></div>
+          <div><div style="font-size:24px;font-weight:700;color:#34d399" id="sumEvidence">0</div><div style="font-size:11px;color:#4b5563">Evidências</div></div>
+          <div><div style="font-size:24px;font-weight:700;color:#fbbf24" id="sumNotes">0</div><div style="font-size:11px;color:#4b5563">Notas</div></div>
+          <div><div style="font-size:24px;font-weight:700;color:#f87171" id="sumEvents">0</div><div style="font-size:11px;color:#4b5563">Eventos</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>📋 Prévia do Relatório <span style="font-size:10px;color:#4b5563;font-weight:400">(atualiza ao adicionar dados)</span></span>
+          <button class="btn-sm" onclick="switchTab('report',document.querySelectorAll('.tab')[7]);setReportMode('auto');generateReport()" style="font-size:11px">Ver completo →</button>
+        </div>
+        <div id="liveReportPreview" style="font-size:12px;color:#9ca3af;line-height:1.8;max-height:320px;overflow-y:auto">
+          <div style="color:#374151;text-align:center;padding:16px">Carregando...</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-title">Status Rápido</div>
+        <div id="quickStatus" style="font-size:12px;color:#6b7280;line-height:2">Carregando...</div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">💾 Backup / Restore</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="exportBackup()" style="flex:1;min-width:140px">📦 Exportar Backup</button>
+          <label class="btn-sm" style="flex:1;min-width:140px;cursor:pointer;justify-content:center">
+            📂 Importar Backup
+            <input type="file" accept=".json,.rmh.json" style="display:none" onchange="importBackup(this)">
+          </label>
+        </div>
+        <p style="font-size:11px;color:#4b5563;margin-top:8px">Exporta a investigação completa (nós, evidências, notas, eventos) em formato JSON. Para restaurar, importe o arquivo em qualquer instância do app.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Ferramentas OSINT Rápidas</div>
+        <div id="quickOsint" style="font-size:12px;line-height:2.2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAPA MENTAL ══════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-mindmap">
+  <div class="mm-toolbar">
+    <input type="text" id="nodeLabel" placeholder="Nome do nó..." maxlength="60" onkeydown="if(event.key==='Enter')addNode()">
+    <input type="color" id="nodeColor" value="#4f46e5" title="Cor do nó" style="width:36px;height:34px;padding:2px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:7px;cursor:pointer">
+    <button class="btn-primary" onclick="addNode()">+ Nó</button>
+    <div class="mm-mode">
+      <button id="connectModeBtn" onclick="toggleConnectMode()">🔗 Conectar</button>
+    </div>
+    <button class="btn-sm" onclick="mmFit()">⊡ Ajustar</button>
+    <button class="btn-sm" id="undoBtn" onclick="mmUndo()" style="color:#fbbf24" title="Desfazer (Ctrl+Z)">↩ Desfazer</button>
+    <button class="btn-sm" onclick="deleteSelectedNode()" style="color:#f87171">🗑 Deletar</button>
+    <label title="Cor de fundo do mapa" style="display:flex;align-items:center;gap:5px;cursor:pointer;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:5px 10px;font-size:12px;color:#9ca3af">
+      🎨 Fundo
+      <input type="color" id="mmBgColor" value="#07070e" oninput="mmSetBg(this.value)" style="width:24px;height:20px;border:none;background:none;padding:0;cursor:pointer;border-radius:3px">
+    </label>
+    <button class="btn-sm" onclick="saveMindmap()">💾 Salvar</button>
+  </div>
+  <div style="font-size:11px;color:#374151;margin-bottom:8px">
+    💡 Clique para selecionar • Arraste para mover • Modo Conectar: clique em 2 nós para ligar • Duplo clique para editar
+  </div>
+  <div id="mindmap-container"><canvas id="mmCanvas"></canvas></div>
+  <div id="nodeInfo" style="display:none;margin-top:12px">
+    <div class="panel">
+      <div class="panel-title">Editar Nó <button class="btn-sm" onclick="document.getElementById('nodeInfo').style.display='none'">✕</button></div>
+      <div class="grid-2">
+        <div class="form-row"><label>Label</label><input type="text" id="editNodeLabel"></div>
+        <div class="form-row"><label>URL / Link</label><input type="text" id="editNodeUrl" placeholder="https://..."></div>
+      </div>
+      <!-- Visual options -->
+      <div style="border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:12px;margin-bottom:12px;background:rgba(255,255,255,.02)">
+        <div style="font-size:11px;font-weight:600;color:#6b7280;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">🎨 Visual</div>
+        <div class="grid-3" style="gap:10px;margin-bottom:10px">
+          <div class="form-row" style="margin:0">
+            <label>Cor da Borda</label>
+            <input type="color" id="editNodeColor" value="#4f46e5" style="width:100%;height:34px;padding:2px 4px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:7px;cursor:pointer">
+          </div>
+          <div class="form-row" style="margin:0">
+            <label>Fundo do Nó</label>
+            <input type="color" id="editNodeBg" value="#1a1a2e" style="width:100%;height:34px;padding:2px 4px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:7px;cursor:pointer">
+          </div>
+          <div class="form-row" style="margin:0">
+            <label>Cor do Texto</label>
+            <input type="color" id="editNodeTextColor" value="#ffffff" style="width:100%;height:34px;padding:2px 4px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:7px;cursor:pointer">
+          </div>
+        </div>
+        <div class="grid-3" style="gap:10px;margin-bottom:10px">
+          <div class="form-row" style="margin:0">
+            <label>Fonte</label>
+            <select id="editNodeFont">
+              <option value="sans">Padrão (Sans)</option>
+              <option value="serif">Serif</option>
+              <option value="mono">Monospace</option>
+              <option value="cursive">Cursiva</option>
+            </select>
+          </div>
+          <div class="form-row" style="margin:0">
+            <label>Tamanho</label>
+            <select id="editNodeFontSize">
+              <option value="10">Pequeno (10)</option>
+              <option value="13" selected>Normal (13)</option>
+              <option value="16">Grande (16)</option>
+              <option value="20">Extra (20)</option>
+            </select>
+          </div>
+          <div class="form-row" style="margin:0">
+            <label>Formato</label>
+            <select id="editNodeShape">
+              <option value="circle">⬤ Círculo</option>
+              <option value="square">■ Quadrado</option>
+              <option value="rect">▬ Retângulo</option>
+              <option value="roundrect">▢ Ret. Arredondado</option>
+              <option value="pill">💊 Pílula</option>
+              <option value="diamond">◆ Diamante</option>
+              <option value="hexagon">⬡ Hexágono</option>
+              <option value="star">★ Estrela</option>
+              <option value="cloud">☁ Nuvem</option>
+              <option value="arrow">➤ Seta</option>
+            </select>
+          </div>
+        </div>
+        <!-- Color presets -->
+        <div style="font-size:10px;color:#4b5563;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px">Paleta rápida</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px" id="colorPresets">
+          <div onclick="applyColorPreset('#4f46e5','#1a1635','#fff')"   style="width:22px;height:22px;border-radius:5px;background:#4f46e5;cursor:pointer;border:2px solid transparent" title="Índigo"></div>
+          <div onclick="applyColorPreset('#7c3aed','#1e1030','#fff')"   style="width:22px;height:22px;border-radius:5px;background:#7c3aed;cursor:pointer" title="Roxo"></div>
+          <div onclick="applyColorPreset('#0891b2','#062030','#fff')"   style="width:22px;height:22px;border-radius:5px;background:#0891b2;cursor:pointer" title="Ciano"></div>
+          <div onclick="applyColorPreset('#059669','#052818','#fff')"   style="width:22px;height:22px;border-radius:5px;background:#059669;cursor:pointer" title="Verde"></div>
+          <div onclick="applyColorPreset('#d97706','#2a1a05','#fff')"   style="width:22px;height:22px;border-radius:5px;background:#d97706;cursor:pointer" title="Âmbar"></div>
+          <div onclick="applyColorPreset('#dc2626','#2a0808','#fff')"   style="width:22px;height:22px;border-radius:5px;background:#dc2626;cursor:pointer" title="Vermelho"></div>
+          <div onclick="applyColorPreset('#db2777','#2a0818','#fff')"   style="width:22px;height:22px;border-radius:5px;background:#db2777;cursor:pointer" title="Rosa"></div>
+          <div onclick="applyColorPreset('#64748b','#1a1f28','#fff')"   style="width:22px;height:22px;border-radius:5px;background:#64748b;cursor:pointer" title="Cinza"></div>
+          <div onclick="applyColorPreset('#f59e0b','#fef3c7','#1e293b')" style="width:22px;height:22px;border-radius:5px;background:#fef3c7;border:1px solid #f59e0b;cursor:pointer" title="Amarelo claro"></div>
+          <div onclick="applyColorPreset('#10b981','#d1fae5','#064e3b')" style="width:22px;height:22px;border-radius:5px;background:#d1fae5;border:1px solid #10b981;cursor:pointer" title="Verde claro"></div>
+          <div onclick="applyColorPreset('#6366f1','#e0e7ff','#312e81')" style="width:22px;height:22px;border-radius:5px;background:#e0e7ff;border:1px solid #6366f1;cursor:pointer" title="Índigo claro"></div>
+          <div onclick="applyColorPreset('#ef4444','#fee2e2','#7f1d1d')" style="width:22px;height:22px;border-radius:5px;background:#fee2e2;border:1px solid #ef4444;cursor:pointer" title="Vermelho claro"></div>
+        </div>
+      </div>
+      <div class="form-row"><label>Notas do Nó</label><textarea id="editNodeNotes" placeholder="Observações..."></textarea></div>
+      <div style="text-align:right"><button class="btn-primary" onclick="updateNode()">💾 Salvar Nó</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NOTAS ═════════════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-notes">
+  <div style="display:grid;grid-template-columns:350px 1fr;gap:20px">
+    <div>
+      <div class="panel">
+        <div class="panel-title">Nova Nota</div>
+        <div class="form-row"><label>Título</label><input type="text" id="noteTitle" placeholder="Título da nota"></div>
+        <div class="form-row"><label>Conteúdo</label><textarea id="noteContent" style="min-height:120px" placeholder="Escreva suas observações..."></textarea></div>
+        <div class="form-row">
+          <label>Cor</label>
+          <div style="display:flex;gap:6px">
+            <div onclick="selectNoteColor('#fef9c3')" style="width:22px;height:22px;background:#fef9c3;border-radius:50%;cursor:pointer;border:2px solid transparent" id="nc-yellow"></div>
+            <div onclick="selectNoteColor('#dcfce7')" style="width:22px;height:22px;background:#dcfce7;border-radius:50%;cursor:pointer;border:2px solid transparent" id="nc-green"></div>
+            <div onclick="selectNoteColor('#dbeafe')" style="width:22px;height:22px;background:#dbeafe;border-radius:50%;cursor:pointer;border:2px solid transparent" id="nc-blue"></div>
+            <div onclick="selectNoteColor('#fce7f3')" style="width:22px;height:22px;background:#fce7f3;border-radius:50%;cursor:pointer;border:2px solid transparent" id="nc-pink"></div>
+            <div onclick="selectNoteColor('#f3f4f6')" style="width:22px;height:22px;background:#f3f4f6;border-radius:50%;cursor:pointer;border:2px solid transparent" id="nc-gray"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>📎 Anexar Arquivo</label>
+          <div class="attach-zone" onclick="document.getElementById('noteFile').click()">
+            <input type="file" id="noteFile" accept="*/*" onchange="handleAttach('noteFile','noteAttachPreview','noteAttachData')">
+            <div style="font-size:12px;color:#6b7280">Clique para selecionar arquivo</div>
+            <div class="attach-upload-progress" id="noteAttachProgress"></div>
+          </div>
+          <div class="attach-preview" id="noteAttachPreview"></div>
+          <input type="hidden" id="noteAttachData" value="">
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="addNote()">+ Adicionar Nota</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel-title" style="margin-bottom:12px">Notas da Investigação</div>
+      <div id="notesList" class="item-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EVIDÊNCIAS ════════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-evidence">
+  <div style="display:grid;grid-template-columns:380px 1fr;gap:20px">
+    <div>
+      <div class="panel">
+        <div class="panel-title">Nova Evidência Digital</div>
+        <div class="form-row"><label>Título</label><input type="text" id="evTitle" placeholder="Nome/Descrição da evidência"></div>
+        <div class="form-row"><label>Tipo</label>
+          <select id="evType">
+            <option value="text">📝 Texto / Depoimento</option>
+            <option value="url">🔗 URL / Link</option>
+            <option value="hash">🔐 Hash / Checksum</option>
+            <option value="ip">🌐 Endereço IP</option>
+            <option value="email">📧 E-mail</option>
+            <option value="log">📋 Log do Sistema</option>
+            <option value="metadata">🔍 Metadado EXIF</option>
+            <option value="screenshot">📸 Screenshot</option>
+            <option value="network">📡 Tráfego de Rede</option>
+          </select>
+        </div>
+        <div class="form-row"><label>Conteúdo</label><textarea id="evContent" style="min-height:80px;font-family:monospace" placeholder="Cole ou descreva a evidência..."></textarea></div>
+        <div class="form-row"><label>Fonte / Origem</label><input type="text" id="evSource" placeholder="Ex: WhatsApp, E-mail, VirusTotal..."></div>
+        <div class="form-row"><label>Hash SHA-256 (Integridade)</label><input type="text" id="evHash" placeholder="Gerado automaticamente ou cole aqui" style="font-family:monospace;font-size:11px"></div>
+        <div class="form-row"><label>Cadeia de Custódia</label><input type="text" id="evCustody" placeholder="Quem coletou, quando e como"></div>
+        <div class="form-row"><label>Tags</label><input type="text" id="evTags" placeholder="Ex: prova, suspeito, phishing"></div>
+        <div class="form-row">
+          <label>📎 Anexar Arquivo (imagem, PDF, vídeo, doc...)</label>
+          <div class="attach-zone" onclick="document.getElementById('evFile').click()">
+            <input type="file" id="evFile" accept="*/*" onchange="handleAttach('evFile','evAttachPreview','evAttachData')">
+            <div style="font-size:12px;color:#6b7280">Clique para selecionar ou arraste o arquivo aqui</div>
+            <div class="attach-upload-progress" id="evAttachProgress"></div>
+          </div>
+          <div class="attach-preview" id="evAttachPreview"></div>
+          <input type="hidden" id="evAttachData" value="">
+        </div>
+        <button class="btn-primary" style="width:100%;margin-top:4px" onclick="addEvidence()">🔒 Registrar Evidência</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel-title" style="margin-bottom:12px">Evidências Coletadas</div>
+      <div id="evidenceList" class="item-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LINHA DO TEMPO ════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-timeline">
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:20px">
+    <div>
+      <div class="panel">
+        <div class="panel-title">Novo Evento</div>
+        <div class="form-row"><label>Título</label><input type="text" id="evtTitle" placeholder="O que aconteceu?"></div>
+        <div class="form-row"><label>Data / Hora</label><input type="datetime-local" id="evtDate"></div>
+        <div class="form-row"><label>Descrição</label><textarea id="evtDesc" placeholder="Detalhes do evento..."></textarea></div>
+        <div class="form-row"><label>Importância</label>
+          <select id="evtImportance">
+            <option value="high">🔴 Alta</option>
+            <option value="normal" selected>🔵 Normal</option>
+            <option value="low">⚪ Baixa</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>📎 Anexar Prova do Evento</label>
+          <div class="attach-zone" onclick="document.getElementById('evtFile').click()">
+            <input type="file" id="evtFile" accept="*/*" onchange="handleAttach('evtFile','evtAttachPreview','evtAttachData')">
+            <div style="font-size:12px;color:#6b7280">Print, documento, imagem...</div>
+            <div class="attach-upload-progress" id="evtAttachProgress"></div>
+          </div>
+          <div class="attach-preview" id="evtAttachPreview"></div>
+          <input type="hidden" id="evtAttachData" value="">
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="addEvent()">+ Adicionar Evento</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel-title" style="margin-bottom:16px">Linha do Tempo</div>
+      <div class="timeline" id="timelineList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ OSINT ══════════════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-osint">
+  <div class="panel" style="margin-bottom:16px">
+    <div class="panel-title">🌐 Ferramentas OSINT Externas</div>
+    <div class="osint-grid" id="osintTools"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div>
+      <div class="panel">
+        <div class="panel-title">🔍 Registrar Pesquisa OSINT</div>
+        <div class="form-row"><label>Query / Alvo</label><input type="text" id="osintQuery" placeholder="IP, usuário, domínio, e-mail, CPF..."></div>
+        <div class="form-row"><label>Tipo</label>
+          <select id="osintType">
+            <option value="ip">🌐 IP / Geolocalização</option>
+            <option value="username">👤 Nome de Usuário</option>
+            <option value="email">📧 E-mail</option>
+            <option value="domain">🌍 Domínio / Site</option>
+            <option value="phone">📱 Telefone</option>
+            <option value="person">🧑 Pessoa</option>
+            <option value="general">🔎 Geral</option>
+          </select>
+        </div>
+        <div class="form-row"><label>Resultado / Achados</label><textarea id="osintResult" style="min-height:80px" placeholder="Registre o que você encontrou..."></textarea></div>
+        <div class="form-row"><label>Fonte Consultada</label><input type="text" id="osintSource" placeholder="Ex: Shodan, VirusTotal, HaveIBeenPwned..."></div>
+        <div class="form-row">
+          <label>📎 Anexar Screenshot / Documento</label>
+          <div class="attach-zone" onclick="document.getElementById('osintFile').click()">
+            <input type="file" id="osintFile" accept="*/*" onchange="handleAttach('osintFile','osintAttachPreview','osintAttachData')">
+            <div style="font-size:12px;color:#6b7280">Print da tela, PDF, relatório...</div>
+            <div class="attach-upload-progress" id="osintAttachProgress"></div>
+          </div>
+          <div class="attach-preview" id="osintAttachPreview"></div>
+          <input type="hidden" id="osintAttachData" value="">
+        </div>
+        <button class="btn-primary" style="width:100%;margin-top:4px" onclick="addOsint()">💾 Salvar Pesquisa</button>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">🌐 Rastreador de IP (ip-api.com)</div>
+        <div class="form-row"><input type="text" id="ipInput" placeholder="Ex: 8.8.8.8 ou 2001:db8::1"></div>
+        <button class="btn-primary" style="margin-bottom:10px" onclick="lookupIP()">🔎 Rastrear IP</button>
+        <div id="ipResult" style="font-size:12px;color:#9ca3af"></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel-title" style="margin-bottom:12px">📋 Histórico de Pesquisas OSINT</div>
+      <div id="osintList" class="item-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EMPRESA INVESTIGADA ════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-empresa">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <!-- Coluna esquerda: consulta CNPJ -->
+    <div>
+      <div class="panel">
+        <div class="panel-title">🏢 Consulta CNPJ</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Busca dados públicos da Receita Federal via BrasilAPI (gratuito, sem cadastro).</p>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input type="text" id="cnpjInput" placeholder="00.000.000/0001-00 ou só os dígitos" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:7px;padding:9px 13px;color:#e2e8f0;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')lookupCNPJ()">
+          <button class="btn-primary" onclick="lookupCNPJ()" id="cnpjBtn">🔎 Consultar</button>
+        </div>
+        <div id="cnpjLoading" style="display:none;font-size:12px;color:#6b7280;text-align:center;padding:16px">⏳ Consultando Receita Federal...</div>
+        <div id="cnpjError" style="display:none;font-size:12px;color:#f87171;padding:8px;background:rgba(239,68,68,.06);border-radius:6px;border:1px solid rgba(239,68,68,.2)"></div>
+        <div id="cnpjResult" style="display:none">
+          <div style="background:rgba(79,70,229,.06);border:1px solid rgba(79,70,229,.2);border-radius:10px;padding:16px;margin-top:4px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+              <div>
+                <div id="cnpjRazao" style="font-size:15px;font-weight:700;color:#e2e8f0"></div>
+                <div id="cnpjFantasia" style="font-size:12px;color:#a5b4fc;margin-top:2px"></div>
+              </div>
+              <div id="cnpjSituacao" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px"></div>
+            </div>
+            <div id="cnpjFields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px"></div>
+          </div>
+          <div style="margin-top:12px">
+            <div class="panel-title" style="margin-bottom:8px">👥 Sócios e Administradores</div>
+            <div id="cnpjSocios" class="item-list"></div>
+          </div>
+          <div style="margin-top:12px">
+            <div class="panel-title" style="margin-bottom:8px">🌐 Links de Pesquisa Rápida</div>
+            <div id="cnpjLinks" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary" onclick="importCNPJToMindmap()" style="flex:1">🧠 Importar para Mapa Mental</button>
+            <button class="btn-sm" onclick="saveCNPJAsEvidence()" style="flex:1">🔒 Salvar como Evidência</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notas sobre a empresa -->
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">📝 Notas sobre a Empresa</div>
+        <div class="form-row"><label>Observações livres</label><textarea id="empresaNotes" style="min-height:120px" placeholder="Registre informações sobre a empresa, histórico, vínculos suspeitos..."></textarea></div>
+        <button class="btn-sm" onclick="saveEmpresaNotes()">💾 Salvar Notas</button>
+      </div>
+    </div>
+
+    <!-- Coluna direita: dossiê da empresa -->
+    <div>
+      <div class="panel">
+        <div class="panel-title">📂 Dossiê da Empresa</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Documento centralizado com tudo sobre a empresa investigada.</p>
+        <div class="form-row"><label>Razão Social</label><input type="text" id="dossieRazao" placeholder="Nome oficial da empresa"></div>
+        <div class="form-row"><label>CNPJ</label><input type="text" id="dossieCNPJ" placeholder="00.000.000/0001-00"></div>
+        <div class="grid-2">
+          <div class="form-row"><label>Situação</label>
+            <select id="dossieSituacao">
+              <option value="ativa">✅ Ativa</option>
+              <option value="inapta">⚠️ Inapta</option>
+              <option value="suspensa">🔴 Suspensa</option>
+              <option value="baixada">⛔ Baixada</option>
+            </select>
+          </div>
+          <div class="form-row"><label>Porte</label>
+            <select id="dossiePorte">
+              <option value="MEI">MEI</option>
+              <option value="ME">Micro Empresa</option>
+              <option value="EPP">EPP</option>
+              <option value="MEDIO">Médio Porte</option>
+              <option value="GRANDE">Grande Porte</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row"><label>CNAE Principal (Atividade)</label><input type="text" id="dossieCNAE" placeholder="Ex: 6202-3/00 – Desenvolvimento de programas de computador"></div>
+        <div class="form-row"><label>Endereço da Sede</label><input type="text" id="dossieEndereco" placeholder="Rua, número, bairro, cidade – UF"></div>
+        <div class="form-row"><label>Capital Social</label><input type="text" id="dossieCapital" placeholder="R$ 0,00"></div>
+        <div class="form-row"><label>Data de Abertura</label><input type="text" id="dossieAbertura" placeholder="DD/MM/AAAA"></div>
+        <div class="form-row"><label>Sócios (um por linha)</label><textarea id="dossieSocios" style="min-height:80px" placeholder="Nome - CPF (se disponível) - Qualificação"></textarea></div>
+        <div class="form-row"><label>Redes Sociais da Empresa</label><textarea id="dossieRedes" style="min-height:60px" placeholder="LinkedIn: ...\nInstagram: ...\nSite: ..."></textarea></div>
+        <div class="form-row"><label>Vínculos Suspeitos / Observações</label><textarea id="dossieObs" style="min-height:80px" placeholder="Conexões com outras empresas, pessoas investigadas..."></textarea></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn-primary" style="flex:1" onclick="saveDossie()">💾 Salvar Dossiê</button>
+          <button class="btn-sm" onclick="exportDossie()">📄 Ver Relatório</button>
+          <button class="btn-sm" onclick="importFromMindmap()">🧠 Puxar do Mapa</button>
+        </div>
+      </div>
+      <!-- Empresas Salvas -->
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">🗂️ Empresas Salvas <span id="empresasSalvasCount" style="font-size:11px;color:#6b7280;font-weight:normal"></span></div>
+        <div id="empresasSalvasList" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+          <p style="font-size:12px;color:#9ca3af;text-align:center;padding:8px">Nenhuma empresa salva ainda.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FORENSE ════════════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-forensics">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div>
+      <div class="panel">
+        <div class="panel-title">🔐 Calculadora de Hash (SHA-256)</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Gere assinaturas criptográficas para garantir a integridade de evidências.</p>
+        <div class="form-row"><label>Texto / Dado a calcular</label><textarea id="hashInput" style="min-height:80px;font-family:monospace" placeholder="Cole o conteúdo da evidência ou texto aqui..."></textarea></div>
+        <button class="btn-primary" onclick="calcHash()">🔐 Calcular SHA-256</button>
+        <div class="forense-result" id="hashResult"></div>
+        <div style="margin-top:10px">
+          <div class="form-row" style="margin-bottom:4px"><label>Comparar hashes (verificar integridade)</label></div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="hashCompA" placeholder="Hash original" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:12px;font-family:monospace;outline:none">
+            <input type="text" id="hashCompB" placeholder="Hash a verificar" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:12px;font-family:monospace;outline:none">
+            <button class="btn-sm" onclick="compareHashes()">Comparar</button>
+          </div>
+          <div id="hashCompResult" style="margin-top:8px;font-size:12px"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">🔍 Scanner de Padrões (Regex)</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Varre texto em busca de e-mails, CPFs, IPs, URLs e outros padrões suspeitos.</p>
+        <div class="form-row"><label>Texto / Log para analisar</label><textarea id="regexInput" style="min-height:120px;font-family:monospace;font-size:12px" placeholder="Cole aqui o log do sistema, conversas ou texto suspeito..."></textarea></div>
+        <button class="btn-primary" onclick="scanPatterns()">🔍 Escanear Padrões</button>
+        <div id="regexResult" style="margin-top:12px"></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-title">📸 Analisador de Metadados EXIF</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Extrai data, hora, localização GPS e modelo de câmera de imagens.</p>
+        <div class="form-row">
+          <label>Upload de Imagem</label>
+          <input type="file" id="exifFile" accept="image/*" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:7px;padding:7px;color:#e2e8f0;font-size:12px" onchange="analyzeEXIF()">
+        </div>
+        <div id="exifPreview" style="margin-top:8px"></div>
+        <div id="exifResult"></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">🧠 Análise IA (Simulação LLM)</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Estrutura um prompt inteligente para análise de logs e evidências por IA (OpenAI/Claude).</p>
+        <div class="form-row"><label>Texto / Logs para análise</label><textarea id="llmInput" style="min-height:100px;font-family:monospace;font-size:12px" placeholder="Cole o log, conversas ou evidências brutas..."></textarea></div>
+        <button class="btn-primary" onclick="analyzeLLM()">🤖 Gerar Prompt de Análise IA</button>
+        <div id="llmResult" style="margin-top:12px"></div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">⚙️ Toolkit Decodificador</div>
+        <div class="decoder-tab">
+          <button class="active" onclick="setDecMode('b64')">Base64</button>
+          <button onclick="setDecMode('url')">URL Encode</button>
+          <button onclick="setDecMode('hex')">Hex ↔ Text</button>
+          <button onclick="setDecMode('jwt')">JWT</button>
+          <button onclick="setDecMode('hashid')">ID Hash</button>
+        </div>
+        <div id="decModeDesc" style="font-size:11px;color:#4b5563;margin-bottom:8px">Codifica/decodifica Base64</div>
+        <textarea id="decInput" style="width:100%;min-height:80px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:9px;color:#e2e8f0;font-family:monospace;font-size:12px;resize:vertical;box-sizing:border-box;outline:none" placeholder="Cole o valor aqui..."></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn-primary" onclick="runDecoder('decode')">⬇️ Decodificar</button>
+          <button class="btn-sm" onclick="runDecoder('encode')">⬆️ Codificar</button>
+          <button class="btn-sm" onclick="document.getElementById('decOutput').textContent='';document.getElementById('decOutput').style.display='none'">🗑</button>
+        </div>
+        <div class="decoder-output" id="decOutput" style="display:none"></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">🔴 Verificador de Reputação</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:10px">Consulta blacklists públicas para IPs, domínios e e-mails.</p>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="repTarget" placeholder="IP, domínio ou e-mail..." style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:7px;padding:8px 12px;color:#e2e8f0;font-size:13px;outline:none">
+          <button class="btn-primary" onclick="checkReputation()">🔍 Verificar</button>
+        </div>
+        <div id="repResult" style="margin-top:10px"></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">🔒 Ferramentas Forenses de Referência</div>
+        <div style="font-size:12px;line-height:2;color:#6b7280">
+          <div>🖥 <a href="https://www.autopsy.com" target="_blank" style="color:#a5b4fc">Autopsy</a> — Forense de HD/SSD (Gratuito)</div>
+          <div>📱 <a href="https://www.magnetforensics.com/products/magnet-axiom/" target="_blank" style="color:#a5b4fc">Magnet AXIOM</a> — Mobile + Cloud + PC</div>
+          <div>📱 <a href="https://www.mobiledit.com/mobiledit-forensic" target="_blank" style="color:#a5b4fc">MOBILedit Forensic</a> — Extração mobile</div>
+          <div>🔍 <a href="https://www.opentext.com/br/products/mobile-investigator" target="_blank" style="color:#a5b4fc">OpenText Investigator</a> — Forense mobile</div>
+          <div>🌐 <a href="https://www.wireshark.org" target="_blank" style="color:#a5b4fc">Wireshark</a> — Análise de tráfego de rede</div>
+          <div>🔐 <a href="https://hashcalc.sourceforge.net" target="_blank" style="color:#a5b4fc">HashCalc</a> — Verificação de integridade</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RELATÓRIO ══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-report">
+
+  <!-- Seletor de modo -->
+  <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+    <button id="rmode-auto" class="btn-primary" onclick="setReportMode('auto')" style="flex:1;min-width:140px">📋 Automático</button>
+    <button id="rmode-ai" class="btn-sm" onclick="setReportMode('ai')" style="flex:1;min-width:140px;border:1px solid rgba(167,139,250,.4);color:#a78bfa">🤖 IA — Relatório Completo</button>
+    <button id="rmode-tpl" class="btn-sm" onclick="setReportMode('tpl')" style="flex:1;min-width:140px;border:1px solid rgba(52,211,153,.4);color:#34d399">📄 IA — Usar Meu Modelo</button>
+  </div>
+
+  <!-- Modo automático -->
+  <div id="report-panel-auto">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn-primary" onclick="generateReport()">🔄 Gerar Relatório</button>
+      <button class="btn-sm" onclick="window.print()">🖨 Imprimir / PDF</button>
+      <span style="font-size:12px;color:#4b5563">Use Ctrl+P → "Salvar como PDF"</span>
+    </div>
+    <div class="report-preview" id="reportContent">
+      <div style="text-align:center;color:#374151">Clique em "Gerar Relatório" para compilar todos os dados da investigação.</div>
+    </div>
+  </div>
+
+  <!-- Modo IA completo -->
+  <div id="report-panel-ai" style="display:none">
+    <div style="background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:16px;margin-bottom:16px;font-size:13px;color:#9ca3af">
+      🤖 A IA coletará todos os dados da investigação (evidências, notas, eventos, OSINT) e gerará um relatório profissional completo com análise, conclusões e aspectos legais.
+      <br><span style="color:#6b7280;font-size:11px;margin-top:6px;display:block">⚙️ Requer <code style="color:#a78bfa">ANTHROPIC_API_KEY</code> configurada no arquivo <code>.env</code> do servidor.</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn-primary" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)" onclick="generateAIReport('full')">🤖 Gerar com IA</button>
+      <button class="btn-sm" onclick="copyAIReport()">📋 Copiar texto</button>
+      <button class="btn-sm" onclick="printAIReport()">🖨 Imprimir</button>
+    </div>
+    <div id="ai-report-status" style="display:none;text-align:center;padding:24px;color:#a78bfa;font-size:13px">
+      <div style="font-size:24px;margin-bottom:8px">🤖</div>Gerando relatório com IA...
+    </div>
+    <div id="ai-report-error" style="display:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:12px;color:#f87171;font-size:13px"></div>
+    <textarea id="ai-report-output" style="display:none;width:100%;min-height:500px;background:#0a0a12;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:20px;color:#cbd5e1;font-size:13px;line-height:1.8;font-family:inherit;resize:vertical;box-sizing:border-box" readonly></textarea>
+  </div>
+
+  <!-- Modo IA + modelo -->
+  <div id="report-panel-tpl" style="display:none">
+    <div style="background:rgba(52,211,153,.05);border:1px solid rgba(52,211,153,.2);border-radius:10px;padding:16px;margin-bottom:16px;font-size:13px;color:#9ca3af">
+      📄 Cole ou carregue seu relatório modelo abaixo. A IA usará a mesma estrutura, estilo e formatação do seu modelo, preenchendo com os dados reais desta investigação.
+    </div>
+    <div class="panel" style="margin-bottom:12px">
+      <div class="panel-title">📎 Modelo de Relatório</div>
+      <div class="attach-zone" onclick="document.getElementById('tplFile').click()" style="margin-bottom:10px">
+        <input type="file" id="tplFile" accept=".txt,.md" style="display:none" onchange="loadTemplateFile(this)">
+        📁 Clique para carregar arquivo <span style="color:#6b7280">.txt ou .md</span>
+        <div style="font-size:11px;color:#4b5563;margin-top:4px">ou cole diretamente na área abaixo</div>
+      </div>
+      <textarea id="tplContent" placeholder="Cole aqui o texto do seu relatório modelo. A IA vai manter a estrutura e estilo dele, mas preenchendo com os dados desta investigação..." style="width:100%;min-height:200px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px;color:#e2e8f0;font-size:12px;font-family:inherit;resize:vertical;box-sizing:border-box;outline:none"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn-primary" style="background:linear-gradient(135deg,#059669,#0d9488)" onclick="generateAIReport('template')">🤖 Gerar no Meu Estilo</button>
+      <button class="btn-sm" onclick="copyAIReport()">📋 Copiar texto</button>
+      <button class="btn-sm" onclick="printAIReport()">🖨 Imprimir</button>
+    </div>
+    <div id="ai-report-status2" style="display:none;text-align:center;padding:24px;color:#34d399;font-size:13px">
+      <div style="font-size:24px;margin-bottom:8px">🤖</div>Gerando relatório com IA no seu estilo...
+    </div>
+    <div id="ai-report-error2" style="display:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:12px;color:#f87171;font-size:13px"></div>
+    <textarea id="ai-report-output2" style="display:none;width:100%;min-height:500px;background:#0a0a12;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:20px;color:#cbd5e1;font-size:13px;line-height:1.8;font-family:inherit;resize:vertical;box-sizing:border-box" readonly></textarea>
+  </div>
+
+</div>
+
+
+<!-- ══ PESSOA / CPF ══════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-pessoa">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div>
+      <div class="panel">
+        <div class="panel-title">👤 Consulta CPF / Pessoa</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Consulta dados públicos associados ao CPF via bases abertas. Uso exclusivo para investigações legalmente autorizadas.</p>
+        <div class="form-row"><label>CPF (somente números)</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="cpfInput" placeholder="000.000.000-00" maxlength="14" style="flex:1" oninput="maskCPF(this)">
+            <button class="btn-primary" onclick="lookupCPF()">🔍 Consultar</button>
+          </div>
+        </div>
+        <div id="cpfResult" style="margin-top:12px"></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">🌐 Links de Busca por Pessoa</div>
+        <div id="personSearchLinks" style="font-size:12px;line-height:2.4;color:#6b7280">
+          <em style="color:#374151">Preencha o nome/CPF acima para gerar links de busca.</em>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-title">📋 Formulário de Cadastro de Pessoa</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Registre manualmente os dados do investigado como evidência.</p>
+        <div class="form-row"><label>Nome completo</label><input type="text" id="personName" placeholder="Nome Sobrenome"></div>
+        <div class="grid-2">
+          <div class="form-row"><label>CPF</label><input type="text" id="personCpf" maxlength="14" oninput="maskCPF(this)"></div>
+          <div class="form-row"><label>RG</label><input type="text" id="personRg"></div>
+        </div>
+        <div class="grid-2">
+          <div class="form-row"><label>Data de nasc.</label><input type="date" id="personBirth"></div>
+          <div class="form-row"><label>Sexo</label>
+            <select id="personGender"><option value="">-</option><option>Masculino</option><option>Feminino</option><option>Outro</option></select>
+          </div>
+        </div>
+        <div class="form-row"><label>E-mail</label><input type="text" id="personEmail" placeholder="email@dominio.com"></div>
+        <div class="form-row"><label>Telefone</label><input type="text" id="personPhone" placeholder="+55 (00) 00000-0000"></div>
+        <div class="form-row"><label>Endereço</label><input type="text" id="personAddr"></div>
+        <div class="form-row"><label>Redes Sociais / Perfis</label><input type="text" id="personSocial" placeholder="@usuario, linkedin.com/in/..."></div>
+        <div class="form-row"><label>Observações</label><textarea id="personNotes" style="min-height:70px" placeholder="Vínculos, antecedentes, outras informações relevantes..."></textarea></div>
+        <button class="btn-primary" style="width:100%" onclick="savePersonProfile()">💾 Salvar como Evidência</button>
+      </div>
+      <!-- Pessoas Salvas -->
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">🗂️ Pessoas Salvas <span id="pessoasSalvasCount" style="font-size:11px;color:#6b7280;font-weight:normal"></span></div>
+        <div id="pessoasSalvasList" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+          <p style="font-size:12px;color:#9ca3af;text-align:center;padding:8px">Nenhuma pessoa salva ainda.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAPA GEOGRÁFICO ════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-mapa">
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:20px">
+    <div>
+      <div class="panel" style="padding:12px">
+        <div id="mapLeaflet"></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-title">📍 Adicionar Ponto</div>
+        <div class="form-row"><label>Tipo</label>
+          <select id="mapPinType">
+            <option value="ip">🌐 IP</option>
+            <option value="address">🏠 Endereço</option>
+            <option value="person">👤 Pessoa</option>
+            <option value="company">🏢 Empresa</option>
+            <option value="incident">⚠️ Incidente</option>
+          </select>
+        </div>
+        <div class="form-row"><label>Rótulo</label><input type="text" id="mapPinLabel" placeholder="Nome ou descrição"></div>
+        <div class="form-row"><label>IP ou Endereço</label><input type="text" id="mapPinTarget" placeholder="192.168.1.1 ou Rua X, Cidade"></div>
+        <div class="grid-2">
+          <div class="form-row"><label>Lat</label><input type="number" id="mapPinLat" step="0.0001" placeholder="-23.5505"></div>
+          <div class="form-row"><label>Lng</label><input type="number" id="mapPinLng" step="0.0001" placeholder="-46.6333"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button class="btn-sm" style="flex:1" onclick="geolocateTarget()">📡 Geolocalizar IP</button>
+          <button class="btn-primary" style="flex:1" onclick="addMapPin()">+ Adicionar</button>
+        </div>
+        <div id="mapGeoStatus" style="font-size:11px;color:#6b7280"></div>
+      </div>
+      <div class="panel" style="margin-top:12px">
+        <div class="panel-title">📋 Pontos no Mapa <button class="btn-sm" style="font-size:10px" onclick="clearMapPins()">🗑 Limpar</button></div>
+        <div class="map-pin-list" id="mapPinList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GRAFO DE ENTIDADES ═════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-entidades">
+  <div style="display:grid;grid-template-columns:1fr 280px;gap:20px">
+    <div>
+      <div class="panel" style="padding:8px">
+        <div class="mm-toolbar" style="padding:4px 4px 0">
+          <input type="text" id="entityLabel" placeholder="Nome da entidade..." maxlength="50" style="flex:1;min-width:120px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="entity-type-btn sel" id="etBtn-person" onclick="selEntityType('person')">👤 Pessoa</button>
+            <button class="entity-type-btn" id="etBtn-company" onclick="selEntityType('company')">🏢 Empresa</button>
+            <button class="entity-type-btn" id="etBtn-ip" onclick="selEntityType('ip')">🌐 IP</button>
+            <button class="entity-type-btn" id="etBtn-email" onclick="selEntityType('email')">📧 E-mail</button>
+            <button class="entity-type-btn" id="etBtn-device" onclick="selEntityType('device')">💻 Dispositivo</button>
+            <button class="entity-type-btn" id="etBtn-account" onclick="selEntityType('account')">🔑 Conta</button>
+          </div>
+          <button class="btn-primary" onclick="addEntity()">+ Entidade</button>
+          <div class="mm-mode">
+            <button id="entityConnBtn" onclick="toggleEntityConnect()">🔗 Conectar</button>
+          </div>
+          <button class="btn-sm" onclick="entityFit()">⊡ Ajustar</button>
+        </div>
+        <canvas id="entityCanvas"></canvas>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-title">📋 Entidades</div>
+        <div id="entityList" style="display:flex;flex-direction:column;gap:6px;max-height:440px;overflow-y:auto"></div>
+      </div>
+      <div class="panel" style="margin-top:12px">
+        <div class="panel-title">🔗 Conexões</div>
+        <div id="entityLinkList" style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;font-size:12px;color:#6b7280"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ WATCHLIST ══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-watchlist">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div>
+      <div class="panel">
+        <div class="panel-title">👁️ Monitoramento de Alvos</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Cadastre alvos para monitoramento contínuo. Verifique status manualmente ou configure alertas externos.</p>
+        <div class="form-row"><label>Tipo</label>
+          <select id="watchType">
+            <option value="domain">🌐 Domínio</option>
+            <option value="ip">🖥️ IP</option>
+            <option value="email">📧 E-mail</option>
+            <option value="cpf">👤 CPF</option>
+            <option value="cnpj">🏢 CNPJ</option>
+            <option value="username">🔑 Username</option>
+            <option value="keyword">🔍 Palavra-chave</option>
+          </select>
+        </div>
+        <div class="form-row"><label>Alvo</label><input type="text" id="watchTarget" placeholder="dominio.com / 192.168.1.1 / @usuario"></div>
+        <div class="form-row"><label>Rótulo / Descrição</label><input type="text" id="watchLabel" placeholder="Ex: Domínio suspeito do caso X"></div>
+        <div class="form-row"><label>Frequência de verificação</label>
+          <select id="watchInterval">
+            <option value="manual">Manual</option>
+            <option value="daily">Diária</option>
+            <option value="weekly">Semanal</option>
+          </select>
+        </div>
+        <div class="form-row"><label>Notas</label><textarea id="watchNotes" style="min-height:60px" placeholder="Contexto, observações..."></textarea></div>
+        <button class="btn-primary" style="width:100%" onclick="addWatchItem()">+ Adicionar à Watchlist</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-title">📋 Alvos Monitorados <button class="btn-sm" style="font-size:10px" onclick="loadWatchlist()">🔄 Atualizar</button></div>
+        <div id="watchlistItems" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CADEIA DE CUSTÓDIA ═════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-custodia">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div>
+      <div class="panel">
+        <div class="panel-title">🔐 Registrar Custódia de Evidência</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Documente formalmente cada etapa da cadeia de custódia, garantindo rastreabilidade legal.</p>
+        <div class="form-row"><label>Título da Evidência</label><input type="text" id="custEvTitle" placeholder="Ex: Arquivo de log servidor-01.txt"></div>
+        <div class="form-row"><label>Hash SHA-256 da Evidência</label><input type="text" id="custEvHash" placeholder="a1b2c3..." style="font-family:monospace;font-size:12px"></div>
+        <div class="form-row"><label>Ação Realizada</label>
+          <select id="custAction">
+            <option value="coleta">📦 Coleta</option>
+            <option value="preservacao">🔒 Preservação</option>
+            <option value="transporte">🚚 Transporte</option>
+            <option value="analise">🔬 Análise</option>
+            <option value="armazenamento">💾 Armazenamento</option>
+            <option value="transferencia">🔄 Transferência</option>
+            <option value="descarte">🗑️ Descarte Autorizado</option>
+          </select>
+        </div>
+        <div class="grid-2">
+          <div class="form-row"><label>Responsável</label><input type="text" id="custResp" placeholder="Nome do perito/analista"></div>
+          <div class="form-row"><label>Cargo / CRQ</label><input type="text" id="custRole" placeholder="Perito Digital, CRQ-XXXX"></div>
+        </div>
+        <div class="form-row"><label>Local</label><input type="text" id="custLocation" placeholder="Delegacia, empresa, laboratório..."></div>
+        <div class="form-row"><label>Método / Ferramenta</label><input type="text" id="custMethod" placeholder="FTK Imager, dd, Autopsy..."></div>
+        <div class="form-row"><label>Nº do Lacre / Embalagem</label><input type="text" id="custSeal" placeholder="LAC-2024-XXXX"></div>
+        <div class="form-row"><label>Observações</label><textarea id="custNotes" style="min-height:60px" placeholder="Condições, estado do item, irregularidades..."></textarea></div>
+        <button class="btn-primary" style="width:100%;margin-top:4px" onclick="addCustody()">📋 Registrar na Cadeia</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel" style="height:100%">
+        <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>🔗 Cadeia de Custódia</span>
+          <button class="btn-sm" style="font-size:10px" onclick="printCustody()">🖨️ Imprimir</button>
+        </div>
+        <div class="custody-list" id="custodyChain" style="max-height:600px;overflow-y:auto"></div>
+        <div id="custodyEmpty" style="color:#374151;font-size:12px;text-align:center;padding:20px">Nenhum registro ainda. Adicione o primeiro evento de custódia.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<!-- Modal Editar Investigação -->
+<div class="overlay hidden" id="editOverlay">
+  <div class="modal">
+    <h3>Editar Investigação <button class="modal-close" onclick="document.getElementById('editOverlay').classList.add('hidden')">×</button></h3>
+    <div class="form-row"><label>Título</label><input type="text" id="eTitle"></div>
+    <div class="form-row"><label>Alvo</label><input type="text" id="eTarget"></div>
+    <div class="form-row"><label>Descrição</label><textarea id="eDesc"></textarea></div>
+    <div class="grid-2">
+      <div class="form-row"><label>Status</label>
+        <select id="eStatus">
+          <option value="open">🟣 Aberta</option>
+          <option value="todo">🟡 Para Fazer</option>
+          <option value="closed">🟢 Finalizada</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Prioridade</label>
+        <select id="ePriority">
+          <option value="high">🔴 Alta</option>
+          <option value="medium">🟡 Média</option>
+          <option value="low">🟢 Baixa</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row"><label>Tags</label><input type="text" id="eTags"></div>
+    <div style="text-align:right;margin-top:8px">
+      <button class="btn-primary" onclick="saveEdit()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Estado Global ─────────────────────────────────────────────────────────────
+const invId = new URLSearchParams(location.search).get('id');
+let inv = null, network = null, nodes_ds = null, edges_ds = null;
+let hierarchyMode = false, selectedNodeId = null;
+let noteColor = '#fef9c3';
+
+// ─── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  if (!invId) { location.href='/'; return; }
+  await loadInvestigation();
+  await loadOverviewData();
+  initMindMap();
+  loadNotes();
+  loadEvidence();
+  loadEvents();
+  loadOsint();
+  initOsintTools();
+  loadWatchlist();
+  loadCustody();
+  initEntityGraph();
+  initMap();
+  // Rascunho automático
+  setupFormAutosave('evidence', ['evTitle','evContent','evSource','evHash','evCustody','evTags']);
+  setupFormAutosave('notes',    ['noteTitle','noteContent']);
+  setupFormAutosave('event',    ['evtTitle','evtDesc']);
+  setupFormAutosave('osint',    ['osintQuery','osintResult','osintSource']);
+}
+
+async function loadInvestigation() {
+  try {
+    const r = await fetch(`/api/investigations/${invId}`);
+    if (r.status === 401) { window.location.href = '/login'; return; }
+    inv = await r.json();
+    if (!inv || !inv.title) { window.location.href = '/'; return; }
+  } catch(e) { console.error('loadInvestigation falhou:', e); window.location.href = '/'; return; }
+  document.title = `RMHacking — ${inv.title}`;
+  document.getElementById('invTitle').textContent = inv.title;
+  const sp = document.getElementById('statusPill');
+  const stMap = {open:'🟣 Aberta',todo:'🟡 Para Fazer',closed:'🟢 Finalizada'};
+  sp.textContent = stMap[inv.status]||inv.status;
+  sp.className = `status-pill ${inv.status}`;
+
+  document.getElementById('overviewDetails').innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      ${inv.target?`<tr><td style="padding:5px 0;color:#6b7280;width:120px">🎯 Alvo</td><td style="color:#a5b4fc;font-weight:600">${esc(inv.target)}</td></tr>`:''}
+      <tr><td style="padding:5px 0;color:#6b7280">📋 Descrição</td><td>${esc(inv.description)||'<em style="color:#374151">Sem descrição</em>'}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280">📅 Criada em</td><td>${new Date(inv.created_at).toLocaleString('pt-BR')}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280">🔄 Atualizada</td><td>${new Date(inv.updated_at).toLocaleString('pt-BR')}</td></tr>
+      ${inv.tags?`<tr><td style="padding:5px 0;color:#6b7280">🏷 Tags</td><td>${inv.tags.split(',').map(t=>`<span style="background:rgba(79,70,229,.1);border:1px solid rgba(79,70,229,.2);border-radius:4px;padding:1px 7px;font-size:11px;color:#a5b4fc;margin-right:4px">${t.trim()}</span>`).join('')}</td></tr>`:''}
+    </table>
+  `;
+
+  const priMap = {high:'🔴 Alta',medium:'🟡 Média',low:'🟢 Baixa'};
+  document.getElementById('quickStatus').innerHTML = `
+    <div>📊 Prioridade: <strong style="color:#e2e8f0">${priMap[inv.priority]||'Média'}</strong></div>
+    <div>🎨 Cor: <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${inv.color||'#4f46e5'};vertical-align:middle;margin-right:4px"></span>${inv.color||'#4f46e5'}</div>
+    <div>📋 Status: <strong style="color:#e2e8f0">${stMap[inv.status]||inv.status}</strong></div>
+  `;
+
+  if (inv.target) {
+    document.getElementById('quickOsint').innerHTML = `
+      <a href="https://www.google.com/search?q=${encodeURIComponent('"'+inv.target+'"')}" target="_blank" style="color:#a5b4fc;text-decoration:none;display:block">🔎 Google: "${inv.target}"</a>
+      <a href="https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(inv.target)}" target="_blank" style="color:#a5b4fc;text-decoration:none;display:block">💼 LinkedIn</a>
+      <a href="https://twitter.com/search?q=${encodeURIComponent(inv.target)}" target="_blank" style="color:#a5b4fc;text-decoration:none;display:block">🐦 Twitter/X</a>
+      <a href="https://web.archive.org/web/*/${encodeURIComponent(inv.target)}" target="_blank" style="color:#a5b4fc;text-decoration:none;display:block">📦 Wayback Machine</a>
+    `;
+  } else {
+    document.getElementById('quickOsint').innerHTML = '<span style="color:#374151">Defina o Alvo para atalhos OSINT</span>';
+  }
+}
+
+async function loadOverviewData() {
+  try {
+    const [nodes,ev,nt,evt,osint] = await Promise.all([
+      fetch(`/api/investigations/${invId}/nodes`).then(r=>r.json()).catch(()=>[]),
+      fetch(`/api/investigations/${invId}/evidence`).then(r=>r.json()).catch(()=>[]),
+      fetch(`/api/investigations/${invId}/notes`).then(r=>r.json()).catch(()=>[]),
+      fetch(`/api/investigations/${invId}/events`).then(r=>r.json()).catch(()=>[]),
+      fetch(`/api/investigations/${invId}/osint`).then(r=>r.json()).catch(()=>[]),
+    ]);
+    document.getElementById('sumNodes').textContent = Array.isArray(nodes)?nodes.length:0;
+    document.getElementById('sumEvidence').textContent = Array.isArray(ev)?ev.length:0;
+    document.getElementById('sumNotes').textContent = Array.isArray(nt)?nt.length:0;
+    document.getElementById('sumEvents').textContent = Array.isArray(evt)?evt.length:0;
+    updateLivePreview(ev, nt, evt, osint);
+  } catch(e) { console.error('loadOverviewData:', e); }
+}
+
+function updateLivePreview(ev, nt, evt, osint) {
+  var el = document.getElementById('liveReportPreview');
+  if (!el || !inv) return;
+  var html = '';
+  // Cabeçalho
+  html += '<div style="border-bottom:1px solid rgba(79,70,229,.3);padding-bottom:8px;margin-bottom:10px">';
+  html += '<strong style="color:#a5b4fc;font-size:13px">' + esc(inv.title) + '</strong>';
+  if (inv.target) html += ' <span style="color:#6b7280;font-size:11px">· Alvo: ' + esc(inv.target) + '</span>';
+  html += '</div>';
+  // Evidências
+  if (ev && ev.length) {
+    html += '<div style="margin-bottom:8px"><span style="color:#34d399;font-weight:600">🔒 Evidências (' + ev.length + ')</span><ul style="margin:4px 0 0 16px;padding:0">';
+    ev.slice(0,5).forEach(function(e){ html += '<li style="color:#9ca3af;font-size:11px;margin-bottom:2px"><strong style="color:#e2e8f0">' + esc(e.title) + '</strong> — ' + esc((e.content||'').substring(0,60)) + (e.content&&e.content.length>60?'...':'') + '</li>'; });
+    if (ev.length>5) html += '<li style="color:#4b5563;font-size:11px">+ ' + (ev.length-5) + ' mais...</li>';
+    html += '</ul></div>';
+  }
+  // Eventos
+  if (evt && evt.length) {
+    html += '<div style="margin-bottom:8px"><span style="color:#f87171;font-weight:600">📅 Linha do Tempo (' + evt.length + ')</span><ul style="margin:4px 0 0 16px;padding:0">';
+    evt.slice(0,4).forEach(function(e){ html += '<li style="color:#9ca3af;font-size:11px;margin-bottom:2px"><span style="color:#6b7280">' + new Date(e.event_date).toLocaleDateString('pt-BR') + '</span> — ' + esc(e.title) + '</li>'; });
+    if (evt.length>4) html += '<li style="color:#4b5563;font-size:11px">+ ' + (evt.length-4) + ' mais...</li>';
+    html += '</ul></div>';
+  }
+  // Notas
+  if (nt && nt.length) {
+    html += '<div style="margin-bottom:8px"><span style="color:#fbbf24;font-weight:600">📝 Notas (' + nt.length + ')</span><ul style="margin:4px 0 0 16px;padding:0">';
+    nt.slice(0,3).forEach(function(n){ html += '<li style="color:#9ca3af;font-size:11px;margin-bottom:2px"><strong style="color:#e2e8f0">' + esc(n.title) + '</strong> — ' + esc((n.content||'').substring(0,50)) + (n.content&&n.content.length>50?'...':'') + '</li>'; });
+    if (nt.length>3) html += '<li style="color:#4b5563;font-size:11px">+ ' + (nt.length-3) + ' mais...</li>';
+    html += '</ul></div>';
+  }
+  // OSINT
+  if (osint && osint.length) {
+    html += '<div><span style="color:#a5b4fc;font-weight:600">🌐 OSINT (' + osint.length + ')</span><ul style="margin:4px 0 0 16px;padding:0">';
+    osint.slice(0,3).forEach(function(s){ html += '<li style="color:#9ca3af;font-size:11px;margin-bottom:2px">' + esc(s.query) + '</li>'; });
+    if (osint.length>3) html += '<li style="color:#4b5563;font-size:11px">+ ' + (osint.length-3) + ' mais...</li>';
+    html += '</ul></div>';
+  }
+  if (!html.includes('<ul')) {
+    html += '<div style="color:#374151;font-size:11px;text-align:center;padding:8px">Nenhum dado ainda. Comece adicionando evidências, notas ou eventos.</div>';
+  }
+  el.innerHTML = html;
+}
+
+// ─── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('sec-'+name).classList.add('active');
+  if (name==='empresa') renderEmpresasSalvas();
+  if (name==='pessoa') renderPessoasSalvas();
+  if (name==='mindmap') setTimeout(function(){ if(mmCanvas){ var c=document.getElementById('mindmap-container'); mmCanvas.width=c.offsetWidth||800; mmCanvas.height=c.offsetHeight||560; mmRender(); } },100);
+  if (name==='mapa') { setTimeout(function(){ if(mapInstance) mapInstance.invalidateSize(); else initMap(); },200); }
+  if (name==='entidades') { setTimeout(function(){ if(entCanvas){ var r=entCanvas.getBoundingClientRect(); entCanvas.width=r.width; entCanvas.height=r.height; renderEntities(); } },150); }
+}
+
+// ─── Mind Map (Canvas puro, sem dependências externas) ────────────────────────
+var mmNodes = [];
+var mmEdges = [];
+var mmSelectedId = null;
+var mmHistory = [];   // pilha de desfazer
+var MM_MAX_HISTORY = 50;
+
+function mmPushHistory() {
+  mmHistory.push({
+    nodes: JSON.parse(JSON.stringify(mmNodes)),
+    edges: JSON.parse(JSON.stringify(mmEdges))
+  });
+  if (mmHistory.length > MM_MAX_HISTORY) mmHistory.shift();
+  var btn = document.getElementById('undoBtn');
+  if (btn) btn.disabled = false;
+}
+
+function mmUndo() {
+  if (!mmHistory.length) { toast('Nada para desfazer'); return; }
+  var snap = mmHistory.pop();
+  // Remove do servidor os nós/edges que existem agora mas não existiam no snapshot
+  var snapNodeIds = snap.nodes.map(function(n){ return n.id; });
+  var snapEdgeIds = snap.edges.map(function(e){ return e.id; });
+  mmNodes.forEach(function(n){ if (snapNodeIds.indexOf(n.id) === -1) fetch('/api/investigations/' + invId + '/nodes/' + n.id, {method:'DELETE'}); });
+  mmEdges.forEach(function(e){ if (snapEdgeIds.indexOf(e.id) === -1) fetch('/api/investigations/' + invId + '/edges/' + e.id, {method:'DELETE'}); });
+  mmNodes = snap.nodes;
+  mmEdges = snap.edges;
+  mmSelectedId = null;
+  mmRender();
+  var btn = document.getElementById('undoBtn');
+  if (btn) btn.disabled = mmHistory.length === 0;
+  toast('Desfeito!');
+}
+var mmDragging = false;
+var mmDragOffX = 0, mmDragOffY = 0;
+var mmConnectMode = false;
+var mmConnectFrom = null;
+var mmCanvas, mmCtx;
+var mmPanX = 0, mmPanY = 0, mmScale = 1;
+var mmPanning = false, mmPanStartX = 0, mmPanStartY = 0;
+
+function initMindMap() {
+  fetch('/api/investigations/' + invId + '/nodes').then(function(r){ return r.json(); }).then(function(ns) {
+    fetch('/api/investigations/' + invId + '/edges').then(function(r){ return r.json(); }).then(function(es) {
+      mmNodes = ns.map(function(n) {
+        return { id: n.id, label: n.label, x: n.x || (100 + Math.random()*400), y: n.y || (100 + Math.random()*300), color: n.color || '#4f46e5', notes: n.notes || '', url: n.url || '', bgColor: n.bg_color || '', textColor: n.text_color || '', fontFamily: n.font_family || 'sans', fontSize: n.font_size || 13, shape: n.shape || 'circle' };
+      });
+      mmEdges = es.map(function(e) {
+        return { id: e.id, from: e.from_node, to: e.to_node };
+      });
+      mmSetupCanvas();
+      mmRender();
+    });
+  });
+}
+
+function mmSetupCanvas() {
+  mmCanvas = document.getElementById('mmCanvas');
+  var cont = document.getElementById('mindmap-container');
+  mmCanvas.width  = cont.offsetWidth  || 800;
+  mmCanvas.height = cont.offsetHeight || 560;
+  mmCtx = mmCanvas.getContext('2d');
+
+  mmCanvas.addEventListener('mousedown',  mmOnMouseDown);
+  mmCanvas.addEventListener('mousemove',  mmOnMouseMove);
+  mmCanvas.addEventListener('mouseup',    mmOnMouseUp);
+  mmCanvas.addEventListener('dblclick',   mmOnDblClick);
+  mmCanvas.addEventListener('wheel',      mmOnWheel, { passive: true });
+  mmCanvas.addEventListener('contextmenu', function(e) { e.preventDefault(); mmDeleteEdgeAt(mmScrToWorld(e.offsetX, e.offsetY)); });
+}
+
+function mmScrToWorld(sx, sy) {
+  return { x: (sx - mmPanX) / mmScale, y: (sy - mmPanY) / mmScale };
+}
+
+function mmNodeAt(wx, wy) {
+  for (var i = mmNodes.length - 1; i >= 0; i--) {
+    var n = mmNodes[i];
+    var dx = wx - n.x, dy = wy - n.y;
+    if (Math.sqrt(dx*dx + dy*dy) < 42) return n;
+  }
+  return null;
+}
+
+function mmOnMouseDown(e) {
+  var w = mmScrToWorld(e.offsetX, e.offsetY);
+  var n = mmNodeAt(w.x, w.y);
+  if (n) {
+    if (mmConnectMode) {
+      if (!mmConnectFrom) {
+        mmConnectFrom = n.id;
+        mmCanvas.style.cursor = 'crosshair';
+        toast('Agora clique no nó de destino');
+      } else if (mmConnectFrom !== n.id) {
+        mmPushHistory();
+        var eid = 'e_' + Date.now();
+        mmEdges.push({ id: eid, from: mmConnectFrom, to: n.id });
+        fetch('/api/investigations/' + invId + '/edges', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: eid, from_node: mmConnectFrom, to_node: n.id, color:'#4f46e5', arrows:'to' }) });
+        mmConnectFrom = null;
+        mmCanvas.style.cursor = 'default';
+        toast('Conexão criada!');
+      }
+      mmRender();
+      return;
+    }
+    mmSelectedId = n.id;
+    mmPushHistory();
+    mmDragging = true;
+    mmDragOffX = w.x - n.x;
+    mmDragOffY = w.y - n.y;
+    document.getElementById('editNodeLabel').value     = n.label;
+    document.getElementById('editNodeUrl').value       = n.url || '';
+    document.getElementById('editNodeNotes').value     = n.notes || '';
+    document.getElementById('editNodeColor').value     = n.color || '#4f46e5';
+    document.getElementById('editNodeBg').value        = n.bgColor || '#1a1a2e';
+    document.getElementById('editNodeTextColor').value = n.textColor || '#ffffff';
+    document.getElementById('editNodeFont').value      = n.fontFamily || 'sans';
+    document.getElementById('editNodeFontSize').value  = n.fontSize || '13';
+    document.getElementById('editNodeShape').value     = n.shape || 'circle';
+    document.getElementById('nodeInfo').style.display = 'block';
+  } else {
+    mmSelectedId = null;
+    mmPanning = true;
+    mmPanStartX = e.offsetX - mmPanX;
+    mmPanStartY = e.offsetY - mmPanY;
+    document.getElementById('nodeInfo').style.display = 'none';
+  }
+  mmRender();
+}
+
+function mmOnMouseMove(e) {
+  if (mmDragging && mmSelectedId) {
+    var w = mmScrToWorld(e.offsetX, e.offsetY);
+    var n = mmNodes.find(function(x){ return x.id === mmSelectedId; });
+    if (n) { n.x = w.x - mmDragOffX; n.y = w.y - mmDragOffY; }
+    mmRender();
+  } else if (mmPanning) {
+    mmPanX = e.offsetX - mmPanStartX;
+    mmPanY = e.offsetY - mmPanStartY;
+    mmRender();
+  }
+}
+
+function mmOnMouseUp() {
+  mmDragging = false;
+  mmPanning = false;
+}
+
+function mmOnDblClick(e) {
+  var w = mmScrToWorld(e.offsetX, e.offsetY);
+  var n = mmNodeAt(w.x, w.y);
+  if (n) {
+    document.getElementById('editNodeLabel').value     = n.label;
+    document.getElementById('editNodeUrl').value       = n.url || '';
+    document.getElementById('editNodeNotes').value     = n.notes || '';
+    document.getElementById('editNodeColor').value     = n.color || '#4f46e5';
+    document.getElementById('editNodeBg').value        = n.bgColor || '#1a1a2e';
+    document.getElementById('editNodeTextColor').value = n.textColor || '#ffffff';
+    document.getElementById('editNodeFont').value      = n.fontFamily || 'sans';
+    document.getElementById('editNodeFontSize').value  = String(n.fontSize || 13);
+    document.getElementById('editNodeShape').value     = n.shape || 'circle';
+    document.getElementById('nodeInfo').style.display = 'block';
+    mmSelectedId = n.id;
+  }
+}
+
+function mmOnWheel(e) {
+  var factor = e.deltaY < 0 ? 1.1 : 0.9;
+  var wx = (e.offsetX - mmPanX) / mmScale;
+  var wy = (e.offsetY - mmPanY) / mmScale;
+  mmScale = Math.max(0.15, Math.min(5, mmScale * factor));
+  mmPanX = e.offsetX - wx * mmScale;
+  mmPanY = e.offsetY - wy * mmScale;
+  mmRender();
+}
+
+function mmDeleteEdgeAt(wpt) {
+  var THRESH = 8;
+  for (var i = 0; i < mmEdges.length; i++) {
+    var edge = mmEdges[i];
+    var from = mmNodes.find(function(n){ return n.id === edge.from; });
+    var to   = mmNodes.find(function(n){ return n.id === edge.to; });
+    if (!from || !to) continue;
+    var dx = to.x - from.x, dy = to.y - from.y;
+    var len2 = dx*dx + dy*dy;
+    if (len2 === 0) continue;
+    var t = Math.max(0, Math.min(1, ((wpt.x - from.x)*dx + (wpt.y - from.y)*dy) / len2));
+    var px = from.x + t*dx - wpt.x;
+    var py = from.y + t*dy - wpt.y;
+    if (Math.sqrt(px*px + py*py) < THRESH / mmScale) {
+      mmPushHistory();
+      fetch('/api/investigations/' + invId + '/edges/' + edge.id, { method:'DELETE' });
+      mmEdges.splice(i, 1);
+      mmRender();
+      toast('Conexão removida');
+      return;
+    }
+  }
+}
+
+var mmFontMap = { sans:'Segoe UI,Arial,sans-serif', serif:'Georgia,serif', mono:'Consolas,monospace', cursive:'Segoe Script,cursive' };
+
+function mmDrawNodeShape(ctx, x, y, R, shape) {
+  var W = R * 1.8, H = R * 1.15;
+  ctx.beginPath();
+  switch(shape) {
+    case 'square':
+      ctx.rect(x - R, y - R, R*2, R*2);
+      break;
+    case 'rect':
+      ctx.rect(x - W, y - H, W*2, H*2);
+      break;
+    case 'roundrect':
+      var rr = 10;
+      ctx.moveTo(x-W+rr, y-H); ctx.lineTo(x+W-rr, y-H);
+      ctx.quadraticCurveTo(x+W, y-H, x+W, y-H+rr);
+      ctx.lineTo(x+W, y+H-rr); ctx.quadraticCurveTo(x+W, y+H, x+W-rr, y+H);
+      ctx.lineTo(x-W+rr, y+H); ctx.quadraticCurveTo(x-W, y+H, x-W, y+H-rr);
+      ctx.lineTo(x-W, y-H+rr); ctx.quadraticCurveTo(x-W, y-H, x-W+rr, y-H);
+      ctx.closePath();
+      break;
+    case 'pill':
+      var pr = H;
+      ctx.moveTo(x-W+pr, y-H); ctx.lineTo(x+W-pr, y-H);
+      ctx.arc(x+W-pr, y, pr, -Math.PI/2, Math.PI/2);
+      ctx.lineTo(x-W+pr, y+H); ctx.arc(x-W+pr, y, pr, Math.PI/2, -Math.PI/2);
+      ctx.closePath();
+      break;
+    case 'diamond':
+      ctx.moveTo(x, y-R*1.5); ctx.lineTo(x+R*1.5, y);
+      ctx.lineTo(x, y+R*1.5); ctx.lineTo(x-R*1.5, y);
+      ctx.closePath();
+      break;
+    case 'hexagon':
+      for (var i=0; i<6; i++) {
+        var a = Math.PI/180*(60*i-30);
+        if (i===0) ctx.moveTo(x+R*Math.cos(a), y+R*Math.sin(a));
+        else ctx.lineTo(x+R*Math.cos(a), y+R*Math.sin(a));
+      }
+      ctx.closePath();
+      break;
+    case 'star':
+      for (var i=0; i<10; i++) {
+        var a = Math.PI/180*(36*i-90);
+        var r = (i%2===0) ? R : R*0.45;
+        if (i===0) ctx.moveTo(x+r*Math.cos(a), y+r*Math.sin(a));
+        else ctx.lineTo(x+r*Math.cos(a), y+r*Math.sin(a));
+      }
+      ctx.closePath();
+      break;
+    case 'cloud':
+      ctx.arc(x-R*0.4, y+R*0.1, R*0.6, 0, Math.PI*2);
+      ctx.arc(x+R*0.4, y+R*0.1, R*0.6, 0, Math.PI*2);
+      ctx.arc(x, y-R*0.1, R*0.65, 0, Math.PI*2);
+      ctx.arc(x-R*0.8, y+R*0.3, R*0.42, 0, Math.PI*2);
+      ctx.arc(x+R*0.8, y+R*0.3, R*0.42, 0, Math.PI*2);
+      break;
+    case 'arrow':
+      ctx.moveTo(x-W, y-H*0.5); ctx.lineTo(x+W*0.3, y-H*0.5);
+      ctx.lineTo(x+W*0.3, y-H); ctx.lineTo(x+W, y);
+      ctx.lineTo(x+W*0.3, y+H); ctx.lineTo(x+W*0.3, y+H*0.5);
+      ctx.lineTo(x-W, y+H*0.5);
+      ctx.closePath();
+      break;
+    default: // circle
+      ctx.arc(x, y, R, 0, Math.PI*2);
+      break;
+  }
+}
+
+var mmBgColorVal = localStorage.getItem('rmh-mm-bg') || '';
+
+function mmSetBg(val) {
+  mmBgColorVal = val;
+  localStorage.setItem('rmh-mm-bg', val);
+  mmRender();
+}
+
+function mmRender() {
+  if (!mmCtx) return;
+  var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  var bgColor = mmBgColorVal || (isLight ? '#dde3f0' : '#07070e');
+  mmCtx.fillStyle = bgColor;
+  mmCtx.fillRect(0, 0, mmCanvas.width, mmCanvas.height);
+
+  mmCtx.save();
+  mmCtx.translate(mmPanX, mmPanY);
+  mmCtx.scale(mmScale, mmScale);
+
+  // Edges
+  mmEdges.forEach(function(edge) {
+    var from = mmNodes.find(function(n){ return n.id === edge.from; });
+    var to   = mmNodes.find(function(n){ return n.id === edge.to; });
+    if (!from || !to) return;
+    mmCtx.beginPath();
+    mmCtx.moveTo(from.x, from.y);
+    mmCtx.lineTo(to.x, to.y);
+    mmCtx.strokeStyle = isLight ? 'rgba(79,70,229,0.4)' : 'rgba(99,102,241,0.55)';
+    mmCtx.lineWidth = 1.5;
+    mmCtx.stroke();
+    // Arrowhead
+    var ang = Math.atan2(to.y-from.y, to.x-from.x);
+    var ax = to.x - 18*Math.cos(ang), ay = to.y - 18*Math.sin(ang);
+    mmCtx.beginPath();
+    mmCtx.moveTo(ax+8*Math.cos(ang-Math.PI/6), ay+8*Math.sin(ang-Math.PI/6));
+    mmCtx.lineTo(to.x-16*Math.cos(ang), to.y-16*Math.sin(ang));
+    mmCtx.lineTo(ax+8*Math.cos(ang+Math.PI/6), ay+8*Math.sin(ang+Math.PI/6));
+    mmCtx.fillStyle = isLight ? 'rgba(79,70,229,0.4)' : 'rgba(99,102,241,0.55)';
+    mmCtx.fill();
+  });
+
+  // Nodes
+  mmNodes.forEach(function(n) {
+    var R = 28;
+    var borderColor = n.color || '#4f46e5';
+    var bgClr   = n.bgColor   || (isLight ? '#ffffff' : '#1a1a2e');
+    var txtClr  = n.textColor || (isLight ? '#1e293b' : '#e2e8f0');
+    var shape   = n.shape || 'circle';
+    var isSel   = (n.id === mmSelectedId);
+
+    mmCtx.save();
+    mmCtx.shadowColor = borderColor;
+    mmCtx.shadowBlur  = isSel ? 20 : 8;
+
+    mmDrawNodeShape(mmCtx, n.x, n.y, R, shape);
+    mmCtx.fillStyle = bgClr;
+    mmCtx.fill();
+
+    mmDrawNodeShape(mmCtx, n.x, n.y, R, shape);
+    mmCtx.strokeStyle = borderColor;
+    mmCtx.lineWidth = isSel ? 3 : 1.8;
+    mmCtx.stroke();
+    mmCtx.restore();
+
+    // Connect mode highlight
+    if (mmConnectMode && mmConnectFrom === n.id) {
+      mmDrawNodeShape(mmCtx, n.x, n.y, R, shape);
+      mmCtx.strokeStyle = '#f59e0b';
+      mmCtx.lineWidth = 3;
+      mmCtx.stroke();
+    }
+
+    // Label
+    var ff = mmFontMap[n.fontFamily||'sans'] || mmFontMap.sans;
+    var fs = parseInt(n.fontSize)||13;
+    mmCtx.font = 'bold '+fs+'px '+ff;
+    mmCtx.fillStyle = txtClr;
+    mmCtx.textAlign = 'center';
+    mmCtx.textBaseline = 'middle';
+    var wide = ['rect','roundrect','pill','arrow'].indexOf(shape) >= 0;
+    var maxW = wide ? R*3.2 : R*1.6;
+    var lbl = n.label;
+    if (mmCtx.measureText(lbl).width > maxW) {
+      while (lbl.length>1 && mmCtx.measureText(lbl+'…').width>maxW) lbl=lbl.slice(0,-1);
+      lbl += '…';
+    }
+    mmCtx.fillText(lbl, n.x, n.y);
+    if (n.url) {
+      mmCtx.font='9px sans-serif'; mmCtx.fillStyle='#67e8f9';
+      mmCtx.fillText('🔗', n.x+R*0.65, n.y-R*0.65);
+    }
+  });
+
+  mmCtx.restore();
+}
+
+function addNode() {
+  var label = document.getElementById('nodeLabel').value.trim();
+  if (!label) { toast('Digite o nome do nó!'); return; }
+  var color = document.getElementById('nodeColor').value;
+  var id = 'n_'+Date.now();
+  var cx = (mmCanvas.width/2-mmPanX)/mmScale;
+  var cy = (mmCanvas.height/2-mmPanY)/mmScale;
+  var x = cx+(Math.random()-0.5)*160, y = cy+(Math.random()-0.5)*120;
+  var node = { id:id, label:label, x:x, y:y, color:color, notes:'', url:'', bgColor:'', textColor:'', fontFamily:'sans', fontSize:13, shape:'circle' };
+  mmPushHistory();
+  mmNodes.push(node);
+  fetch('/api/investigations/'+invId+'/nodes', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:id,label:label,x:x,y:y,color:color}) });
+  document.getElementById('nodeLabel').value='';
+  mmRender();
+  toast('Nó adicionado!');
+}
+
+function deleteSelectedNode() {
+  if (!mmSelectedId) { toast('Selecione um nó primeiro'); return; }
+  mmPushHistory();
+  mmEdges = mmEdges.filter(function(e){ return e.from!==mmSelectedId && e.to!==mmSelectedId; });
+  fetch('/api/investigations/'+invId+'/nodes/'+mmSelectedId, {method:'DELETE'});
+  mmNodes = mmNodes.filter(function(n){ return n.id!==mmSelectedId; });
+  mmSelectedId = null;
+  document.getElementById('nodeInfo').style.display='none';
+  mmRender(); toast('Nó removido');
+}
+
+function toggleConnectMode() {
+  mmConnectMode = !mmConnectMode; mmConnectFrom = null;
+  var btn = document.getElementById('connectModeBtn');
+  if (btn) btn.classList.toggle('active', mmConnectMode);
+  mmCanvas.style.cursor = mmConnectMode ? 'crosshair' : 'default';
+  toast(mmConnectMode ? 'Modo conectar ativo — clique em 2 nós' : 'Modo conectar desativado');
+}
+
+function mmFit() {
+  if (!mmNodes.length) return;
+  var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  mmNodes.forEach(function(n){ minX=Math.min(minX,n.x);minY=Math.min(minY,n.y);maxX=Math.max(maxX,n.x);maxY=Math.max(maxY,n.y); });
+  var pad=80;
+  var scX=(mmCanvas.width-pad*2)/Math.max(maxX-minX,1);
+  var scY=(mmCanvas.height-pad*2)/Math.max(maxY-minY,1);
+  mmScale=Math.min(scX,scY,2);
+  mmPanX=mmCanvas.width/2-((minX+maxX)/2)*mmScale;
+  mmPanY=mmCanvas.height/2-((minY+maxY)/2)*mmScale;
+  mmRender();
+}
+
+function saveMindmap() {
+  mmNodes.forEach(function(n){
+    fetch('/api/investigations/'+invId+'/nodes/'+n.id, { method:'PUT', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({label:n.label,x:n.x,y:n.y,color:n.color,notes:n.notes,url:n.url,bg_color:n.bgColor,text_color:n.textColor,font_family:n.fontFamily,font_size:n.fontSize,shape:n.shape})
+    });
+  });
+  toast('Mapa salvo!');
+}
+
+// Touch support para mobile
+var mmLastTouchDist = null, mmLastTapTime = 0;
+
+function mmTouchPos(touch) {
+  var rect = mmCanvas.getBoundingClientRect();
+  return { offsetX: touch.clientX-rect.left, offsetY: touch.clientY-rect.top };
+}
+
+function mmOnTouchStart(e) {
+  e.preventDefault();
+  if (e.touches.length===1) {
+    var p = mmTouchPos(e.touches[0]);
+    var now = Date.now();
+    if (now-mmLastTapTime<320) { mmOnDblClick(p); mmLastTapTime=0; }
+    else { mmLastTapTime=now; mmOnMouseDown(p); }
+  } else if (e.touches.length===2) {
+    mmDragging=false; mmPanning=false;
+    var dx=e.touches[0].clientX-e.touches[1].clientX;
+    var dy=e.touches[0].clientY-e.touches[1].clientY;
+    mmLastTouchDist=Math.sqrt(dx*dx+dy*dy);
+  }
+}
+
+function mmOnTouchMove(e) {
+  e.preventDefault();
+  if (e.touches.length===1) {
+    mmOnMouseMove(mmTouchPos(e.touches[0]));
+  } else if (e.touches.length===2 && mmLastTouchDist) {
+    var dx=e.touches[0].clientX-e.touches[1].clientX;
+    var dy=e.touches[0].clientY-e.touches[1].clientY;
+    var dist=Math.sqrt(dx*dx+dy*dy);
+    mmScale=Math.max(0.15,Math.min(5, mmScale*(1+(dist-mmLastTouchDist)*0.008)));
+    mmLastTouchDist=dist; mmRender();
+  }
+}
+
+function mmOnTouchEnd(e) {
+  e.preventDefault(); mmLastTouchDist=null; mmOnMouseUp();
+}
+
+// Patch mmSetupCanvas para adicionar touch
+var _origSetupCanvas = mmSetupCanvas;
+mmSetupCanvas = function() {
+  _origSetupCanvas();
+  mmCanvas.addEventListener('touchstart', mmOnTouchStart, {passive:false});
+  mmCanvas.addEventListener('touchmove',  mmOnTouchMove,  {passive:false});
+  mmCanvas.addEventListener('touchend',   mmOnTouchEnd,   {passive:false});
+};
+
+function applyColorPreset(border, bg, text) {
+  document.getElementById('editNodeColor').value = border;
+  document.getElementById('editNodeBg').value = bg;
+  document.getElementById('editNodeTextColor').value = text;
+}
+
+async function updateNode() {
+  if (!mmSelectedId) return;
+  var n = mmNodes.find(function(x){ return x.id===mmSelectedId; });
+  if (!n) return;
+  n.label      = document.getElementById('editNodeLabel').value || n.label;
+  n.url        = document.getElementById('editNodeUrl').value;
+  n.notes      = document.getElementById('editNodeNotes').value;
+  n.color      = document.getElementById('editNodeColor').value;
+  n.bgColor    = document.getElementById('editNodeBg').value;
+  n.textColor  = document.getElementById('editNodeTextColor').value;
+  n.fontFamily = document.getElementById('editNodeFont').value;
+  n.fontSize   = parseInt(document.getElementById('editNodeFontSize').value)||13;
+  n.shape      = document.getElementById('editNodeShape').value;
+  await fetch('/api/investigations/'+invId+'/nodes/'+n.id, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({label:n.label,x:n.x,y:n.y,color:n.color,notes:n.notes,url:n.url,bg_color:n.bgColor,text_color:n.textColor,font_family:n.fontFamily,font_size:n.fontSize,shape:n.shape})
+  });
+  mmRender(); toast('Nó atualizado!');
+}
+
+// Ctrl+Z undo
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key==='z') {
+    var sec = document.querySelector('.section.active');
+    if (sec && sec.id==='sec-mindmap') { e.preventDefault(); mmUndo(); }
+  }
+});
+
+function selectNoteColor(c) {
+  noteColor = c;
+  document.querySelectorAll('[id^="nc-"]').forEach(function(el){ el.style.border='2px solid transparent'; });
+  var map={'#fef9c3':'nc-yellow','#dcfce7':'nc-green','#dbeafe':'nc-blue','#fce7f3':'nc-pink','#f3f4f6':'nc-gray'};
+  if (map[c]) document.getElementById(map[c]).style.border='2px solid #4f46e5';
+}
+
+// ─── Auto-save Rascunhos ───────────────────────────────────────────────────────
+var _draftTimers = {};
+
+function autosaveDraft(key, fields) {
+  var data={};
+  fields.forEach(function(f){ var el=document.getElementById(f); if(el) data[f]=el.value; });
+  localStorage.setItem('draft_'+invId+'_'+key, JSON.stringify(data));
+  var ind=document.getElementById('draft-ind-'+key);
+  if (ind) { ind.style.color='#34d399'; ind.textContent='✔ Rascunho salvo'; setTimeout(function(){ if(ind) ind.textContent=''; },2000); }
+}
+
+function restoreDraft(key, fields) {
+  var raw=localStorage.getItem('draft_'+invId+'_'+key);
+  if (!raw) return;
+  try { var d=JSON.parse(raw); fields.forEach(function(f){ var el=document.getElementById(f); if(el&&d[f]) el.value=d[f]; }); } catch(e){}
+}
+
+function clearDraft(key) {
+  localStorage.removeItem('draft_'+invId+'_'+key);
+  var ind=document.getElementById('draft-ind-'+key);
+  if (ind) ind.textContent='';
+}
+
+function setupFormAutosave(key, fields) {
+  restoreDraft(key, fields);
+  var firstEl=document.getElementById(fields[0]);
+  if (firstEl) {
+    var panel=firstEl.closest('.panel');
+    if (panel) {
+      var ind=document.createElement('div');
+      ind.id='draft-ind-'+key;
+      ind.style.cssText='font-size:10px;color:#4b5563;text-align:right;margin-bottom:4px;min-height:14px';
+      var btn=panel.querySelector('button.btn-primary');
+      if (btn) panel.insertBefore(ind,btn);
+    }
+  }
+  fields.forEach(function(f){
+    var el=document.getElementById(f);
+    if (!el) return;
+    el.addEventListener('input', function(){
+      clearTimeout(_draftTimers[key]);
+      _draftTimers[key]=setTimeout(function(){ autosaveDraft(key,fields); },500);
+    });
+  });
+}
+
+// ─── Anexos ────────────────────────────────────────────────────────────────────
+function handleAttach(inputId, previewId, dataId) {
+  var input=document.getElementById(inputId);
+  var file=input.files[0];
+  if (!file) return;
+  var progId=inputId.replace('File','AttachProgress');
+  var prog=document.getElementById(progId);
+  if (prog) prog.textContent='⏳ Enviando...';
+  var fd=new FormData(); fd.append('file',file); fd.append('investigation_id',invId);
+  fetch('/api/upload',{method:'POST',body:fd})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (prog) prog.textContent='';
+      var hidden=document.getElementById(dataId);
+      if (hidden) hidden.value=JSON.stringify({url:d.url,name:d.name,type:d.type});
+      var preview=document.getElementById(previewId);
+      if (preview) {
+        preview.innerHTML='';
+        var chip=document.createElement('div'); chip.className='attach-chip';
+        chip.innerHTML='📎 '+esc(d.name)+' <button onclick="clearAttach(\''+dataId+'\',\''+previewId+'\')">×</button>';
+        preview.appendChild(chip);
+        if (d.type&&d.type.startsWith('image/')) {
+          var img=document.createElement('img'); img.src=d.url; img.className='attach-thumb';
+          img.onclick=function(){ window.open(d.url,'_blank'); };
+          preview.appendChild(img);
+        }
+      }
+      toast('Arquivo enviado!');
+    })
+    .catch(function(){ if(prog) prog.textContent='❌ Erro no upload'; });
+}
+
+function clearAttach(dataId, previewId) {
+  document.getElementById(dataId).value='';
+  document.getElementById(previewId).innerHTML='';
+}
+
+function renderAttachItem(url, name, type) {
+  if (!url) return '';
+  if (type&&type.startsWith('image/')) return '<a href="'+url+'" target="_blank"><img src="'+url+'" class="attach-thumb" style="max-width:220px"></a>';
+  return '<a href="'+url+'" target="_blank" class="attach-file-link">📎 '+esc(name||'arquivo')+'</a>';
+}
+
+// ─── Notas ────────────────────────────────────────────────────────────────────
+async function loadNotes() {
+  var notes=await fetch('/api/investigations/'+invId+'/notes').then(function(r){ return r.json(); });
+  var list=document.getElementById('notesList'); list.innerHTML='';
+  notes.forEach(function(n){
+    var d=document.createElement('div'); d.className='item';
+    d.style.borderLeft='3px solid '+(n.color||'#fef9c3');
+    d.innerHTML='<div class="item-body"><div class="item-title">'+esc(n.title)+'</div><div class="item-content">'+esc(n.content)+'</div>'+renderAttachItem(n.file_url,n.file_name,n.file_type)+'</div><div class="item-actions"><button class="del-btn" onclick="deleteNote(\''+n.id+'\')">🗑</button></div>';
+    list.appendChild(d);
+  });
+}
+
+async function addNote() {
+  var title=document.getElementById('noteTitle').value.trim();
+  var content=document.getElementById('noteContent').value.trim();
+  if (!title) { toast('Digite o título!'); return; }
+  var att=document.getElementById('noteAttachData').value; att=att?JSON.parse(att):{};
+  await fetch('/api/investigations/'+invId+'/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title,content:content,color:noteColor,file_url:att.url||'',file_name:att.name||'',file_type:att.type||''})});
+  document.getElementById('noteTitle').value=''; document.getElementById('noteContent').value='';
+  clearAttach('noteAttachData','noteAttachPreview'); clearDraft('notes');
+  loadNotes(); loadOverviewData(); toast('Nota adicionada!');
+}
+
+async function deleteNote(id) {
+  if (!confirm('Remover esta nota?')) return;
+  await fetch('/api/investigations/'+invId+'/notes/'+id,{method:'DELETE'});
+  loadNotes(); loadOverviewData(); toast('Nota removida');
+}
+
+// ─── Evidências ───────────────────────────────────────────────────────────────
+async function loadEvidence() {
+  var evs=await fetch('/api/investigations/'+invId+'/evidence').then(function(r){ return r.json(); });
+  var list=document.getElementById('evidenceList'); list.innerHTML='';
+  evs.forEach(function(e){
+    var d=document.createElement('div'); d.className='item';
+    d.innerHTML='<div class="item-body"><div class="item-title"><span class="ev-type-badge '+e.type+'">'+e.type+'</span> '+esc(e.title)+'</div><div class="item-meta">Fonte: '+esc(e.source||'—')+' · '+new Date(e.created_at).toLocaleString('pt-BR')+'</div>'+(e.content?'<div class="item-content">'+esc(e.content)+'</div>':'')+(e.hash_value?'<div class="hash-value">SHA-256: '+esc(e.hash_value)+'</div>':'')+(e.custody_chain?'<div style="font-size:11px;color:#6b7280;margin-top:4px">🔗 '+esc(e.custody_chain)+'</div>':'')+renderAttachItem(e.file_url,e.file_name,e.file_type)+'</div><div class="item-actions"><button class="del-btn" onclick="deleteEvidence(\''+e.id+'\')">🗑</button></div>';
+    list.appendChild(d);
+  });
+}
+
+async function addEvidence() {
+  var title=document.getElementById('evTitle').value.trim();
+  if (!title) { toast('Digite o título!'); return; }
+  var att=document.getElementById('evAttachData').value; att=att?JSON.parse(att):{};
+  await fetch('/api/investigations/'+invId+'/evidence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title,type:document.getElementById('evType').value,content:document.getElementById('evContent').value.trim(),source:document.getElementById('evSource').value.trim(),hash_value:document.getElementById('evHash').value.trim(),custody_chain:document.getElementById('evCustody').value.trim(),tags:document.getElementById('evTags').value.trim(),file_url:att.url||'',file_name:att.name||'',file_type:att.type||''})});
+  ['evTitle','evContent','evSource','evHash','evCustody','evTags'].forEach(function(id){ document.getElementById(id).value=''; });
+  clearAttach('evAttachData','evAttachPreview'); clearDraft('evidence');
+  loadEvidence(); loadOverviewData(); toast('Evidência registrada!');
+}
+
+async function deleteEvidence(id) {
+  if (!confirm('Remover esta evidência?')) return;
+  await fetch('/api/investigations/'+invId+'/evidence/'+id,{method:'DELETE'});
+  loadEvidence(); loadOverviewData(); toast('Evidência removida');
+}
+
+// ─── Linha do Tempo ───────────────────────────────────────────────────────────
+async function loadEvents() {
+  var evts=await fetch('/api/investigations/'+invId+'/events').then(function(r){ return r.json(); });
+  var tl=document.getElementById('timelineList'); tl.innerHTML='';
+  evts.sort(function(a,b){ return new Date(a.event_date)-new Date(b.event_date); }).forEach(function(e){
+    var d=document.createElement('div'); d.className='tl-item';
+    d.innerHTML='<div class="tl-dot '+(e.importance||'normal')+'"></div><div class="tl-content"><div class="tl-date">'+(e.event_date?new Date(e.event_date).toLocaleString('pt-BR'):'Sem data')+'</div><div class="tl-title">'+esc(e.title)+'</div>'+(e.description?'<div class="tl-desc">'+esc(e.description)+'</div>':'')+renderAttachItem(e.file_url,e.file_name,e.file_type)+'</div><div style="margin-top:4px"><button class="del-btn" onclick="deleteEvent(\''+e.id+'\')">🗑 Remover</button></div>';
+    tl.appendChild(d);
+  });
+}
+
+async function addEvent() {
+  var title=document.getElementById('evtTitle').value.trim();
+  if (!title) { toast('Digite o título!'); return; }
+  var att=document.getElementById('evtAttachData').value; att=att?JSON.parse(att):{};
+  await fetch('/api/investigations/'+invId+'/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title,event_date:document.getElementById('evtDate').value,description:document.getElementById('evtDesc').value.trim(),importance:document.getElementById('evtImportance').value,file_url:att.url||'',file_name:att.name||'',file_type:att.type||''})});
+  ['evtTitle','evtDesc','evtDate'].forEach(function(id){ document.getElementById(id).value=''; });
+  clearAttach('evtAttachData','evtAttachPreview'); clearDraft('event');
+  loadEvents(); loadOverviewData(); toast('Evento adicionado!');
+}
+
+async function deleteEvent(id) {
+  if (!confirm('Remover evento?')) return;
+  await fetch('/api/investigations/'+invId+'/events/'+id,{method:'DELETE'});
+  loadEvents(); loadOverviewData(); toast('Evento removido');
+}
+
+// ─── OSINT ────────────────────────────────────────────────────────────────────
+function initOsintTools() {
+  var tools=[
+    {icon:'🔎',name:'Shodan',desc:'Dispositivos conectados',url:'https://shodan.io/search?query='},
+    {icon:'🦠',name:'VirusTotal',desc:'Análise de malware/URLs',url:'https://virustotal.com/gui/search/'},
+    {icon:'📧',name:'HaveIBeenPwned',desc:'Vazamentos de e-mail',url:'https://haveibeenpwned.com/account/'},
+    {icon:'🕵️',name:'Hunter.io',desc:'E-mails corporativos',url:'https://hunter.io/search/'},
+    {icon:'🌍',name:'Who.is',desc:'WHOIS de domínios',url:'https://who.is/whois/'},
+    {icon:'🗺️',name:'IP-API',desc:'Geolocalização de IP',url:'https://ip-api.com/#'},
+    {icon:'📱',name:'Social Searcher',desc:'Busca em redes sociais',url:'https://www.social-searcher.com/social-buzz/?q='},
+    {icon:'📦',name:'Wayback Machine',desc:'Histórico de sites',url:'https://web.archive.org/web/*/'},
+    {icon:'🔗',name:'URLScan.io',desc:'Análise de URLs suspeitas',url:'https://urlscan.io/search/#'},
+    {icon:'🏢',name:'LinkedIn',desc:'Perfil profissional',url:'https://www.linkedin.com/search/results/all/?keywords='},
+    {icon:'🐦',name:'Twitter/X',desc:'Busca em tweets',url:'https://twitter.com/search?q='},
+    {icon:'📊',name:'Maltego CE',desc:'Grafo de entidades',url:'https://www.maltego.com/'},
+  ];
+  var target=inv?encodeURIComponent(inv.target||''):'';
+  var grid=document.getElementById('osintTools'); if(!grid) return;
+  grid.innerHTML='';
+  tools.forEach(function(t){
+    var a=document.createElement('a'); a.className='osint-tool';
+    a.href=t.url+target; a.target='_blank';
+    a.innerHTML='<div class="tool-icon">'+t.icon+'</div><div class="tool-name">'+t.name+'</div><div class="tool-desc">'+t.desc+'</div>';
+    grid.appendChild(a);
+  });
+}
+
+async function loadOsint() {
+  var items=await fetch('/api/investigations/'+invId+'/osint').then(function(r){ return r.json(); });
+  var list=document.getElementById('osintList'); list.innerHTML='';
+  items.forEach(function(s){
+    var d=document.createElement('div'); d.className='item';
+    d.innerHTML='<div class="item-body"><div class="item-title">🔍 '+esc(s.query)+' <span class="badge" style="background:rgba(79,70,229,.1);color:#a5b4fc">'+s.type+'</span></div><div class="item-meta">Fonte: '+esc(s.source||'—')+' · '+new Date(s.created_at).toLocaleString('pt-BR')+'</div>'+(s.result?'<div class="item-content">'+esc(s.result)+'</div>':'')+renderAttachItem(s.file_url,s.file_name,s.file_type)+'</div><div class="item-actions"><button class="del-btn" onclick="deleteOsint(\''+s.id+'\')">🗑</button></div>';
+    list.appendChild(d);
+  });
+}
+
+async function addOsint() {
+  var query=document.getElementById('osintQuery').value.trim();
+  if (!query) { toast('Digite a query/alvo!'); return; }
+  var att=document.getElementById('osintAttachData').value; att=att?JSON.parse(att):{};
+  await fetch('/api/investigations/'+invId+'/osint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:query,type:document.getElementById('osintType').value,result:document.getElementById('osintResult').value.trim(),source:document.getElementById('osintSource').value.trim(),file_url:att.url||'',file_name:att.name||'',file_type:att.type||''})});
+  ['osintQuery','osintResult','osintSource'].forEach(function(id){ document.getElementById(id).value=''; });
+  clearAttach('osintAttachData','osintAttachPreview'); clearDraft('osint');
+  loadOsint(); loadOverviewData(); toast('Pesquisa OSINT salva!');
+}
+
+async function deleteOsint(id) {
+  if (!confirm('Remover esta pesquisa?')) return;
+  await fetch('/api/investigations/'+invId+'/osint/'+id,{method:'DELETE'});
+  loadOsint(); loadOverviewData(); toast('Pesquisa removida');
+}
+
+async function lookupIP() {
+  var ip=document.getElementById('ipInput').value.trim();
+  if (!ip) { toast('Digite um IP!'); return; }
+  var res=document.getElementById('ipResult'); res.innerHTML='⏳ Consultando...';
+  try {
+    var d=await fetch('https://ip-api.com/json/'+ip+'?fields=status,message,country,regionName,city,lat,lon,timezone,isp,org,query').then(function(r){ return r.json(); });
+    if (d.status!=='success') { res.innerHTML='<span style="color:#f87171">❌ '+(d.message||'Erro')+'</span>'; return; }
+    res.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">'
+      +'<div>🌍 País: <strong>'+esc(d.country)+'</strong></div>'
+      +'<div>📍 Cidade: <strong>'+esc(d.city)+'</strong></div>'
+      +'<div>📡 ISP: <strong>'+esc(d.isp)+'</strong></div>'
+      +'<div>🏢 Org: <strong>'+esc(d.org)+'</strong></div>'
+      +'<div>🕐 Timezone: <strong>'+esc(d.timezone)+'</strong></div>'
+      +'<div>📌 Lat/Lon: <strong>'+d.lat+', '+d.lon+'</strong></div>'
+      +'</div>'
+      +'<a href="https://www.google.com/maps?q='+d.lat+','+d.lon+'" target="_blank" style="color:#a5b4fc;font-size:12px;display:block;margin-top:8px">📍 Ver no Google Maps</a>';
+  } catch(err) { res.innerHTML='<span style="color:#f87171">❌ Erro de rede</span>'; }
+}
+
+// ─── CNPJ ─────────────────────────────────────────────────────────────────────
+var lastCNPJData = null;
+
+async function lookupCNPJ() {
+  var raw=document.getElementById('cnpjInput').value.replace(/\D/g,'');
+  if (raw.length!==14) { toast('CNPJ deve ter 14 dígitos!'); return; }
+  document.getElementById('cnpjLoading').style.display='block';
+  document.getElementById('cnpjError').style.display='none';
+  document.getElementById('cnpjResult').style.display='none';
+  document.getElementById('cnpjBtn').disabled=true;
+  try {
+    var d=await fetch('https://brasilapi.com.br/api/cnpj/v1/'+raw).then(function(r){ return r.json(); });
+    if (d.message) throw new Error(d.message);
+    lastCNPJData=d;
+    document.getElementById('cnpjRazao').textContent=d.razao_social||'—';
+    document.getElementById('cnpjFantasia').textContent=d.nome_fantasia?'('+d.nome_fantasia+')':'';
+    var sit=document.getElementById('cnpjSituacao');
+    var atv=d.descricao_situacao_cadastral||'';
+    sit.textContent=atv;
+    sit.style.cssText='font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:'+(atv.includes('ATIVA')?'rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3)':atv.includes('INAPTA')?'rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3)':'rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)');
+    var fmt=raw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
+    document.getElementById('cnpjFields').innerHTML=[
+      ['CNPJ',fmt],['CNAE',(d.cnae_fiscal||'')+' — '+(d.cnae_fiscal_descricao||'')],
+      ['Porte',d.porte||'—'],['Capital Social',d.capital_social?'R$ '+parseFloat(d.capital_social).toLocaleString('pt-BR'):'—'],
+      ['Abertura',d.data_inicio_atividade||'—'],['Município',(d.municipio||'—')+'/'+(d.uf||'')],
+      ['Endereço',(d.logradouro||'')+', '+(d.numero||'')+' — '+(d.bairro||'')],
+      ['CEP',d.cep||'—'],['Telefone',d.ddd_telefone_1||'—'],['E-mail',d.email||'—'],
+    ].map(function(r){ return '<div><span style="color:#6b7280">'+r[0]+':</span> <strong style="color:#e2e8f0">'+esc(String(r[1]))+'</strong></div>'; }).join('');
+    var socios=document.getElementById('cnpjSocios'); socios.innerHTML='';
+    (d.qsa||[]).forEach(function(s){
+      var div=document.createElement('div'); div.className='item'; div.style.padding='8px 12px';
+      div.innerHTML='<div class="item-body"><div class="item-title">👤 '+esc(s.nome_socio)+'</div><div class="item-meta">'+esc(s.qualificacao_socio||'')+(s.cnpj_cpf_do_socio?' · '+s.cnpj_cpf_do_socio:'')+'</div></div>';
+      socios.appendChild(div);
+    });
+    var q=encodeURIComponent(d.razao_social||raw);
+    document.getElementById('cnpjLinks').innerHTML=[
+      ['🔎 Google','https://google.com/search?q='+q],
+      ['📦 Jusbrasil','https://jusbrasil.com.br/busca/?q='+q],
+      ['🔗 Escavador','https://escavador.com/busca?q='+q],
+      ['🗂 Receita Federal','https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjok.asp?cnpj='+raw],
+    ].map(function(l){ return '<a href="'+l[1]+'" target="_blank" class="attach-file-link">'+l[0]+'</a>'; }).join('');
+    document.getElementById('cnpjResult').style.display='block';
+
+    // Auto-preencher dossiê da empresa
+    document.getElementById('dossieRazao').value = d.razao_social||'';
+    document.getElementById('dossieCNPJ').value = fmt;
+    var sit2 = document.getElementById('dossieSituacao');
+    var sitVal = (d.descricao_situacao_cadastral||'').toUpperCase();
+    if (sitVal.includes('ATIVA')) sit2.value='ativa';
+    else if (sitVal.includes('INAPTA')) sit2.value='inapta';
+    else if (sitVal.includes('BAIXADA')||sitVal.includes('ENCERRADA')) sit2.value='baixada';
+    else if (sitVal.includes('SUSPENSA')) sit2.value='suspensa';
+    var porteEl = document.getElementById('dossiePorte');
+    var porteVal = (d.porte||'').toUpperCase();
+    if (porteVal.includes('MEI')) porteEl.value='MEI';
+    else if (porteVal.includes('MICRO')) porteEl.value='ME';
+    else if (porteVal.includes('PEQUENA')) porteEl.value='EPP';
+    else if (porteVal.includes('MEDIA')||porteVal.includes('MÉDIA')) porteEl.value='MEDIO';
+    else if (porteVal.includes('GRANDE')||porteVal.includes('DEMAIS')) porteEl.value='GRANDE';
+    document.getElementById('dossieCNAE').value = (d.cnae_fiscal||'')+' — '+(d.cnae_fiscal_descricao||'');
+    document.getElementById('dossieEndereco').value = (d.logradouro||'')+', '+(d.numero||'')+' — '+(d.bairro||'')+', '+(d.municipio||'')+'/'+( d.uf||'')+' CEP: '+(d.cep||'');
+    document.getElementById('dossieCapital').value = d.capital_social?'R$ '+parseFloat(d.capital_social).toLocaleString('pt-BR'):'';
+    document.getElementById('dossieAbertura').value = d.data_inicio_atividade||'';
+    var socionames = (d.qsa||[]).map(function(s){ return s.nome_socio+(s.qualificacao_socio?' — '+s.qualificacao_socio:'')+(s.cnpj_cpf_do_socio?' ('+s.cnpj_cpf_do_socio+')':''); });
+    document.getElementById('dossieSocios').value = socionames.join('\n');
+    toast('✅ Dossiê preenchido automaticamente!');
+
+  } catch(err) {
+    document.getElementById('cnpjError').textContent='❌ '+err.message;
+    document.getElementById('cnpjError').style.display='block';
+  } finally {
+    document.getElementById('cnpjLoading').style.display='none';
+    document.getElementById('cnpjBtn').disabled=false;
+  }
+}
+
+function importCNPJToMindmap() {
+  if (!lastCNPJData) return;
+  var d=lastCNPJData;
+  var mainId='n_'+Date.now();
+  var cx=mmCanvas?mmCanvas.width/2:400, cy=mmCanvas?mmCanvas.height/2:300;
+  var nodes=[
+    {id:mainId,label:d.razao_social||'Empresa',x:cx,y:cy,color:'#4f46e5'},
+    {id:'n_'+(Date.now()+1)+'_cnpj',label:'CNPJ: '+(d.cnpj||''),x:cx-200,y:cy-100,color:'#059669'},
+    {id:'n_'+(Date.now()+2)+'_mun',label:(d.municipio||'')+'/'+(d.uf||''),x:cx+200,y:cy-100,color:'#0891b2'},
+  ];
+  (d.qsa||[]).slice(0,3).forEach(function(s,i){
+    nodes.push({id:'n_'+(Date.now()+10+i)+'_s'+i,label:'👤 '+s.nome_socio,x:cx+(i-1)*180,y:cy+150,color:'#dc2626'});
+  });
+  nodes.forEach(function(n,i){
+    setTimeout(function(){
+      mmNodes.push(Object.assign({notes:'',url:'',bgColor:'',textColor:'',fontFamily:'sans',fontSize:13,shape:'circle'},n));
+      if (i>0) {
+        var eid='e_'+(Date.now()+i);
+        mmEdges.push({id:eid,from:mainId,to:n.id});
+        fetch('/api/investigations/'+invId+'/edges',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:eid,from_node:mainId,to_node:n.id,color:'#4f46e5',arrows:'to'})});
+      }
+      fetch('/api/investigations/'+invId+'/nodes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(n)});
+      mmRender();
+    },i*60);
+  });
+  toast('Empresa importada para o mapa!');
+}
+
+async function saveCNPJAsEvidence() {
+  if (!lastCNPJData) return;
+  var d=lastCNPJData;
+  await fetch('/api/investigations/'+invId+'/evidence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'CNPJ: '+(d.razao_social||''),type:'text',content:JSON.stringify(d,null,2),source:'BrasilAPI / Receita Federal',hash_value:'',custody_chain:'Consulta automática via BrasilAPI'})});
+  loadEvidence(); toast('Dados CNPJ salvos como evidência!');
+}
+
+// ── Empresas Salvas (localStorage) ─────────────────────────────────────────
+function getEmpresasSalvas() {
+  try { return JSON.parse(localStorage.getItem('rmhacking_empresa_'+invId)||'[]'); } catch(e){ return []; }
+}
+function setEmpresasSalvas(arr) {
+  localStorage.setItem('rmhacking_empresa_'+invId, JSON.stringify(arr));
+}
+function renderEmpresasSalvas() {
+  var arr = getEmpresasSalvas();
+  var el = document.getElementById('empresasSalvasList');
+  var ct = document.getElementById('empresasSalvasCount');
+  if (!el) return;
+  if (ct) ct.textContent = arr.length ? '('+arr.length+')' : '';
+  if (!arr.length) { el.innerHTML='<p style="font-size:12px;color:#9ca3af;text-align:center;padding:8px">Nenhuma empresa salva ainda.</p>'; return; }
+  el.innerHTML = arr.map(function(e,i){
+    return '<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer" onclick="loadEmpresaSalva('+i+')">'
+      +'<span style="flex:1;font-size:12px;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🏢 '+(e.razao||'Sem nome')+'</span>'
+      +'<span style="font-size:11px;color:#6b7280;white-space:nowrap">'+( e.cnpj||'')+'</span>'
+      +'<button class="btn-sm" style="padding:2px 6px;font-size:10px;background:#fee2e2;color:#dc2626;border:none;flex-shrink:0" onclick="event.stopPropagation();deleteEmpresaSalva('+i+')">✕</button>'
+    +'</div>';
+  }).join('');
+}
+function loadEmpresaSalva(idx) {
+  var arr = getEmpresasSalvas();
+  var e = arr[idx]; if (!e) return;
+  document.getElementById('dossieRazao').value = e.razao||'';
+  document.getElementById('dossieCNPJ').value = e.cnpj||'';
+  var sit = document.getElementById('dossieSituacao');
+  for(var i=0;i<sit.options.length;i++){ if(sit.options[i].value===e.situacao){sit.selectedIndex=i;break;} }
+  var prt = document.getElementById('dossiePorte');
+  for(var i=0;i<prt.options.length;i++){ if(prt.options[i].value===e.porte){prt.selectedIndex=i;break;} }
+  document.getElementById('dossieCNAE').value = e.cnae||'';
+  document.getElementById('dossieEndereco').value = e.endereco||'';
+  document.getElementById('dossieCapital').value = e.capital||'';
+  document.getElementById('dossieAbertura').value = e.abertura||'';
+  document.getElementById('dossieSocios').value = e.socios||'';
+  document.getElementById('dossieRedes').value = e.redes||'';
+  document.getElementById('dossieObs').value = e.obs||'';
+  toast('📂 Empresa carregada no formulário!');
+}
+function deleteEmpresaSalva(idx) {
+  var arr = getEmpresasSalvas();
+  arr.splice(idx,1);
+  setEmpresasSalvas(arr);
+  renderEmpresasSalvas();
+}
+function clearDossieForm() {
+  ['dossieRazao','dossieCNPJ','dossieCNAE','dossieEndereco','dossieCapital','dossieAbertura','dossieSocios','dossieRedes','dossieObs'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var sit=document.getElementById('dossieSituacao'); if(sit) sit.selectedIndex=0;
+  var prt=document.getElementById('dossiePorte'); if(prt) prt.selectedIndex=0;
+}
+
+async function saveDossie() {
+  var data={razao:document.getElementById('dossieRazao').value,cnpj:document.getElementById('dossieCNPJ').value,situacao:document.getElementById('dossieSituacao').value,porte:document.getElementById('dossiePorte').value,cnae:document.getElementById('dossieCNAE').value,endereco:document.getElementById('dossieEndereco').value,capital:document.getElementById('dossieCapital').value,abertura:document.getElementById('dossieAbertura').value,socios:document.getElementById('dossieSocios').value,redes:document.getElementById('dossieRedes').value,obs:document.getElementById('dossieObs').value};
+  if (!data.razao && !data.cnpj) { toast('Preencha ao menos o nome ou CNPJ'); return; }
+  await fetch('/api/investigations/'+invId+'/dossie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  var arr=getEmpresasSalvas();
+  var idx=data.cnpj?arr.findIndex(function(e){return e.cnpj===data.cnpj;}):-1;
+  if(idx>=0) arr[idx]=data; else arr.unshift(data);
+  setEmpresasSalvas(arr);
+  renderEmpresasSalvas();
+  clearDossieForm();
+  toast('✅ Dossiê salvo! Formulário limpo para nova consulta.');
+}
+
+async function saveEmpresaNotes() {
+  await fetch('/api/investigations/'+invId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresa_notes:document.getElementById('empresaNotes').value})});
+  toast('Notas da empresa salvas!');
+}
+
+function exportDossie() { switchTab('report',document.querySelectorAll('.tab')[8]); setReportMode('auto'); generateReport(); }
+
+function importFromMindmap() {
+  var names=mmNodes.map(function(n){ return n.label; });
+  if (!names.length) { toast('Nenhum nó no mapa mental'); return; }
+  document.getElementById('dossieSocios').value=names.join('\n'); toast('Nós importados!');
+}
+
+// ─── Forense ─────────────────────────────────────────────────────────────────
+async function calcHash() {
+  var text=document.getElementById('hashInput').value;
+  if (!text) { toast('Digite o texto!'); return; }
+  try {
+    var enc=new TextEncoder();
+    var buf=await crypto.subtle.digest('SHA-256',enc.encode(text));
+    var hex=Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+    var el=document.getElementById('hashResult'); el.style.display='block'; el.className='forense-result'; el.textContent=hex;
+  } catch(err) {
+    var el=document.getElementById('hashResult'); el.style.display='block'; el.className='forense-result error'; el.textContent='Erro: '+err.message;
+  }
+}
+
+function compareHashes() {
+  var a=document.getElementById('hashCompA').value.trim().toLowerCase();
+  var b=document.getElementById('hashCompB').value.trim().toLowerCase();
+  var el=document.getElementById('hashCompResult');
+  if (!a||!b) { el.innerHTML='<span style="color:#f87171">Preencha os dois hashes</span>'; return; }
+  el.innerHTML=a===b?'<span style="color:#34d399;font-weight:700">✅ Hashes IDÊNTICOS — integridade confirmada!</span>':'<span style="color:#f87171;font-weight:700">❌ Hashes DIFERENTES — arquivo pode ter sido alterado!</span>';
+}
+
+function scanPatterns() {
+  var text=document.getElementById('regexInput').value;
+  if (!text) { toast('Cole um texto para escanear!'); return; }
+  var patterns={'E-mails':/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g,'IPs (IPv4)':/\b(?:\d{1,3}\.){3}\d{1,3}\b/g,'URLs':/https?:\/\/[^\s"<>]+/g,'CPFs':/\b\d{3}\.?\d{3}\.?\d{3}\-?\d{2}\b/g,'CNPJs':/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}\-?\d{2}\b/g,'Telefones BR':/(?:\+?55\s?)?(?:\(?\d{2}\)?[\s\-]?)(?:9\d{4}|\d{4})[\s\-]?\d{4}/g,'Hashes (MD5/SHA)':/\b[a-fA-F0-9]{32,64}\b/g};
+  var html='', found=false;
+  Object.keys(patterns).forEach(function(name){
+    var m=text.match(patterns[name]);
+    if (m&&m.length) {
+      found=true;
+      var u=m.filter(function(v,i,a){ return a.indexOf(v)===i; });
+      html+='<div style="margin-bottom:10px"><div style="font-weight:600;color:#a5b4fc;font-size:12px;margin-bottom:4px">'+name+' ('+u.length+')</div>';
+      u.forEach(function(s){ html+='<span style="display:inline-block;background:rgba(79,70,229,.1);border:1px solid rgba(79,70,229,.2);border-radius:4px;padding:2px 8px;font-family:monospace;font-size:11px;color:#e2e8f0;margin:2px">'+esc(s)+'</span>'; });
+      html+='</div>';
+    }
+  });
+  document.getElementById('regexResult').innerHTML=found?html:'<div style="color:#4b5563;font-size:12px">Nenhum padrão encontrado.</div>';
+}
+
+function analyzeEXIF() {
+  var file=document.getElementById('exifFile').files[0]; if (!file) return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    if (file.type.startsWith('image/')) document.getElementById('exifPreview').innerHTML='<img src="'+e.target.result+'" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:10px">';
+    document.getElementById('exifResult').innerHTML='<table class="exif-table"><tr><th>Atributo</th><th>Valor</th></tr>'
+      +[['Nome',file.name],['Tipo',file.type],['Tamanho',(file.size/1024).toFixed(1)+' KB'],['Última modificação',new Date(file.lastModified).toLocaleString('pt-BR')]]
+      .map(function(r){ return '<tr><td>'+r[0]+'</td><td style="font-family:monospace">'+esc(String(r[1]))+'</td></tr>'; }).join('')
+      +'</table><div style="margin-top:8px;font-size:11px;color:#4b5563">Para EXIF completo (GPS, câmera, ISO) use o ExifTool ou Jeffrey\'s EXIF Viewer.</div>';
+  };
+  reader.readAsDataURL(file);
+}
+
+function analyzeLLM() {
+  var text=document.getElementById('llmInput').value.trim();
+  if (!text) { toast('Cole texto para análise!'); return; }
+  var prompt='# Análise Forense Digital — IA\n\nVocê é um perito em investigação digital. Analise o conteúdo abaixo e identifique:\n1. Atividades suspeitas ou anômalas\n2. Padrões temporais ou comportamentais relevantes\n3. Possíveis autores, vítimas ou sistemas envolvidos\n4. Recomendações de investigação adicional\n5. Evidências relevantes para fins legais\n\n**Conteúdo:**\n```\n'+text.substring(0,3000)+'\n```\n\nForneça análise estruturada em formato de relatório técnico forense.';
+  document.getElementById('llmResult').innerHTML='<div style="background:rgba(79,70,229,.05);border:1px solid rgba(79,70,229,.2);border-radius:8px;padding:14px"><div style="font-size:12px;font-weight:600;color:#a5b4fc;margin-bottom:8px">📋 Prompt gerado para IA:</div><pre style="font-size:11px;color:#9ca3af;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto">'+esc(prompt)+'</pre><button class="btn-sm" style="margin-top:8px" onclick="navigator.clipboard.writeText(document.querySelector(\'#llmResult pre\').textContent).then(function(){toast(\'Prompt copiado!\')})">📋 Copiar Prompt</button></div>';
+}
+
+// ─── Relatório ────────────────────────────────────────────────────────────────
+function exportReport() {
+  switchTab('report',document.querySelectorAll('.tab')[8]);
+  setReportMode('auto'); generateReport();
+}
+
+async function generateReport() {
+  var [ev,nt,evt,osint,nodes]=await Promise.all([
+    fetch('/api/investigations/'+invId+'/evidence').then(function(r){ return r.json(); }),
+    fetch('/api/investigations/'+invId+'/notes').then(function(r){ return r.json(); }),
+    fetch('/api/investigations/'+invId+'/events').then(function(r){ return r.json(); }),
+    fetch('/api/investigations/'+invId+'/osint').then(function(r){ return r.json(); }),
+    fetch('/api/investigations/'+invId+'/nodes').then(function(r){ return r.json(); }),
+  ]);
+  var html='<h2>📊 Relatório de Investigação</h2>';
+  html+='<p><strong>Caso:</strong> '+esc(inv.title)+'</p>';
+  if (inv.target) html+='<p><strong>Alvo:</strong> '+esc(inv.target)+'</p>';
+  html+='<p><strong>Status:</strong> '+inv.status+' &nbsp;|&nbsp; <strong>Prioridade:</strong> '+(inv.priority||'média')+'</p>';
+  html+='<p><strong>Criado em:</strong> '+new Date(inv.created_at).toLocaleString('pt-BR')+'</p>';
+  if (inv.description) html+='<p><strong>Descrição:</strong> '+esc(inv.description)+'</p>';
+  html+='<hr style="border-color:rgba(79,70,229,.3);margin:16px 0">';
+  if (ev.length) {
+    html+='<h3>🔒 Evidências ('+ev.length+')</h3>';
+    ev.forEach(function(e){ html+='<div style="margin-bottom:10px;padding:10px;background:rgba(255,255,255,.02);border-radius:6px;border-left:3px solid #4f46e5"><span class="report-badge">'+e.type+'</span><strong>'+esc(e.title)+'</strong><br>'+(e.source?'<small>Fonte: '+esc(e.source)+'</small><br>':'')+(e.content?'<div style="margin-top:4px;font-family:monospace;font-size:12px">'+esc(e.content.substring(0,200))+'</div>':'')+(e.hash_value?'<div style="font-family:monospace;font-size:11px;color:#34d399;margin-top:4px">SHA-256: '+esc(e.hash_value)+'</div>':'')+'</div>'; });
+  }
+  if (evt.length) {
+    html+='<h3>📅 Linha do Tempo ('+evt.length+')</h3>';
+    evt.sort(function(a,b){ return new Date(a.event_date)-new Date(b.event_date); }).forEach(function(e){ html+='<div style="margin-bottom:8px;padding:8px;background:rgba(255,255,255,.02);border-radius:6px;border-left:3px solid '+(e.importance==='high'?'#ef4444':e.importance==='low'?'#6b7280':'#4f46e5')+'"><span style="color:#6b7280;font-size:11px">'+(e.event_date?new Date(e.event_date).toLocaleString('pt-BR'):'Sem data')+'</span><br><strong>'+esc(e.title)+'</strong>'+(e.description?'<br><small>'+esc(e.description)+'</small>':'')+'</div>'; });
+  }
+  if (nt.length) {
+    html+='<h3>📝 Notas ('+nt.length+')</h3>';
+    nt.forEach(function(n){ html+='<div style="margin-bottom:8px;padding:10px;background:rgba(255,255,255,.02);border-radius:6px;border-left:3px solid '+(n.color||'#fef9c3')+'"><strong>'+esc(n.title)+'</strong><br><small style="color:#9ca3af">'+esc(n.content)+'</small></div>'; });
+  }
+  if (osint.length) {
+    html+='<h3>🌐 OSINT ('+osint.length+')</h3>';
+    osint.forEach(function(s){ html+='<div style="margin-bottom:8px;padding:8px;background:rgba(255,255,255,.02);border-radius:6px"><strong>'+esc(s.query)+'</strong> <span class="report-badge">'+s.type+'</span><br>'+(s.source?'<small>Fonte: '+esc(s.source)+'</small><br>':'')+(s.result?'<small style="color:#9ca3af">'+esc(s.result.substring(0,200))+'</small>':'')+'</div>'; });
+  }
+  if (nodes.length) {
+    html+='<h3>🧠 Mapa Mental ('+nodes.length+' nós)</h3><div style="display:flex;flex-wrap:wrap;gap:6px">';
+    nodes.forEach(function(n){ html+='<span style="background:rgba(79,70,229,.1);border:1px solid rgba(79,70,229,.2);border-radius:6px;padding:3px 10px;font-size:12px;color:#a5b4fc">'+esc(n.label)+'</span>'; });
+    html+='</div>';
+  }
+  html+='<hr style="border-color:rgba(255,255,255,.07);margin:20px 0"><p style="color:#4b5563;font-size:11px">Relatório gerado em '+new Date().toLocaleString('pt-BR')+' — RMHacking Investigação Digital</p>';
+  document.getElementById('reportContent').innerHTML=html;
+}
+
+function setReportMode(mode) {
+  ['auto','ai','tpl'].forEach(function(m){
+    var btn=document.getElementById('rmode-'+m);
+    if (btn) btn.className=m===mode?'btn-primary':'btn-sm';
+    var panel=document.getElementById('report-panel-'+(m==='tpl'?'tpl':m));
+    if (panel) panel.style.display=m===mode?'block':'none';
+  });
+  if (mode==='auto') generateReport();
+}
+
+async function generateAIReport(mode) {
+  var sId=mode==='template'?'ai-report-status2':'ai-report-status';
+  var eId=mode==='template'?'ai-report-error2':'ai-report-error';
+  var oId=mode==='template'?'ai-report-output2':'ai-report-output';
+  document.getElementById(sId).style.display='block';
+  document.getElementById(eId).style.display='none';
+  document.getElementById(oId).style.display='none';
+  var body={mode:mode};
+  if (mode==='template') body.template=document.getElementById('tplContent').value;
+  try {
+    var r=await fetch('/api/investigations/'+invId+'/ai-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var d=await r.json();
+    if (d.error) throw new Error(d.error);
+    document.getElementById(oId).value=d.report||'';
+    document.getElementById(oId).style.display='block';
+  } catch(err) {
+    document.getElementById(eId).textContent='❌ '+err.message;
+    document.getElementById(eId).style.display='block';
+  } finally { document.getElementById(sId).style.display='none'; }
+}
+
+function copyAIReport() {
+  var o=document.getElementById('ai-report-output'), o2=document.getElementById('ai-report-output2');
+  var text=(o&&o.style.display!=='none'?o.value:o2&&o2.style.display!=='none'?o2.value:'');
+  if (!text) { toast('Nenhum relatório IA gerado'); return; }
+  navigator.clipboard.writeText(text).then(function(){ toast('Texto copiado!'); });
+}
+
+function printAIReport() {
+  var o=document.getElementById('ai-report-output'), o2=document.getElementById('ai-report-output2');
+  var text=(o&&o.style.display!=='none'?o.value:o2&&o2.style.display!=='none'?o2.value:'');
+  if (!text) { toast('Nenhum relatório para imprimir'); return; }
+  var w=window.open('','_blank');
+  w.document.write('<html><head><title>Relatório IA</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#222;line-height:1.6}pre{white-space:pre-wrap}.brand{text-align:right;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:10px;margin-top:30px}</style></head><body><pre>'+esc(text)+'</pre><div class="brand">Rafael Moreno · Investigador Digital · RMHacking Digital Investigation System</div></body></html>');
+  w.document.close(); w.print();
+}
+
+function loadTemplateFile(input) {
+  var file=input.files[0]; if (!file) return;
+  var r=new FileReader(); r.onload=function(e){ document.getElementById('tplContent').value=e.target.result; }; r.readAsText(file);
+}
+
+// ─── Modal Editar ─────────────────────────────────────────────────────────────
+function openEditModal() {
+  if (!inv) return;
+  document.getElementById('eTitle').value=inv.title||'';
+  document.getElementById('eTarget').value=inv.target||'';
+  document.getElementById('eDesc').value=inv.description||'';
+  document.getElementById('eStatus').value=inv.status||'open';
+  document.getElementById('ePriority').value=inv.priority||'medium';
+  document.getElementById('eTags').value=inv.tags||'';
+  document.getElementById('editOverlay').classList.remove('hidden');
+}
+
+async function saveEdit() {
+  await fetch('/api/investigations/'+invId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:document.getElementById('eTitle').value,target:document.getElementById('eTarget').value,description:document.getElementById('eDesc').value,status:document.getElementById('eStatus').value,priority:document.getElementById('ePriority').value,tags:document.getElementById('eTags').value})});
+  document.getElementById('editOverlay').classList.add('hidden');
+  await loadInvestigation(); toast('Investigação atualizada!');
+}
+
+// ─── Tema ─────────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  var cur=document.documentElement.getAttribute('data-theme')||'dark';
+  var next=cur==='light'?'dark':'light';
+  document.documentElement.setAttribute('data-theme',next);
+  localStorage.setItem('rmh-theme',next);
+  var btn=document.getElementById('themeBtn');
+  if (btn) btn.textContent=next==='light'?'🌙':'☀️';
+  if (mmCtx) mmRender();
+}
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+var _toastTimer;
+function toast(msg){ var el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(_toastTimer); _toastTimer=setTimeout(function(){ el.classList.remove('show'); },2800); }
+
+// ─── Inicialização ────────────────────────────────────────────────────────────
+(function(){
+  var saved=localStorage.getItem('rmh-theme');
+  if (saved){ document.documentElement.setAttribute('data-theme',saved); var btn=document.getElementById('themeBtn'); if(btn) btn.textContent=saved==='light'?'🌙':'☀️'; }
+  if (mmBgColorVal){ var inp=document.getElementById('mmBgColor'); if(inp) inp.value=mmBgColorVal; }
+})();
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PESSOA / CPF
+// ══════════════════════════════════════════════════════════════════════════════
+function maskCPF(el) {
+  var v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 9) v = v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6,9)+'-'+v.slice(9);
+  else if (v.length > 6) v = v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6);
+  else if (v.length > 3) v = v.slice(0,3)+'.'+v.slice(3);
+  el.value = v;
+}
+
+async function lookupCPF() {
+  var raw = document.getElementById('cpfInput').value.replace(/\D/g,'');
+  if (raw.length !== 11) { toast('CPF deve ter 11 dígitos'); return; }
+  var el = document.getElementById('cpfResult');
+  el.innerHTML = '<div style="color:#6b7280;font-size:12px;padding:10px 0">🔍 Consultando...</div>';
+
+  // Validate CPF check digits
+  function validCPF(c) {
+    if (/^(\d)\1{10}$/.test(c)) return false;
+    var s1=0,s2=0;
+    for(var i=0;i<9;i++){s1+=parseInt(c[i])*(10-i);}
+    var r1=(s1*10)%11; if(r1===10||r1===11)r1=0;
+    if(r1!==parseInt(c[9]))return false;
+    for(var i=0;i<10;i++){s2+=parseInt(c[i])*(11-i);}
+    var r2=(s2*10)%11; if(r2===10||r2===11)r2=0;
+    return r2===parseInt(c[10]);
+  }
+  if (!validCPF(raw)) {
+    el.innerHTML = '<div class="cpf-card" style="border-color:rgba(239,68,68,.3)"><div style="color:#f87171;font-size:13px">❌ CPF inválido (dígitos verificadores incorretos)</div></div>';
+    return;
+  }
+
+  // Format for display
+  var fmt = raw.slice(0,3)+'.'+raw.slice(3,6)+'.'+raw.slice(6,9)+'-'+raw.slice(9);
+
+  // Generate OSINT search links for the CPF
+  var links = '<div style="margin-top:12px;font-size:12px;color:#6b7280;line-height:2.2">';
+  links += '<b style="color:#9ca3af;display:block;margin-bottom:4px">🔍 Links de pesquisa pública:</b>';
+  links += '<div>🔎 <a href="https://www.google.com/search?q=%22'+raw+'%22+OR+%22'+fmt+'%22" target="_blank" style="color:#a5b4fc">Google — CPF</a></div>';
+  links += '<div>📱 <a href="https://www.truecaller.com/search/br/'+raw+'" target="_blank" style="color:#a5b4fc">Truecaller</a></div>';
+  links += '<div>🧾 <a href="https://servicos.receita.fazenda.gov.br/Servicos/CPF/ConsultaSituacao/ConsultaPublica.asp" target="_blank" style="color:#a5b4fc">Receita Federal — Situação cadastral</a></div>';
+  links += '<div>⚖️ <a href="https://www.jusbrasil.com.br/processos/busca?q='+raw+'" target="_blank" style="color:#a5b4fc">JusBrasil — Processos</a></div>';
+  links += '<div>🏦 <a href="https://registrato.bcb.gov.br" target="_blank" style="color:#a5b4fc">BCB Registrato — Relacionamentos financeiros</a></div>';
+  links += '</div>';
+
+  el.innerHTML = '<div class="cpf-card">'
+    + '<div style="font-size:13px;font-weight:600;color:#a5b4fc;margin-bottom:10px">✅ CPF válido: ' + fmt + '</div>'
+    + '<div class="cpf-field"><span>Formato</span><span>' + fmt + '</span></div>'
+    + '<div class="cpf-field"><span>Dígitos verificadores</span><span>' + raw.slice(9) + ' ✓</span></div>'
+    + '<div class="cpf-field"><span>Estado de emissão</span><span>' + cpfOriginState(raw) + '</span></div>'
+    + '</div>'
+    + links;
+
+  // Generate search links panel
+  var nm = document.getElementById('personName').value;
+  updatePersonLinks(nm, fmt);
+}
+
+function cpfOriginState(cpf) {
+  var states = ['SP','MG','RJ','RS','CE/MA/PI','BA/AL/SE/PB/PE/RN','PA/AM/AC/AP/RO/RR','DF/GO/MS/MT/TO','SC/PR','outros'];
+  return states[parseInt(cpf[8])] || 'Desconhecido';
+}
+
+function updatePersonLinks(name, cpf) {
+  var el = document.getElementById('personSearchLinks');
+  if (!name && !cpf) { el.innerHTML = '<em style="color:#374151">Preencha os dados acima para gerar links.</em>'; return; }
+  var q = encodeURIComponent((name||'')+' '+(cpf||''));
+  el.innerHTML = 
+    '<div>🔎 <a href="https://www.google.com/search?q='+q+'" target="_blank" style="color:#a5b4fc">Google</a></div>'+
+    '<div>👥 <a href="https://www.linkedin.com/search/results/all/?keywords='+encodeURIComponent(name||'')+'" target="_blank" style="color:#a5b4fc">LinkedIn</a></div>'+
+    '<div>📘 <a href="https://www.facebook.com/search/top?q='+encodeURIComponent(name||'')+'" target="_blank" style="color:#a5b4fc">Facebook</a></div>'+
+    '<div>⚖️ <a href="https://www.jusbrasil.com.br/busca?q='+encodeURIComponent((name||'')+(cpf?' '+cpf:''))+'" target="_blank" style="color:#a5b4fc">JusBrasil</a></div>'+
+    '<div>🧾 <a href="https://servicos.receita.fazenda.gov.br/Servicos/CPF/ConsultaSituacao/ConsultaPublica.asp" target="_blank" style="color:#a5b4fc">Receita Federal</a></div>'+
+    '<div>📷 <a href="https://pimeyes.com" target="_blank" style="color:#a5b4fc">PimEyes (busca facial)</a></div>';
+}
+
+// ── Pessoas Salvas (localStorage) ───────────────────────────────────────────
+function getPessoasSalvas() {
+  try { return JSON.parse(localStorage.getItem('rmhacking_pessoa_'+invId)||'[]'); } catch(e){ return []; }
+}
+function setPessoasSalvas(arr) {
+  localStorage.setItem('rmhacking_pessoa_'+invId, JSON.stringify(arr));
+}
+function renderPessoasSalvas() {
+  var arr = getPessoasSalvas();
+  var el = document.getElementById('pessoasSalvasList');
+  var ct = document.getElementById('pessoasSalvasCount');
+  if (!el) return;
+  if (ct) ct.textContent = arr.length ? '('+arr.length+')' : '';
+  if (!arr.length) { el.innerHTML='<p style="font-size:12px;color:#9ca3af;text-align:center;padding:8px">Nenhuma pessoa salva ainda.</p>'; return; }
+  el.innerHTML = arr.map(function(e,i){
+    return '<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer" onclick="loadPessoaSalva('+i+')">'
+      +'<span style="flex:1;font-size:12px;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">👤 '+(e.Nome||'Sem nome')+'</span>'
+      +'<span style="font-size:11px;color:#6b7280;white-space:nowrap">'+(e.CPF||'')+'</span>'
+      +'<button class="btn-sm" style="padding:2px 6px;font-size:10px;background:#fee2e2;color:#dc2626;border:none;flex-shrink:0" onclick="event.stopPropagation();deletePessoaSalva('+i+')">✕</button>'
+    +'</div>';
+  }).join('');
+}
+function loadPessoaSalva(idx) {
+  var arr = getPessoasSalvas();
+  var e = arr[idx]; if (!e) return;
+  document.getElementById('personName').value = e.Nome||'';
+  document.getElementById('personCpf').value = e.CPF||'';
+  document.getElementById('personRg').value = e.RG||'';
+  document.getElementById('personBirth').value = e.Nascimento||'';
+  var gnd=document.getElementById('personGender');
+  for(var i=0;i<gnd.options.length;i++){ if(gnd.options[i].value===e.Sexo||gnd.options[i].text===e.Sexo){gnd.selectedIndex=i;break;} }
+  document.getElementById('personEmail').value = e.Email||'';
+  document.getElementById('personPhone').value = e.Telefone||'';
+  document.getElementById('personAddr').value = e['Endereço']||'';
+  document.getElementById('personSocial').value = e['Redes Sociais']||'';
+  document.getElementById('personNotes').value = e['Observações']||'';
+  toast('👤 Pessoa carregada no formulário!');
+}
+function deletePessoaSalva(idx) {
+  var arr = getPessoasSalvas();
+  arr.splice(idx,1);
+  setPessoasSalvas(arr);
+  renderPessoasSalvas();
+}
+function clearPersonForm() {
+  ['personName','personCpf','personRg','personBirth','personEmail','personPhone','personAddr','personSocial','personNotes'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var gnd=document.getElementById('personGender'); if(gnd) gnd.selectedIndex=0;
+}
+
+async function savePersonProfile() {
+  var fields = {
+    Nome: document.getElementById('personName').value,
+    CPF: document.getElementById('personCpf').value,
+    RG: document.getElementById('personRg').value,
+    Nascimento: document.getElementById('personBirth').value,
+    Sexo: document.getElementById('personGender').value,
+    Email: document.getElementById('personEmail').value,
+    Telefone: document.getElementById('personPhone').value,
+    'Endereço': document.getElementById('personAddr').value,
+    'Redes Sociais': document.getElementById('personSocial').value,
+    'Observações': document.getElementById('personNotes').value,
+  };
+  var content = Object.entries(fields).filter(function(e){return e[1];}).map(function(e){return e[0]+': '+e[1];}).join('\n');
+  if (!content) { toast('Preencha pelo menos um campo'); return; }
+  await fetch('/api/investigations/'+invId+'/evidence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    title:'Perfil: '+(fields.Nome||'Pessoa desconhecida'), type:'text', content: content, source:'Cadastro manual', tags:'pessoa,perfil'
+  })});
+  var arr=getPessoasSalvas();
+  var idx=fields.CPF?arr.findIndex(function(e){return e.CPF===fields.CPF;}):-1;
+  if(idx>=0) arr[idx]=fields; else arr.unshift(fields);
+  setPessoasSalvas(arr);
+  renderPessoasSalvas();
+  clearPersonForm();
+  toast('✅ Perfil salvo! Formulário limpo para nova consulta.');
+  loadEvidence();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MAPA GEOGRÁFICO (Leaflet)
+// ══════════════════════════════════════════════════════════════════════════════
+var mapInstance = null;
+var mapPins = [];
+var mapMarkers = [];
+
+function initMap() {
+  if (mapInstance) return;
+  setTimeout(function() {
+    if (typeof L === 'undefined') return;
+    mapInstance = L.map('mapLeaflet').setView([-15.7801, -47.9292], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(mapInstance);
+    mapInstance.on('click', function(e) {
+      document.getElementById('mapPinLat').value = e.latlng.lat.toFixed(5);
+      document.getElementById('mapPinLng').value = e.latlng.lng.toFixed(5);
+      toast('📍 Coordenadas: '+e.latlng.lat.toFixed(5)+', '+e.latlng.lng.toFixed(5));
+    });
+    renderMapPins();
+  }, 400);
+}
+
+async function geolocateTarget() {
+  var target = document.getElementById('mapPinTarget').value.trim();
+  if (!target) { toast('Informe um IP ou endereço'); return; }
+  document.getElementById('mapGeoStatus').textContent = '🔍 Geolocalizando...';
+  try {
+    var isIP = /^(\d{1,3}\.){3}\d{1,3}$/.test(target);
+    if (isIP) {
+      var r = await fetch('https://ip-api.com/json/'+encodeURIComponent(target)+'?fields=status,country,regionName,city,lat,lon,isp,org,as').then(x=>x.json());
+      if (r.status === 'success') {
+        document.getElementById('mapPinLat').value = r.lat;
+        document.getElementById('mapPinLng').value = r.lon;
+        document.getElementById('mapGeoStatus').textContent = '✅ '+r.city+', '+r.regionName+', '+r.country+' | ISP: '+r.isp;
+        if (!document.getElementById('mapPinLabel').value) document.getElementById('mapPinLabel').value = target+' ('+r.city+')';
+      } else {
+        document.getElementById('mapGeoStatus').textContent = '⚠️ IP privado ou não localizável';
+      }
+    } else {
+      // Try geocoding via Nominatim
+      var url = 'https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(target);
+      var res = await fetch(url, {headers:{'User-Agent':'RMHacking-Investigation/1.0'}}).then(x=>x.json());
+      if (res && res.length > 0) {
+        document.getElementById('mapPinLat').value = parseFloat(res[0].lat).toFixed(5);
+        document.getElementById('mapPinLng').value = parseFloat(res[0].lon).toFixed(5);
+        document.getElementById('mapGeoStatus').textContent = '✅ '+res[0].display_name;
+      } else {
+        document.getElementById('mapGeoStatus').textContent = '⚠️ Endereço não encontrado';
+      }
+    }
+  } catch(e) {
+    document.getElementById('mapGeoStatus').textContent = '❌ Erro: '+e.message;
+  }
+}
+
+function addMapPin() {
+  var lat = parseFloat(document.getElementById('mapPinLat').value);
+  var lng = parseFloat(document.getElementById('mapPinLng').value);
+  var label = document.getElementById('mapPinLabel').value || 'Ponto';
+  var type = document.getElementById('mapPinType').value;
+  var target = document.getElementById('mapPinTarget').value;
+  if (isNaN(lat) || isNaN(lng)) { toast('Informe latitude e longitude válidas'); return; }
+  var pin = {id: Date.now(), lat, lng, label, type, target};
+  mapPins.push(pin);
+  var key = 'rmh-map-'+invId;
+  localStorage.setItem(key, JSON.stringify(mapPins));
+  addMarker(pin);
+  renderPinList();
+  document.getElementById('mapPinLat').value = '';
+  document.getElementById('mapPinLng').value = '';
+  document.getElementById('mapPinLabel').value = '';
+  document.getElementById('mapPinTarget').value = '';
+  document.getElementById('mapGeoStatus').textContent = '';
+  toast('📍 Ponto adicionado!');
+}
+
+var pinColors = {ip:'#4f46e5',address:'#10b981',person:'#f59e0b',company:'#8b5cf6',incident:'#ef4444'};
+var pinIcons = {ip:'🌐',address:'🏠',person:'👤',company:'🏢',incident:'⚠️'};
+function addMarker(pin) {
+  if (!mapInstance) return;
+  var icon = L.divIcon({
+    className:'',
+    html:'<div style="background:'+( pinColors[pin.type]||'#4f46e5')+';width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid rgba(255,255,255,.4);box-shadow:0 2px 6px rgba(0,0,0,.5)">'+(pinIcons[pin.type]||'📍')+'</div>',
+    iconSize:[28,28], iconAnchor:[14,14], popupAnchor:[0,-14]
+  });
+  var m = L.marker([pin.lat, pin.lng], {icon}).addTo(mapInstance);
+  m.bindPopup('<b>'+esc(pin.label)+'</b>'+(pin.target?'<br><small>'+esc(pin.target)+'</small>':''));
+  mapMarkers.push({id:pin.id, marker:m});
+}
+
+function renderMapPins() {
+  var key = 'rmh-map-'+invId;
+  try { mapPins = JSON.parse(localStorage.getItem(key)||'[]'); } catch(e){ mapPins=[]; }
+  mapMarkers.forEach(function(m){m.marker.remove();});
+  mapMarkers = [];
+  mapPins.forEach(addMarker);
+  renderPinList();
+}
+
+function renderPinList() {
+  var el = document.getElementById('mapPinList');
+  if (!mapPins.length) { el.innerHTML = '<div style="color:#374151;font-size:12px;text-align:center;padding:10px">Nenhum ponto adicionado</div>'; return; }
+  el.innerHTML = mapPins.map(function(p){
+    return '<div class="map-pin"><div class="map-pin-dot" style="background:'+(pinColors[p.type]||'#4f46e5')+'"></div>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.label)+'</div>'
+      +'<div style="font-size:10px;color:#4b5563">'+esc(p.target||'')+(p.lat?(' · '+p.lat.toFixed(3)+','+p.lng.toFixed(3)):'')+'</div></div>'
+      +'<button class="del-btn" onclick="removeMapPin('+p.id+')">×</button></div>';
+  }).join('');
+}
+
+function removeMapPin(id) {
+  mapPins = mapPins.filter(function(p){return p.id!==id;});
+  var idx = mapMarkers.findIndex(function(m){return m.id===id;});
+  if (idx>=0) { mapMarkers[idx].marker.remove(); mapMarkers.splice(idx,1); }
+  localStorage.setItem('rmh-map-'+invId, JSON.stringify(mapPins));
+  renderPinList();
+}
+
+function clearMapPins() {
+  if (!confirm('Remover todos os pontos?')) return;
+  mapPins = [];
+  mapMarkers.forEach(function(m){m.marker.remove();});
+  mapMarkers = [];
+  localStorage.removeItem('rmh-map-'+invId);
+  renderPinList();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DECODIFICADOR / TOOLKIT
+// ══════════════════════════════════════════════════════════════════════════════
+var decMode = 'b64';
+var decModes = {
+  b64: 'Codifica/decodifica Base64',
+  url: 'Codifica/decodifica URL encoding (%XX)',
+  hex: 'Converte Hexadecimal ↔ Texto ASCII/UTF-8',
+  jwt: 'Decodifica tokens JWT (não valida assinatura)',
+  hashid: 'Identifica o tipo provável de hash pelo comprimento'
+};
+function setDecMode(m) {
+  decMode = m;
+  document.querySelectorAll('.decoder-tab button').forEach(function(b,i){b.classList.toggle('active', b.textContent.toLowerCase().startsWith(m.slice(0,2)));});
+  document.getElementById('decModeDesc').textContent = decModes[m]||'';
+}
+function runDecoder(dir) {
+  var inp = document.getElementById('decInput').value;
+  var out = document.getElementById('decOutput');
+  out.style.display = 'block';
+  try {
+    var result = '';
+    if (decMode === 'b64') {
+      if (dir === 'decode') result = atob(inp.trim());
+      else result = btoa(inp);
+    } else if (decMode === 'url') {
+      if (dir === 'decode') result = decodeURIComponent(inp.trim());
+      else result = encodeURIComponent(inp);
+    } else if (decMode === 'hex') {
+      if (dir === 'decode') {
+        var hex = inp.replace(/\s+/g,'');
+        result = '';
+        for(var i=0;i<hex.length;i+=2){ result+=String.fromCharCode(parseInt(hex.slice(i,i+2),16)); }
+      } else {
+        result = Array.from(inp).map(function(c){return c.charCodeAt(0).toString(16).padStart(2,'0');}).join(' ');
+      }
+    } else if (decMode === 'jwt') {
+      var parts = inp.trim().split('.');
+      if (parts.length !== 3) throw new Error('JWT inválido: precisa de 3 partes separadas por ponto');
+      var decPart = function(s) {
+        s = s.replace(/-/g,'+').replace(/_/g,'/');
+        while(s.length%4) s+='=';
+        return JSON.stringify(JSON.parse(atob(s)),null,2);
+      };
+      result = '── HEADER ──\n'+decPart(parts[0])+'\n\n── PAYLOAD ──\n'+decPart(parts[1])+'\n\n── SIGNATURE ──\n'+parts[2]+' (não verificado)';
+    } else if (decMode === 'hashid') {
+      var v = inp.trim().replace(/\s/g,'');
+      var types = {32:'MD5',40:'SHA-1',56:'SHA-224',64:'SHA-256',96:'SHA-384',128:'SHA-512',60:'BCrypt',56:'SHA3-224',64:'SHA3-256'};
+      result = 'Comprimento: '+v.length+' chars\nTipo provável: '+(types[v.length]||'Desconhecido')+'\nCharset: '+((/^[0-9a-fA-F]+$/.test(v)?'Hexadecimal':'Não-hex (pode ser Base64/bcrypt)'));
+    }
+    out.textContent = result;
+  } catch(e) {
+    out.textContent = '❌ Erro: '+e.message;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VERIFICADOR DE REPUTAÇÃO
+// ══════════════════════════════════════════════════════════════════════════════
+async function checkReputation() {
+  var target = document.getElementById('repTarget').value.trim();
+  if (!target) { toast('Informe um IP, domínio ou e-mail'); return; }
+  var el = document.getElementById('repResult');
+  el.innerHTML = '<div class="rep-result neutral">🔍 Verificando reputação de <b>'+esc(target)+'</b>...</div>';
+
+  var isIP = /^(\d{1,3}\.){3}\d{1,3}$/.test(target);
+  var isEmail = target.includes('@');
+
+  var results = [];
+
+  // ip-api.com for IPs
+  if (isIP) {
+    try {
+      var r = await fetch('https://ip-api.com/json/'+encodeURIComponent(target)+'?fields=status,country,regionName,city,isp,org,as,proxy,hosting,mobile').then(x=>x.json());
+      if (r.status==='success') {
+        var flags = [];
+        if (r.proxy) flags.push('⚠️ Proxy/VPN detectado');
+        if (r.hosting) flags.push('🖥️ Servidor de hospedagem');
+        if (r.mobile) flags.push('📱 Rede móvel');
+        results.push({
+          source: 'ip-api.com',
+          status: (r.proxy||r.hosting)?'suspicious':'clean',
+          info: r.city+', '+r.regionName+', '+r.country+' | ISP: '+r.isp+(flags.length?' | '+flags.join(' '):'')
+        });
+      }
+    } catch(e) { results.push({source:'ip-api.com', status:'neutral', info:'Erro: '+e.message}); }
+  }
+
+  // VirusTotal public URL check (no API key needed for links)
+  var vtUrl = isIP
+    ? 'https://www.virustotal.com/gui/ip-address/'+target
+    : isEmail
+    ? 'https://www.virustotal.com/gui/search/'+encodeURIComponent(target)
+    : 'https://www.virustotal.com/gui/domain/'+target;
+
+  results.push({source:'VirusTotal', status:'neutral', info:'<a href="'+vtUrl+'" target="_blank" style="color:#a5b4fc">Abrir relatório no VirusTotal ↗</a>'});
+
+  var abuseURL = isIP
+    ? 'https://www.abuseipdb.com/check/'+target
+    : 'https://www.abuseipdb.com';
+  results.push({source:'AbuseIPDB', status:'neutral', info:'<a href="'+abuseURL+'" target="_blank" style="color:#a5b4fc">Verificar no AbuseIPDB ↗</a>'});
+
+  if (!isEmail && !isIP) {
+    results.push({source:'URLScan.io', status:'neutral', info:'<a href="https://urlscan.io/search/#'+encodeURIComponent(target)+'" target="_blank" style="color:#a5b4fc">Pesquisar no URLScan.io ↗</a>'});
+  }
+  if (isEmail) {
+    results.push({source:'HaveIBeenPwned', status:'neutral', info:'<a href="https://haveibeenpwned.com/account/'+encodeURIComponent(target)+'" target="_blank" style="color:#a5b4fc">Verificar vazamentos ↗</a>'});
+    results.push({source:'Hunter.io', status:'neutral', info:'<a href="https://hunter.io/email-verifier/'+encodeURIComponent(target)+'" target="_blank" style="color:#a5b4fc">Verificar e-mail ↗</a>'});
+  }
+
+  el.innerHTML = results.map(function(r){
+    return '<div class="rep-result '+r.status+'"><b>'+esc(r.source)+'</b>: '+r.info+'</div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GRAFO DE ENTIDADES
+// ══════════════════════════════════════════════════════════════════════════════
+var entCanvas, entCtx;
+var entities = [], entityLinks = [];
+var entSelType = 'person';
+var entSelected = null, entConnecting = false, entConnFrom = null;
+var entOffX=0,entOffY=0,entScale=1,entPanning=false,entPanStart=null;
+var entDragging=false,entDragNode=null,entDragOff={x:0,y:0};
+
+var entTypeColors = {
+  person:  {stroke:'#f59e0b', fill:'rgba(245,158,11,.18)', icon:'👤'},
+  company: {stroke:'#8b5cf6', fill:'rgba(139,92,246,.18)', icon:'🏢'},
+  ip:      {stroke:'#4f46e5', fill:'rgba(79,70,229,.18)',  icon:'🌐'},
+  email:   {stroke:'#10b981', fill:'rgba(16,185,129,.18)', icon:'📧'},
+  device:  {stroke:'#06b6d4', fill:'rgba(6,182,212,.18)',  icon:'💻'},
+  account: {stroke:'#f43f5e', fill:'rgba(244,63,94,.18)',  icon:'🔑'},
+};
+
+function selEntityType(t) {
+  entSelType = t;
+  document.querySelectorAll('[id^="etBtn-"]').forEach(function(b){b.classList.remove('sel');});
+  var btn = document.getElementById('etBtn-'+t);
+  if (btn) btn.classList.add('sel');
+}
+
+function initEntityGraph() {
+  entCanvas = document.getElementById('entityCanvas');
+  if (!entCanvas) return;
+  entCtx = entCanvas.getContext('2d');
+  function resizeEntCanvas() {
+    var r = entCanvas.getBoundingClientRect();
+    entCanvas.width = r.width; entCanvas.height = r.height;
+    renderEntities();
+  }
+  new ResizeObserver(resizeEntCanvas).observe(entCanvas);
+  resizeEntCanvas();
+  entCanvas.addEventListener('mousedown', entOnMouseDown);
+  entCanvas.addEventListener('mousemove', entOnMouseMove);
+  entCanvas.addEventListener('mouseup', entOnMouseUp);
+  entCanvas.addEventListener('dblclick', entOnDblClick);
+  entCanvas.addEventListener('wheel', entOnWheel, {passive:false});
+  loadEntities();
+}
+
+async function loadEntities() {
+  var res = await Promise.all([
+    fetch('/api/investigations/'+invId+'/entities').then(r=>r.json()).catch(function(){return[];}),
+    fetch('/api/investigations/'+invId+'/entity-links').then(r=>r.json()).catch(function(){return[];})
+  ]);
+  entities = res[0]||[];
+  entityLinks = res[1]||[];
+  renderEntities();
+  renderEntityLists();
+}
+
+async function addEntity() {
+  var label = document.getElementById('entityLabel').value.trim();
+  if (!label) { toast('Informe o nome da entidade'); return; }
+  var cx = (entCanvas.width/2 - entOffX)/entScale + (Math.random()-0.5)*120;
+  var cy = (entCanvas.height/2 - entOffY)/entScale + (Math.random()-0.5)*80;
+  var entity = {id:'e'+Date.now(), type:entSelType, label:label, notes:'', x:cx, y:cy};
+  entities.push(entity);
+  await fetch('/api/investigations/'+invId+'/entities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entity)});
+  document.getElementById('entityLabel').value='';
+  renderEntities();
+  renderEntityLists();
+  toast('✅ Entidade adicionada');
+}
+
+async function deleteEntity(id) {
+  entities = entities.filter(function(e){return e.id!==id;});
+  entityLinks = entityLinks.filter(function(l){return l.from!==id&&l.to!==id;});
+  await fetch('/api/investigations/'+invId+'/entities/'+id,{method:'DELETE'});
+  renderEntities();
+  renderEntityLists();
+}
+
+function toggleEntityConnect() {
+  entConnecting = !entConnecting;
+  entConnFrom = null;
+  var btn = document.getElementById('entityConnBtn');
+  btn.classList.toggle('active', entConnecting);
+  btn.style.background = entConnecting ? 'rgba(79,70,229,.25)' : '';
+  entCanvas.style.cursor = entConnecting ? 'crosshair' : 'default';
+}
+
+function entityFit() {
+  if (!entities.length) return;
+  var xs=entities.map(function(e){return e.x;}), ys=entities.map(function(e){return e.y;});
+  var minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  var pw=entCanvas.width-80, ph=entCanvas.height-80;
+  var scaleX=pw/Math.max(maxX-minX,1), scaleY=ph/Math.max(maxY-minY,1);
+  entScale=Math.min(scaleX,scaleY,1.5);
+  entOffX = entCanvas.width/2 - (minX+maxX)/2*entScale;
+  entOffY = entCanvas.height/2 - (minY+maxY)/2*entScale;
+  renderEntities();
+}
+
+function entWorldToScreen(x,y){return{x:x*entScale+entOffX,y:y*entScale+entOffY};}
+function entScreenToWorld(x,y){return{x:(x-entOffX)/entScale,y:(y-entOffY)/entScale};}
+
+function entGetNodeAt(sx,sy) {
+  var R=30;
+  for(var i=entities.length-1;i>=0;i--){
+    var s=entWorldToScreen(entities[i].x,entities[i].y);
+    if(Math.hypot(sx-s.x,sy-s.y)<R) return entities[i];
+  }
+  return null;
+}
+
+function renderEntities() {
+  if (!entCtx) return;
+  var W=entCanvas.width, H=entCanvas.height;
+  entCtx.clearRect(0,0,W,H);
+
+  // Grid
+  entCtx.strokeStyle='rgba(255,255,255,.03)';
+  entCtx.lineWidth=1;
+  var gs=50*entScale;
+  for(var x=(entOffX%gs+gs)%gs;x<W;x+=gs){entCtx.beginPath();entCtx.moveTo(x,0);entCtx.lineTo(x,H);entCtx.stroke();}
+  for(var y=(entOffY%gs+gs)%gs;y<H;y+=gs){entCtx.beginPath();entCtx.moveTo(0,y);entCtx.lineTo(W,y);entCtx.stroke();}
+
+  // Links
+  entityLinks.forEach(function(link){
+    var from = entities.find(function(e){return e.id===link.from;});
+    var to   = entities.find(function(e){return e.id===link.to;});
+    if (!from||!to) return;
+    var a=entWorldToScreen(from.x,from.y), b=entWorldToScreen(to.x,to.y);
+    entCtx.beginPath();
+    entCtx.strokeStyle='rgba(148,163,184,.5)';
+    entCtx.lineWidth=1.5;
+    entCtx.moveTo(a.x,a.y);entCtx.lineTo(b.x,b.y);entCtx.stroke();
+    // Arrow
+    var ang=Math.atan2(b.y-a.y,b.x-a.x);
+    var ax=b.x-28*entScale*Math.cos(ang), ay=b.y-28*entScale*Math.sin(ang);
+    entCtx.beginPath();
+    entCtx.fillStyle='rgba(148,163,184,.6)';
+    entCtx.moveTo(ax,ay);
+    entCtx.lineTo(ax-10*Math.cos(ang-0.4),ay-10*Math.sin(ang-0.4));
+    entCtx.lineTo(ax-10*Math.cos(ang+0.4),ay-10*Math.sin(ang+0.4));
+    entCtx.closePath();entCtx.fill();
+    // Label
+    if (link.label) {
+      entCtx.fillStyle='rgba(100,116,139,.8)';
+      entCtx.font='10px sans-serif';
+      entCtx.textAlign='center';
+      entCtx.fillText(link.label,(a.x+b.x)/2,(a.y+b.y)/2-5);
+    }
+  });
+
+  // Nodes
+  var R=26;
+  entities.forEach(function(ent){
+    var s=entWorldToScreen(ent.x,ent.y);
+    var c=entTypeColors[ent.type]||entTypeColors.person;
+    var isSel=(entSelected&&entSelected.id===ent.id)||( entConnFrom&&entConnFrom.id===ent.id);
+    entCtx.beginPath();
+    entCtx.arc(s.x,s.y,R*entScale,0,Math.PI*2);
+    entCtx.fillStyle=c.fill;
+    entCtx.fill();
+    entCtx.strokeStyle=isSel?'#fff':c.stroke;
+    entCtx.lineWidth=isSel?3:2;
+    entCtx.stroke();
+    // Icon
+    entCtx.font=(16*entScale)+'px serif';
+    entCtx.textAlign='center';
+    entCtx.textBaseline='middle';
+    entCtx.fillStyle='rgba(255,255,255,.9)';
+    entCtx.fillText(c.icon,s.x,s.y);
+    // Label
+    entCtx.font='bold '+(10.5*entScale)+'px sans-serif';
+    entCtx.fillStyle='#e2e8f0';
+    entCtx.textBaseline='top';
+    var maxW=90*entScale;
+    var lbl=ent.label;
+    if(entCtx.measureText(lbl).width>maxW){while(entCtx.measureText(lbl+'…').width>maxW&&lbl.length>1)lbl=lbl.slice(0,-1);lbl+='…';}
+    entCtx.fillText(lbl,s.x,s.y+R*entScale+3);
+  });
+}
+
+function entOnMouseDown(e) {
+  var rect=entCanvas.getBoundingClientRect();
+  var sx=e.clientX-rect.left, sy=e.clientY-rect.top;
+  var node=entGetNodeAt(sx,sy);
+  if (entConnecting) {
+    if (node) {
+      if (!entConnFrom) { entConnFrom=node; toast('Clique no nó de destino'); }
+      else if (entConnFrom.id!==node.id) { createEntityLink(entConnFrom,node); entConnFrom=null; toggleEntityConnect(); }
+    }
+    return;
+  }
+  if (node) {
+    entSelected=node;
+    entDragging=true;
+    entDragNode=node;
+    var ws=entWorldToScreen(node.x,node.y);
+    entDragOff={x:sx-ws.x,y:sy-ws.y};
+    renderEntities();
+    return;
+  }
+  entSelected=null;
+  entPanning=true;
+  entPanStart={x:e.clientX-entOffX,y:e.clientY-entOffY};
+  renderEntities();
+}
+
+function entOnMouseMove(e) {
+  var rect=entCanvas.getBoundingClientRect();
+  var sx=e.clientX-rect.left, sy=e.clientY-rect.top;
+  if(entDragging&&entDragNode){
+    var wp=entScreenToWorld(sx-entDragOff.x,sy-entDragOff.y);
+    entDragNode.x=wp.x+26/entScale; entDragNode.y=wp.y+26/entScale;
+    renderEntities();
+    return;
+  }
+  if(entPanning){entOffX=e.clientX-entPanStart.x;entOffY=e.clientY-entPanStart.y;renderEntities();}
+}
+
+function entOnMouseUp(e) {
+  if(entDragging&&entDragNode){
+    fetch('/api/investigations/'+invId+'/entities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entDragNode)});
+  }
+  entDragging=false;entDragNode=null;entPanning=false;
+}
+
+function entOnDblClick(e) {
+  var rect=entCanvas.getBoundingClientRect();
+  var node=entGetNodeAt(e.clientX-rect.left,e.clientY-rect.top);
+  if(node){var lbl=prompt('Editar rótulo:',node.label);if(lbl!==null){node.label=lbl;fetch('/api/investigations/'+invId+'/entities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(node)});renderEntities();renderEntityLists();}}
+}
+
+function entOnWheel(e) {
+  e.preventDefault();
+  var rect=entCanvas.getBoundingClientRect();
+  var sx=e.clientX-rect.left,sy=e.clientY-rect.top;
+  var delta=e.deltaY>0?0.85:1.18;
+  var newScale=Math.max(0.2,Math.min(3,entScale*delta));
+  entOffX=sx-(sx-entOffX)*(newScale/entScale);
+  entOffY=sy-(sy-entOffY)*(newScale/entScale);
+  entScale=newScale;
+  renderEntities();
+}
+
+async function createEntityLink(from, to) {
+  var label = prompt('Rótulo da conexão (opcional):','') || '';
+  var link = {id:'l'+Date.now(), from:from.id, to:to.id, label:label};
+  entityLinks.push(link);
+  await fetch('/api/investigations/'+invId+'/entity-links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(link)});
+  renderEntities();
+  renderEntityLists();
+  toast('🔗 Conexão criada');
+}
+
+function renderEntityLists() {
+  var el = document.getElementById('entityList');
+  if (!entities.length) { el.innerHTML='<div style="color:#374151;font-size:12px;padding:10px 0">Nenhuma entidade</div>'; }
+  else el.innerHTML = entities.map(function(e){
+    var c=entTypeColors[e.type]||entTypeColors.person;
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03)">'
+      +'<span style="font-size:15px">'+c.icon+'</span>'
+      +'<span style="flex:1;font-size:12px;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.label)+'</span>'
+      +'<button class="del-btn" onclick="deleteEntity(this.dataset.id)" data-id="'+e.id+'">×</button></div>';
+  }).join('');
+
+  var ll = document.getElementById('entityLinkList');
+  if (!entityLinks.length) { ll.innerHTML='<div style="text-align:center;padding:8px;color:#374151">Nenhuma conexão</div>'; }
+  else ll.innerHTML = entityLinks.map(function(l){
+    var from=entities.find(function(e){return e.id===l.from;}), to=entities.find(function(e){return e.id===l.to;});
+    return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.06)">'
+      +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(from?esc(from.label):'?')+' → '+(to?esc(to.label):'?')+(l.label?' <span style="color:#4b5563">('+esc(l.label)+')</span>':'')+'</span>'
+      +'<button class="del-btn" onclick="deleteEntityLink(this.dataset.id)" data-id="'+l.id+'">×</button></div>';
+  }).join('');
+}
+
+async function deleteEntityLink(id) {
+  entityLinks = entityLinks.filter(function(l){return l.id!==id;});
+  await fetch('/api/investigations/'+invId+'/entity-links/'+id,{method:'DELETE'});
+  renderEntities();
+  renderEntityLists();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// WATCHLIST
+// ══════════════════════════════════════════════════════════════════════════════
+var watchItems = [];
+
+async function loadWatchlist() {
+  watchItems = await fetch('/api/watchlist').then(r=>r.json()).catch(function(){return[];});
+  // Filter by current investigation
+  var filtered = watchItems.filter(function(w){return w.investigation_id==invId||w.investigation_id==null;});
+  renderWatchlist(filtered);
+}
+
+async function addWatchItem() {
+  var type = document.getElementById('watchType').value;
+  var target = document.getElementById('watchTarget').value.trim();
+  var label = document.getElementById('watchLabel').value.trim();
+  var interval = document.getElementById('watchInterval').value;
+  var notes = document.getElementById('watchNotes').value.trim();
+  if (!target) { toast('Informe o alvo'); return; }
+  var item = await fetch('/api/watchlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    investigation_id: invId, type, target, label: label||target, interval, notes
+  })}).then(r=>r.json());
+  document.getElementById('watchTarget').value='';
+  document.getElementById('watchLabel').value='';
+  document.getElementById('watchNotes').value='';
+  toast('👁️ Adicionado à watchlist');
+  loadWatchlist();
+}
+
+async function deleteWatchItem(id) {
+  await fetch('/api/watchlist/'+id,{method:'DELETE'});
+  toast('Removido da watchlist');
+  loadWatchlist();
+}
+
+async function checkWatchItem(id) {
+  var item = watchItems.find(function(w){return w.id==id;});
+  if (!item) return;
+  // Simple check: try to ping via IP-API or reputation
+  var el = document.getElementById('watch-status-'+id);
+  if(el) el.className='watch-status pending';
+  try {
+    var isIP = /^(\d{1,3}\.){3}\d{1,3}$/.test(item.target);
+    var status = 'ok';
+    if (isIP||item.type==='domain'||item.type==='ip') {
+      var r = await fetch('https://ip-api.com/json/'+(isIP?item.target:'')).then(x=>x.json()).catch(function(){return{};});
+      status = (r&&r.status==='success')?'ok':'alert';
+    }
+    await fetch('/api/watchlist/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({last_status:status})});
+    if(el) el.className='watch-status '+status;
+    toast('✅ Verificação concluída: '+status);
+  } catch(e) {
+    if(el) el.className='watch-status alert';
+  }
+}
+
+function renderWatchlist(items) {
+  var el = document.getElementById('watchlistItems');
+  if (!items.length) { el.innerHTML='<div style="color:#374151;font-size:12px;text-align:center;padding:20px">Nenhum alvo monitorado. Adicione o primeiro!</div>'; return; }
+  var typeIcons = {domain:'🌐',ip:'🖥️',email:'📧',cpf:'👤',cnpj:'🏢',username:'🔑',keyword:'🔍'};
+  el.innerHTML = items.map(function(w){
+    return '<div class="watch-item">'
+      +'<div class="watch-status '+w.last_status+'" id="watch-status-'+w.id+'"></div>'
+      +'<span style="font-size:16px">'+(typeIcons[w.type]||'🎯')+'</span>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.label||w.target)+'</div>'
+      +'<div style="font-size:11px;color:#4b5563">'+esc(w.target)+' · '+w.interval+(w.last_check?' · Última: '+w.last_check.slice(0,16):'')+'</div>'
+      +'</div>'
+      +'<button class="btn-sm" style="font-size:10px;padding:4px 8px" onclick="checkWatchItem('+w.id+')">🔍</button>'
+      +'<button class="del-btn" onclick="deleteWatchItem('+w.id+')">×</button>'
+      +'</div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CADEIA DE CUSTÓDIA
+// ══════════════════════════════════════════════════════════════════════════════
+var custodyItems = [];
+
+async function loadCustody() {
+  custodyItems = await fetch('/api/investigations/'+invId+'/custody').then(r=>r.json()).catch(function(){return[];});
+  renderCustody();
+}
+
+async function addCustody() {
+  var data = {
+    evidence_title: document.getElementById('custEvTitle').value.trim(),
+    evidence_hash:  document.getElementById('custEvHash').value.trim(),
+    action:         document.getElementById('custAction').value,
+    responsible:    document.getElementById('custResp').value.trim(),
+    responsible_role: document.getElementById('custRole').value.trim(),
+    location:       document.getElementById('custLocation').value.trim(),
+    method:         document.getElementById('custMethod').value.trim(),
+    seal_number:    document.getElementById('custSeal').value.trim(),
+    notes:          document.getElementById('custNotes').value.trim()
+  };
+  if (!data.evidence_title||!data.responsible) { toast('Preencha ao menos título e responsável'); return; }
+  var item = await fetch('/api/investigations/'+invId+'/custody',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(r=>r.json());
+  custodyItems.push(item);
+  renderCustody();
+  toast('🔐 Registro de custódia adicionado');
+  ['custEvTitle','custEvHash','custResp','custRole','custLocation','custMethod','custSeal','custNotes'].forEach(function(id){document.getElementById(id).value='';});
+}
+
+async function deleteCustody(id) {
+  await fetch('/api/investigations/'+invId+'/custody/'+id,{method:'DELETE'});
+  custodyItems = custodyItems.filter(function(c){return c.id!=id;});
+  renderCustody();
+  toast('Registro removido');
+}
+
+var actionLabels = {coleta:'📦 Coleta',preservacao:'🔒 Preservação',transporte:'🚚 Transporte',analise:'🔬 Análise',armazenamento:'💾 Armazenamento',transferencia:'🔄 Transferência',descarte:'🗑️ Descarte'};
+
+function renderCustody() {
+  var el = document.getElementById('custodyChain');
+  var empty = document.getElementById('custodyEmpty');
+  if (!custodyItems.length) { el.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  el.innerHTML = custodyItems.map(function(c){
+    return '<div class="custody-step">'
+      +'<div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:6px">'+(actionLabels[c.action]||c.action)+' — '+esc(c.evidence_title)+'</div>'
+      +'<div style="font-size:11px;color:#6b7280;line-height:1.9">'
+      +'<span style="color:#9ca3af">Responsável:</span> '+esc(c.responsible)+(c.responsible_role?' ('+esc(c.responsible_role)+')':'')+'<br>'
+      +(c.location?'<span style="color:#9ca3af">Local:</span> '+esc(c.location)+'<br>':'')
+      +(c.method?'<span style="color:#9ca3af">Ferramenta:</span> '+esc(c.method)+'<br>':'')
+      +(c.seal_number?'<span style="color:#9ca3af">Lacre:</span> <span style="font-family:monospace;color:#a5b4fc">'+esc(c.seal_number)+'</span><br>':'')
+      +(c.evidence_hash?'<span style="color:#9ca3af">Hash:</span> <span style="font-family:monospace;font-size:10px;color:#34d399">'+esc(c.evidence_hash.slice(0,32))+'…</span><br>':'')
+      +(c.notes?'<span style="color:#9ca3af">Obs:</span> '+esc(c.notes)+'<br>':'')
+      +'<span style="color:#4b5563">'+c.created_at+'</span>'
+      +'</div>'
+      +'<button class="del-btn" style="position:absolute;top:8px;right:10px" onclick="deleteCustody('+c.id+')">×</button>'
+      +'</div>';
+  }).join('');
+}
+
+function printCustody() {
+  var inv_title = inv ? inv.title : 'Investigação';
+  var w = window.open('','_blank','width=800,height:600');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cadeia de Custódia — '+esc(inv_title)+'</title>'
+    +'<style>body{font-family:Arial,sans-serif;font-size:12px;padding:30px;color:#111}h1{font-size:18px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:16px}.step{border:1px solid #ccc;border-radius:6px;padding:12px;margin-bottom:10px;position:relative;padding-left:44px}.step::before{content:counter(cnt);counter-increment:cnt;position:absolute;left:12px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}.cnt{counter-reset:cnt}.field{margin:2px 0}.lbl{color:#666}</style></head><body>'
+    +'<h1>Cadeia de Custódia — '+esc(inv_title)+'</h1>'
+    +'<p style="color:#666;font-size:11px">Gerado em: '+new Date().toLocaleString('pt-BR')+'</p>'
+    +'<div class="cnt">'+custodyItems.map(function(c){
+      return '<div class="step"><div style="font-weight:700;margin-bottom:6px">'+(actionLabels[c.action]||c.action)+' — '+esc(c.evidence_title)+'</div>'
+        +'<div class="field"><span class="lbl">Responsável:</span> '+esc(c.responsible)+(c.responsible_role?' ('+esc(c.responsible_role)+')':'')+'</div>'
+        +(c.location?'<div class="field"><span class="lbl">Local:</span> '+esc(c.location)+'</div>':'')
+        +(c.method?'<div class="field"><span class="lbl">Ferramenta:</span> '+esc(c.method)+'</div>':'')
+        +(c.seal_number?'<div class="field"><span class="lbl">Lacre:</span> '+esc(c.seal_number)+'</div>':'')
+        +(c.evidence_hash?'<div class="field"><span class="lbl">Hash:</span> <span style="font-family:monospace;font-size:10px">'+esc(c.evidence_hash)+'</span></div>':'')
+        +(c.notes?'<div class="field"><span class="lbl">Obs:</span> '+esc(c.notes)+'</div>':'')
+        +'<div class="field" style="color:#666">Data/Hora: '+c.created_at+'</div></div>';
+    }).join('')+'</div>'
+    +'</body></html>');
+  w.document.write('<div style="text-align:right;font-size:10px;color:#999;border-top:1px solid #eee;padding-top:8px;margin-top:20px">Rafael Moreno · Investigador Digital · RMHacking Digital Investigation System</div></body></html>');
+  w.document.close();
+  setTimeout(function(){w.print();},600);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BACKUP / RESTORE
+// ══════════════════════════════════════════════════════════════════════════════
+async function exportBackup() {
+  var a = document.createElement('a');
+  a.href = '/api/investigations/'+invId+'/backup';
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  toast('📦 Backup iniciado...');
+}
+
+async function importBackup(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var text = await file.text();
+  try {
+    var data = JSON.parse(text);
+    if (!data._app||!data.investigation) throw new Error('Arquivo inválido');
+    if (!confirm('Restaurar backup "'+data.investigation.title+'"? Será criada uma nova investigação.')) return;
+    var r = await fetch('/api/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(x=>x.json());
+    if (r.success) {
+      toast('✅ Backup restaurado! Redirecionando...');
+      setTimeout(function(){location.href='/?restored='+r.new_id;},1500);
+    } else {
+      toast('❌ '+r.error);
+    }
+  } catch(e) {
+    toast('❌ Arquivo inválido: '+e.message);
+  }
+  input.value='';
+}
+
+
+window.onload = init;
+</script>
+</body>
+</html>
