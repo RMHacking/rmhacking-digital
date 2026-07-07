@@ -520,6 +520,8 @@ async function checkRole() {
   } catch(e) {}
 }
 checkRole();
+init();
+window.addEventListener('pageshow', e => { if (e.persisted) loadAll(); });
 </script>
 
 <!-- Modal de Usuários -->
