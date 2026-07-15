@@ -7,29 +7,44 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0d0d14 url('/bg.jpg') center center/cover fixed no-repeat;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
-body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.82);pointer-events:none;z-index:0}
+body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.88);pointer-events:none;z-index:0}
 .sidebar,.main{position:relative;z-index:1}
 
 /* ── Sidebar ── */
-.sidebar{position:fixed;top:0;left:0;width:240px;height:100vh;background:#09090f;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;z-index:100}
-.sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
-.sidebar-logo h1{font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
-.sidebar-logo p{font-size:11px;color:#4b5563;margin-top:2px;letter-spacing:1px;text-transform:uppercase}
-.sidebar-nav{padding:16px 12px;flex:1}
-.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:#6b7280;transition:all .15s;text-decoration:none;margin-bottom:2px}
+.sidebar{position:fixed;top:0;left:0;width:240px;height:100vh;background:#09090f;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;z-index:100;transition:width .25s ease}
+.sidebar.collapsed{width:56px}
+.sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;overflow:hidden}
+.sidebar-logo-text{min-width:0;transition:opacity .2s}
+.sidebar.collapsed .sidebar-logo-text{opacity:0;pointer-events:none;width:0}
+.sidebar-logo h1{font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.sidebar-logo p{font-size:11px;color:#4b5563;margin-top:2px;letter-spacing:1px;text-transform:uppercase;white-space:nowrap}
+.sidebar-toggle{background:none;border:none;cursor:pointer;color:#6b7280;font-size:16px;padding:4px;border-radius:6px;transition:all .2s;flex-shrink:0}
+.sidebar-toggle:hover{background:rgba(79,70,229,.15);color:#a5b4fc}
+.sidebar-nav{padding:16px 8px;flex:1;overflow:hidden}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:#6b7280;transition:all .15s;text-decoration:none;margin-bottom:2px;white-space:nowrap;overflow:hidden}
 .nav-item:hover,.nav-item.active{background:rgba(79,70,229,.12);color:#a5b4fc}
-.nav-item .icon{width:18px;text-align:center}
-.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,.06)}
-.user-badge{display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(79,70,229,.08);border-radius:8px;border:1px solid rgba(79,70,229,.2)}
-.user-badge .avatar{width:28px;height:28px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
-.user-badge .info{flex:1;min-width:0}
-.user-badge .name{font-size:12px;font-weight:600;color:#c7d2fe;truncate:ellipsis}
+.nav-item .icon{width:18px;text-align:center;flex-shrink:0}
+.nav-label{transition:opacity .2s,width .2s}
+.sidebar.collapsed .nav-label{opacity:0;width:0;overflow:hidden}
+.sidebar.collapsed .nav-item{justify-content:center;padding:10px 0}
+.sidebar-footer{padding:12px 8px;border-top:1px solid rgba(255,255,255,.06);overflow:hidden}
+.user-badge{display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(79,70,229,.08);border-radius:8px;border:1px solid rgba(79,70,229,.2);overflow:hidden}
+.sidebar.collapsed .user-badge{justify-content:center;padding:8px 4px}
+.user-badge .avatar{width:28px;height:28px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.user-badge .info{flex:1;min-width:0;transition:opacity .2s,width .2s}
+.sidebar.collapsed .user-badge .info{opacity:0;width:0;overflow:hidden}
+.sidebar.collapsed .logout-btn{display:none}
+.user-badge .name{font-size:12px;font-weight:600;color:#c7d2fe}
 .user-badge .role{font-size:10px;color:#6b7280}
-.logout-btn{background:none;border:none;cursor:pointer;color:#6b7280;font-size:12px;padding:0;transition:color .2s}
+.logout-btn{background:none;border:none;cursor:pointer;color:#6b7280;font-size:12px;padding:0;transition:color .2s;flex-shrink:0}
 .logout-btn:hover{color:#ef4444}
+/* Tooltip on collapsed */
+.sidebar.collapsed .nav-item{position:relative}
+.sidebar.collapsed .nav-item:hover::after{content:attr(data-label);position:absolute;left:60px;background:#1e1e2e;color:#e2e8f0;font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid rgba(79,70,229,.3);white-space:nowrap;z-index:999;pointer-events:none}
 
 /* ── Main ── */
-.main{margin-left:240px;min-height:100vh}
+.main{margin-left:240px;min-height:100vh;transition:margin-left .25s ease}
+.main.sidebar-collapsed{margin-left:56px}
 .topbar{background:rgba(9,9,15,.8);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.06);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
 .topbar h2{font-size:18px;font-weight:600;color:#fff}
 .topbar-right{display:flex;align-items:center;gap:12px}
@@ -143,47 +158,50 @@ body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.82);point
 <body>
 
 <!-- Sidebar -->
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <h1>🔍 RMHacking</h1>
-    <p>Investigação Digital</p>
+    <div class="sidebar-logo-text">
+      <h1>🔍 RMHacking</h1>
+      <p>Investigação Digital</p>
+    </div>
+    <button class="sidebar-toggle" onclick="toggleSidebar()" id="sidebarToggleBtn" title="Recolher menu">◀</button>
   </div>
   <nav class="sidebar-nav">
-    <a class="nav-item active" href="/">
-      <span class="icon">📋</span> Dashboard
+    <a class="nav-item active" href="/" data-label="Dashboard">
+      <span class="icon">📋</span><span class="nav-label"> Dashboard</span>
     </a>
-    <a class="nav-item" href="#" onclick="filterStatus('open')">
-      <span class="icon">🟣</span> Abertas
+    <a class="nav-item" href="#" onclick="filterStatus('open')" data-label="Abertas">
+      <span class="icon">🟣</span><span class="nav-label"> Abertas</span>
     </a>
-    <a class="nav-item" href="#" onclick="filterStatus('todo')">
-      <span class="icon">🟡</span> Para Fazer
+    <a class="nav-item" href="#" onclick="filterStatus('todo')" data-label="Para Fazer">
+      <span class="icon">🟡</span><span class="nav-label"> Para Fazer</span>
     </a>
-    <a class="nav-item" href="#" onclick="filterStatus('closed')">
-      <span class="icon">🟢</span> Finalizadas
+    <a class="nav-item" href="#" onclick="filterStatus('closed')" data-label="Finalizadas">
+      <span class="icon">🟢</span><span class="nav-label"> Finalizadas</span>
     </a>
     <div style="height:1px;background:rgba(255,255,255,.06);margin:12px 4px"></div>
     <div id="folderNav" style="margin-bottom:4px"></div>
     <div style="height:1px;background:rgba(255,255,255,.06);margin:12px 4px"></div>
-    <a class="nav-item" href="#" onclick="showCreateModal()">
-      <span class="icon">➕</span> Nova Investigação
+    <a class="nav-item" href="#" onclick="showCreateModal()" data-label="Nova Investigação">
+      <span class="icon">➕</span><span class="nav-label"> Nova Investigação</span>
     </a>
-    <a class="nav-item" href="/ferramentas.html">
-      <span class="icon">🛠️</span> Ferramentas
+    <a class="nav-item" href="/ferramentas.html" data-label="Ferramentas">
+      <span class="icon">🛠️</span><span class="nav-label"> Ferramentas</span>
     </a>
-    <a class="nav-item" id="navUsers" href="#" onclick="showUsersModal()" style="display:none">
-      <span class="icon">👥</span> Gerenciar Usuários
+    <a class="nav-item" id="navUsers" href="#" onclick="showUsersModal()" style="display:none" data-label="Gerenciar Usuários">
+      <span class="icon">👥</span><span class="nav-label"> Gerenciar Usuários</span>
     </a>
-    <a class="nav-item" href="#" onclick="showSettingsModal()">
-      <span class="icon">⚙️</span> Configurações
+    <a class="nav-item" href="#" onclick="showSettingsModal()" data-label="Configurações">
+      <span class="icon">⚙️</span><span class="nav-label"> Configurações</span>
     </a>
-    <a class="nav-item" href="#" onclick="show2FAModal()">
-      <span class="icon">🔐</span> Autenticação 2FA
+    <a class="nav-item" href="#" onclick="show2FAModal()" data-label="Autenticação 2FA">
+      <span class="icon">🔐</span><span class="nav-label"> Autenticação 2FA</span>
     </a>
-    <a class="nav-item" id="navLogs" href="#" onclick="showLogsModal()" style="display:none">
-      <span class="icon">📜</span> Logs de Acesso
+    <a class="nav-item" id="navLogs" href="#" onclick="showLogsModal()" style="display:none" data-label="Logs de Acesso">
+      <span class="icon">📜</span><span class="nav-label"> Logs de Acesso</span>
     </a>
-    <a class="nav-item" id="navActivity" href="#" onclick="showActivityModal()" style="display:none">
-      <span class="icon">📊</span> Atividade
+    <a class="nav-item" id="navActivity" href="#" onclick="showActivityModal()" style="display:none" data-label="Atividade">
+      <span class="icon">📊</span><span class="nav-label"> Atividade</span>
     </a>
   </nav>
   <div class="sidebar-footer">
@@ -839,6 +857,29 @@ async function showActivityModal() {
   } catch(e) { el.innerHTML='<p style="color:#ef4444">Erro: '+e.message+'</p>'; }
 }
 function closeActivityModal() { document.getElementById('activityModalOverlay').style.display = 'none'; }
+
+// ── Sidebar Toggle ────────────────────────────────────────────────────────────
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const main = document.querySelector('.main');
+  const btn = document.getElementById('sidebarToggleBtn');
+  const collapsed = sb.classList.toggle('collapsed');
+  main.classList.toggle('sidebar-collapsed', collapsed);
+  btn.textContent = collapsed ? '▶' : '◀';
+  btn.title = collapsed ? 'Expandir menu' : 'Recolher menu';
+  localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
+}
+// Restaurar estado salvo
+(function() {
+  if (localStorage.getItem('sidebarCollapsed') === '1') {
+    const sb = document.getElementById('sidebar');
+    const main = document.querySelector('.main');
+    const btn = document.getElementById('sidebarToggleBtn');
+    if (sb) sb.classList.add('collapsed');
+    if (main) main.classList.add('sidebar-collapsed');
+    if (btn) { btn.textContent = '▶'; btn.title = 'Expandir menu'; }
+  }
+})();
 
 // ── Configurações / Perfil ────────────────────────────────────────────────────
 const CFG_KEY = 'rmhacking_config';
