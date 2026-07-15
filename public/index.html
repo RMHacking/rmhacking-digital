@@ -6,7 +6,9 @@
 <title>RMHacking — Investigação Digital</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+body{background:#0d0d14 url('/bg.jpg') center center/cover fixed no-repeat;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.82);pointer-events:none;z-index:0}
+.sidebar,.main{position:relative;z-index:1}
 
 /* ── Sidebar ── */
 .sidebar{position:fixed;top:0;left:0;width:240px;height:100vh;background:#09090f;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;z-index:100}
@@ -121,6 +123,20 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .deadline-badge.soon{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.25)}
 /* ── Session timer ── */
 #sessionTimer{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#1e1e2e;border:1px solid rgba(239,68,68,.4);border-radius:8px;padding:6px 14px;color:#f87171;font-size:12px;z-index:300;display:none}
+/* ── Settings Modal ── */
+.settings-tabs{display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:20px}
+.settings-tab{background:none;border:none;padding:8px 16px;font-size:13px;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s}
+.settings-tab.active{color:#a5b4fc;border-bottom-color:#4f46e5}
+.settings-pane{display:none}
+.settings-pane.active{display:block}
+.avatar-upload-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:20px}
+.avatar-preview{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);border:3px solid rgba(79,70,229,.4);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;overflow:hidden;cursor:pointer;position:relative}
+.avatar-preview img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.avatar-preview-overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:20px}
+.avatar-preview:hover .avatar-preview-overlay{opacity:1}
+.bg-preview{width:100%;height:120px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:12px;color:#4b5563;overflow:hidden;margin-bottom:12px;cursor:pointer;position:relative;background-size:cover;background-position:center}
+.bg-preview-overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);border-radius:10px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:13px;color:#fff}
+.bg-preview:hover .bg-preview-overlay{opacity:1}
 @media(max-width:900px){.sidebar{transform:translateX(-100%)}.main{margin-left:0}.board{grid-template-columns:1fr}.stats-bar{grid-template-columns:repeat(2,1fr)}.charts-row{grid-template-columns:1fr}}
 </style>
 </head>
@@ -157,6 +173,9 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
     <a class="nav-item" id="navUsers" href="#" onclick="showUsersModal()" style="display:none">
       <span class="icon">👥</span> Gerenciar Usuários
     </a>
+    <a class="nav-item" href="#" onclick="showSettingsModal()">
+      <span class="icon">⚙️</span> Configurações
+    </a>
     <a class="nav-item" href="#" onclick="show2FAModal()">
       <span class="icon">🔐</span> Autenticação 2FA
     </a>
@@ -168,13 +187,13 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
     </a>
   </nav>
   <div class="sidebar-footer">
-    <div class="user-badge">
-      <div class="avatar" id="userAvatar">RM</div>
+    <div class="user-badge" style="cursor:pointer" onclick="showSettingsModal()">
+      <div class="avatar" id="userAvatar" style="overflow:hidden;flex-shrink:0">RM</div>
       <div class="info">
         <div class="name" id="userDisplayName">Rafael Moreno</div>
-        <div class="role" id="userDisplayRole">Investigador</div>
+        <div class="role" id="userDisplayRole">Ethical Hacker</div>
       </div>
-      <button class="logout-btn" onclick="logout()" title="Sair">⏻</button>
+      <button class="logout-btn" onclick="event.stopPropagation();logout()" title="Sair">⏻</button>
     </div>
   </div>
 </aside>
@@ -821,10 +840,233 @@ async function showActivityModal() {
 }
 function closeActivityModal() { document.getElementById('activityModalOverlay').style.display = 'none'; }
 
+// ── Configurações / Perfil ────────────────────────────────────────────────────
+const CFG_KEY = 'rmhacking_config';
+
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem(CFG_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+function applyConfig() {
+  const cfg = loadConfig();
+  // Sidebar avatar
+  const avatarEl = document.getElementById('userAvatar');
+  if (cfg.avatar) {
+    avatarEl.innerHTML = `<img src="${cfg.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  }
+  if (cfg.name) document.getElementById('userDisplayName').textContent = cfg.name;
+  if (cfg.role_label) document.getElementById('userDisplayRole').textContent = cfg.role_label;
+  // Background image
+  if (cfg.bg) {
+    document.body.style.backgroundImage = `url('${cfg.bg}')`;
+  }
+  // Overlay opacity
+  if (cfg.overlay) {
+    const pseudo = document.querySelector('body');
+    pseudo.style.setProperty('--overlay-opacity', cfg.overlay/100);
+    applyOverlayStyle(cfg.overlay);
+  }
+}
+
+function applyOverlayStyle(val) {
+  let styleEl = document.getElementById('overlayStyle');
+  if (!styleEl) { styleEl = document.createElement('style'); styleEl.id='overlayStyle'; document.head.appendChild(styleEl); }
+  styleEl.textContent = `body::before{background:rgba(5,5,12,${(val/100).toFixed(2)})!important}`;
+}
+
+function showSettingsModal() {
+  const cfg = loadConfig();
+  document.getElementById('cfgName').value    = cfg.name || '';
+  document.getElementById('cfgRole').value    = cfg.role_label || '';
+  document.getElementById('cfgBirth').value   = cfg.birth || '';
+  document.getElementById('cfgCity').value    = cfg.city || '';
+  document.getElementById('cfgSocial').value  = cfg.social || '';
+  document.getElementById('cfgBio').value     = cfg.bio || '';
+  document.getElementById('cfgOverlay').value = cfg.overlay || 82;
+  document.getElementById('overlayVal').textContent = (cfg.overlay || 82) + '%';
+  // Avatar preview
+  const bigPrev = document.getElementById('avatarPreviewBig');
+  if (cfg.avatar) {
+    bigPrev.innerHTML = `<img src="${cfg.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"><div class="avatar-preview-overlay">📷</div>`;
+    bigPrev.onclick = () => document.getElementById('avatarFileInput').click();
+  } else {
+    bigPrev.innerHTML = `<span id="avatarPreviewText">${(cfg.name||'RM').substring(0,2).toUpperCase()}</span><div class="avatar-preview-overlay">📷</div>`;
+  }
+  // BG preview
+  const bgPrev = document.getElementById('bgPreview');
+  if (cfg.bg) {
+    bgPrev.style.backgroundImage = `url('${cfg.bg}')`;
+    document.getElementById('bgPreviewText').textContent = '';
+  } else {
+    bgPrev.style.backgroundImage = '';
+    document.getElementById('bgPreviewText').textContent = 'Clique para enviar uma imagem';
+  }
+  switchTab('perfil');
+  document.getElementById('settingsModalOverlay').style.display = 'flex';
+}
+
+function closeSettingsModal() {
+  document.getElementById('settingsModalOverlay').style.display = 'none';
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.settings-tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0&&tab==='perfil')||(i===1&&tab==='aparencia'));
+  });
+  document.getElementById('pane-perfil').classList.toggle('active', tab==='perfil');
+  document.getElementById('pane-aparencia').classList.toggle('active', tab==='aparencia');
+}
+
+function handleAvatarUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const src = ev.target.result;
+    const bigPrev = document.getElementById('avatarPreviewBig');
+    bigPrev.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"><div class="avatar-preview-overlay">📷</div>`;
+    bigPrev.onclick = () => document.getElementById('avatarFileInput').click();
+    bigPrev._pendingAvatar = src;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleBgUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const src = ev.target.result;
+    const bgPrev = document.getElementById('bgPreview');
+    bgPrev.style.backgroundImage = `url('${src}')`;
+    bgPrev.style.backgroundSize = 'cover';
+    document.getElementById('bgPreviewText').textContent = '';
+    bgPrev._pendingBg = src;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeBg() {
+  const bgPrev = document.getElementById('bgPreview');
+  bgPrev.style.backgroundImage = '';
+  bgPrev._pendingBg = '__remove__';
+  document.getElementById('bgPreviewText').textContent = 'Clique para enviar uma imagem';
+  document.body.style.backgroundImage = "url('/bg.jpg')";
+}
+
+function previewOverlay(val) {
+  document.getElementById('overlayVal').textContent = val + '%';
+  applyOverlayStyle(val);
+}
+
+function saveSettings() {
+  const cfg = loadConfig();
+  cfg.name        = document.getElementById('cfgName').value.trim() || cfg.name;
+  cfg.role_label  = document.getElementById('cfgRole').value.trim() || cfg.role_label;
+  cfg.birth       = document.getElementById('cfgBirth').value;
+  cfg.city        = document.getElementById('cfgCity').value.trim();
+  cfg.social      = document.getElementById('cfgSocial').value.trim();
+  cfg.bio         = document.getElementById('cfgBio').value.trim();
+  cfg.overlay     = parseInt(document.getElementById('cfgOverlay').value);
+  // Avatar
+  const bigPrev = document.getElementById('avatarPreviewBig');
+  if (bigPrev._pendingAvatar) cfg.avatar = bigPrev._pendingAvatar;
+  // BG
+  const bgPrev = document.getElementById('bgPreview');
+  if (bgPrev._pendingBg === '__remove__') delete cfg.bg;
+  else if (bgPrev._pendingBg) cfg.bg = bgPrev._pendingBg;
+
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  applyConfig();
+  closeSettingsModal();
+  toast('✅ Configurações salvas!');
+}
+
 checkRole();
 init();
+applyConfig();
 window.addEventListener('pageshow', e => { if (e.persisted) loadAll(); });
 </script>
+
+<!-- Modal Configurações -->
+<div id="settingsModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:1000" onclick="if(event.target===this)closeSettingsModal()">
+  <div class="modal" style="max-width:560px;width:100%;margin:20px">
+    <h3>⚙️ Configurações <button class="modal-close" onclick="closeSettingsModal()">×</button></h3>
+
+    <div class="settings-tabs">
+      <button class="settings-tab active" onclick="switchTab('perfil')">👤 Meu Perfil</button>
+      <button class="settings-tab" onclick="switchTab('aparencia')">🎨 Aparência</button>
+    </div>
+
+    <!-- ABA PERFIL -->
+    <div class="settings-pane active" id="pane-perfil">
+      <div class="avatar-upload-wrap">
+        <div class="avatar-preview" id="avatarPreviewBig" onclick="document.getElementById('avatarFileInput').click()">
+          <span id="avatarPreviewText">RM</span>
+          <div class="avatar-preview-overlay">📷</div>
+        </div>
+        <div style="font-size:11px;color:#6b7280">Clique para trocar a foto</div>
+        <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-row">
+          <label>Nome completo</label>
+          <input type="text" id="cfgName" placeholder="Rafael Moreno">
+        </div>
+        <div class="form-row">
+          <label>Cargo / Área</label>
+          <input type="text" id="cfgRole" placeholder="Ethical Hacker">
+        </div>
+        <div class="form-row">
+          <label>Data de Nascimento</label>
+          <input type="date" id="cfgBirth">
+        </div>
+        <div class="form-row">
+          <label>Cidade</label>
+          <input type="text" id="cfgCity" placeholder="São Paulo, SP">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Rede Social (Instagram / LinkedIn)</label>
+        <input type="text" id="cfgSocial" placeholder="@rmhacking ou linkedin.com/in/...">
+      </div>
+      <div class="form-row">
+        <label>Bio / Descrição</label>
+        <textarea id="cfgBio" placeholder="Especialista em segurança ofensiva..." style="min-height:60px"></textarea>
+      </div>
+    </div>
+
+    <!-- ABA APARÊNCIA -->
+    <div class="settings-pane" id="pane-aparencia">
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Imagem de Fundo</div>
+        <div class="bg-preview" id="bgPreview" onclick="document.getElementById('bgFileInput').click()">
+          <span id="bgPreviewText">Clique para enviar uma imagem</span>
+          <div class="bg-preview-overlay">🖼 Trocar imagem</div>
+        </div>
+        <input type="file" id="bgFileInput" accept="image/*" style="display:none" onchange="handleBgUpload(event)">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="document.getElementById('bgFileInput').click()">📁 Enviar imagem</button>
+          <button class="btn-secondary" style="font-size:12px;padding:6px 12px;color:#f87171" onclick="removeBg()">✕ Remover fundo</button>
+        </div>
+        <div style="font-size:11px;color:#4b5563;margin-top:8px">A imagem de fundo é salva localmente no seu navegador.</div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Opacidade do Overlay</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <input type="range" id="cfgOverlay" min="50" max="95" value="82" style="flex:1;accent-color:#4f46e5" oninput="previewOverlay(this.value)">
+          <span id="overlayVal" style="font-size:12px;color:#a5b4fc;width:36px">82%</span>
+        </div>
+        <div style="font-size:11px;color:#4b5563;margin-top:4px">Controla quanto o overlay escurece o fundo para facilitar a leitura.</div>
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top:4px">
+      <button class="btn-secondary" onclick="closeSettingsModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveSettings()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal de Usuários -->
 <div class="modal-overlay" id="usersModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000" onclick="if(event.target===this)closeUsersModal()">
