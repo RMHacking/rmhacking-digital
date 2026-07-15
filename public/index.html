@@ -133,6 +133,9 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
     <a class="nav-item" href="#" onclick="showCreateModal()">
       <span class="icon">➕</span> Nova Investigação
     </a>
+    <a class="nav-item" href="/ferramentas.html">
+      <span class="icon">🛠️</span> Ferramentas
+    </a>
     <a class="nav-item" id="navUsers" href="#" onclick="showUsersModal()" style="display:none">
       <span class="icon">👥</span> Gerenciar Usuários
     </a>
@@ -461,43 +464,77 @@ async function loadUsersList() {
   const users = await r.json();
   const el = document.getElementById('usersList');
   if (!users.length) { el.innerHTML = '<p style="color:#6b7280;font-size:13px;text-align:center;padding:12px">Nenhum usuário cadastrado.</p>'; return; }
-  el.innerHTML = users.map(u => `
+  el.innerHTML = users.map(u => {
+    const isAdmin = u.role === 'admin';
+    const isTemp  = u.temporary === true;
+    const badge   = isAdmin
+      ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(79,70,229,.2);color:#a5b4fc;font-weight:700">ADMIN</span>'
+      : isTemp
+        ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(245,158,11,.15);color:#fbbf24;font-weight:700">TEMPORÁRIO</span>'
+        : '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.06);color:#9ca3af;font-weight:700">USUÁRIO</span>';
+    return `
     <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px">
-      <div style="width:36px;height:36px;border-radius:50%;background:${u.role==='admin'?'#4f46e5':'#374151'};display:flex;align-items:center;justify-content:center;font-size:16px">${u.role==='admin'?'🔑':'👤'}</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:#f9fafb">${u.username}</div>
-        <div style="font-size:11px;color:#6b7280">${u.role==='admin'?'Administrador':'Usuário'} · ${(u.created_at||'').substring(0,10)}</div>
+      <div style="width:36px;height:36px;border-radius:50%;background:${isAdmin?'#4f46e5':isTemp?'rgba(245,158,11,.3)':'#374151'};display:flex;align-items:center;justify-content:center;font-size:16px">${isAdmin?'🔑':isTemp?'⏳':'👤'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:#f9fafb;display:flex;align-items:center;gap:6px">${u.username} ${badge}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">Criado em ${(u.created_at||'').substring(0,10)}</div>
       </div>
-      <button onclick="resetUserPwd('${u.id}','${u.username}')" style="background:rgba(79,70,229,.2);border:none;border-radius:6px;padding:5px 10px;color:#818cf8;cursor:pointer;font-size:11px">🔑 Senha</button>
-      <button onclick="deleteUser('${u.id}','${u.username}')" style="background:rgba(239,68,68,.1);border:none;border-radius:6px;padding:5px 10px;color:#ef4444;cursor:pointer;font-size:11px">✕</button>
-    </div>
-  `).join('');
+      <button onclick="copyCredentials('${u.username}')" title="Copiar credenciais" style="background:rgba(16,185,129,.1);border:none;border-radius:6px;padding:5px 10px;color:#34d399;cursor:pointer;font-size:11px">📋</button>
+      <button onclick="resetUserPwd('${u.id}','${u.username}')" style="background:rgba(79,70,229,.15);border:none;border-radius:6px;padding:5px 10px;color:#818cf8;cursor:pointer;font-size:11px">🔑</button>
+      ${!isAdmin ? `<button onclick="deleteUser('${u.id}','${u.username}')" style="background:rgba(239,68,68,.1);border:none;border-radius:6px;padding:5px 10px;color:#ef4444;cursor:pointer;font-size:11px">✕</button>` : ''}
+    </div>`
+  }).join('');
+}
+
+function genPassword() {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789@#!';
+  return Array.from({length:10}, ()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+function generateTempPwd() {
+  const pwd = genPassword();
+  document.getElementById('newUserPwd').value = pwd;
+  document.getElementById('newUserPwd').type = 'text';
+  toast('Senha gerada: ' + pwd);
+}
+
+function copyCredentials(username) {
+  const pwd = document.getElementById('newUserPwd').value;
+  const site = window.location.origin + '/login';
+  const text = `🔐 Acesso RMHacking Digital\nSite: ${site}\nUsuário: ${username}\nSenha: ${pwd||'(veja a senha definida)'}`;
+  navigator.clipboard.writeText(text).then(()=>toast('✅ Credenciais copiadas!')).catch(()=>toast('Copie manualmente: '+username));
 }
 
 async function createUser() {
   const username = document.getElementById('newUsername').value.trim().toLowerCase();
   const password = document.getElementById('newUserPwd').value;
-  const role = document.getElementById('newUserRole').value;
-  const errEl = document.getElementById('usersError');
+  const role     = document.getElementById('newUserRole').value;
+  const temporary = document.getElementById('newUserTemp').checked;
+  const errEl    = document.getElementById('usersError');
   errEl.style.display = 'none';
-  if (!username) { errEl.textContent = 'Informe o nome de usuário.'; errEl.style.display = 'block'; return; }
-  if (!password || password.length < 6) { errEl.textContent = 'Senha mínimo 6 caracteres.'; errEl.style.display = 'block'; return; }
-  const r = await fetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password,role}) });
+  if (!username) { errEl.textContent='Informe o nome de usuário.'; errEl.style.display='block'; return; }
+  if (!password || password.length<6) { errEl.textContent='Senha mínimo 6 caracteres.'; errEl.style.display='block'; return; }
+  const r = await fetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password,role,temporary}) });
   const d = await r.json();
-  if (d.error) { errEl.textContent = d.error; errEl.style.display = 'block'; return; }
+  if (d.error) { errEl.textContent=d.error; errEl.style.display='block'; return; }
+  // Copia credenciais automaticamente
+  const site = window.location.origin + '/login';
+  const text = `🔐 Acesso RMHacking Digital\nSite: ${site}\nUsuário: ${username}\nSenha: ${password}`;
+  navigator.clipboard.writeText(text).catch(()=>{});
   document.getElementById('newUsername').value = '';
   document.getElementById('newUserPwd').value = '';
+  document.getElementById('newUserTemp').checked = false;
   await loadUsersList();
-  toast('✅ Usuário criado!');
+  toast('✅ Usuário criado! Credenciais copiadas.');
 }
 
 async function deleteUser(id, username) {
-  if (!confirm('Excluir o usuário "' + username + '"?')) return;
+  if (!confirm('Revogar acesso de "' + username + '"?\nEle não conseguirá mais entrar no sistema.')) return;
   const r = await fetch('/api/users/'+id, { method:'DELETE' });
   const d = await r.json();
   if (d.error) { alert(d.error); return; }
   await loadUsersList();
-  toast('Usuário removido.');
+  toast('🚫 Acesso de "'+username+'" revogado.');
 }
 
 async function resetUserPwd(id, username) {
@@ -533,16 +570,30 @@ window.addEventListener('pageshow', e => { if (e.persisted) loadAll(); });
       <div style="font-size:13px;font-weight:600;color:#9ca3af;margin-bottom:12px">➕ Novo Usuário</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="form-group"><label class="form-label">Usuário</label><input class="form-input" id="newUsername" placeholder="ex: joao_silva"></div>
-        <div class="form-group"><label class="form-label">Senha</label><input class="form-input" type="password" id="newUserPwd" placeholder="mín. 6 caracteres"></div>
+        <div class="form-group">
+          <label class="form-label">Senha</label>
+          <div style="display:flex;gap:8px">
+            <input class="form-input" type="password" id="newUserPwd" placeholder="mín. 6 caracteres" style="flex:1">
+            <button onclick="generateTempPwd()" style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:0 12px;color:#34d399;cursor:pointer;font-size:12px;white-space:nowrap">⚡ Gerar</button>
+          </div>
+        </div>
       </div>
-      <div class="form-group" style="margin-top:8px"><label class="form-label">Perfil</label>
-        <select class="form-input" id="newUserRole">
-          <option value="user">👤 Usuário — acesso normal</option>
-          <option value="admin">🔑 Admin — gerencia usuários</option>
-        </select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+        <div class="form-group"><label class="form-label">Perfil</label>
+          <select class="form-input" id="newUserRole">
+            <option value="user">👤 Usuário</option>
+            <option value="admin">🔑 Admin</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Tipo</label>
+          <label style="display:flex;align-items:center;gap:8px;height:38px;cursor:pointer;font-size:13px;color:#e2e8f0">
+            <input type="checkbox" id="newUserTemp" style="width:16px;height:16px;accent-color:#f59e0b">
+            ⏳ Acesso temporário
+          </label>
+        </div>
       </div>
       <div id="usersError" style="display:none;color:#ef4444;font-size:12px;margin-top:8px;padding:8px;background:rgba(239,68,68,.1);border-radius:6px"></div>
-      <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="createUser()">+ Criar Usuário</button>
+      <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="createUser()">+ Criar Acesso</button>
     </div>
   </div>
 </div>

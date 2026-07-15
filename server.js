@@ -199,20 +199,20 @@ app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
   const snap = await fdb.collection('users').get();
   const users = snap.docs.map(d => {
     const u = d.data();
-    return { id:u.id, username:u.username, role:u.role, created_at:u.created_at };
+    return { id:u.id, username:u.username, role:u.role, temporary:u.temporary||false, created_at:u.created_at };
   });
   res.json(users);
 });
 
 app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
-  const { username, password, role } = req.body;
+  const { username, password, role, temporary } = req.body;
   if (!username || !password) return res.status(400).json({ error:'Username e senha obrigatórios' });
   if (password.length < 6) return res.status(400).json({ error:'Senha mínimo 6 caracteres' });
   const existing = await fdb.collection('users').where('username','==',username.toLowerCase().trim()).get();
   if (!existing.empty) return res.status(400).json({ error:'Usuário já existe' });
-  const user = { id:'u_'+Date.now(), username:username.toLowerCase().trim(), password_hash:hashPassword(password), role:role||'user', created_at:now() };
+  const user = { id:'u_'+Date.now(), username:username.toLowerCase().trim(), password_hash:hashPassword(password), role:role||'user', temporary:temporary===true, created_at:now() };
   await fdb.collection('users').doc(user.id).set(user);
-  res.json({ id:user.id, username:user.username, role:user.role, created_at:user.created_at });
+  res.json({ id:user.id, username:user.username, role:user.role, temporary:user.temporary, created_at:user.created_at });
 });
 
 app.put('/api/users/:id/password', requireAuth, requireAdmin, async (req, res) => {
@@ -586,6 +586,95 @@ app.post('/api/investigations/:id/ai-report', requireAuth, async (req, res) => {
   });
   apiReq.on('error', e=>res.status(500).json({error:e.message}));
   apiReq.write(payload); apiReq.end();
+});
+
+// ── Ferramentas OSINT ─────────────────────────────────────────────────────────
+const https_mod = require('https');
+const dns_mod   = require('dns').promises;
+
+function httpGet(url) {
+  return new Promise((resolve, reject) => {
+    https_mod.get(url, { headers:{'User-Agent':'RMHacking-Digital/1.0','Accept':'application/json'} }, res => {
+      let body='';
+      res.on('data',c=>body+=c);
+      res.on('end',()=>{ try{resolve(JSON.parse(body));}catch(e){resolve({_raw:body});} });
+    }).on('error', reject);
+  });
+}
+
+// CNPJ — ReceitaWS (gratuito)
+app.get('/api/tools/cnpj/:cnpj', requireAuth, async (req, res) => {
+  try {
+    const cnpj = req.params.cnpj.replace(/\D/g,'');
+    if (cnpj.length!==14) return res.status(400).json({error:'CNPJ inválido'});
+    const data = await httpGet('https://receitaws.com.br/v1/cnpj/'+cnpj);
+    if (data.status==='ERROR') return res.status(404).json({error:data.message||'CNPJ não encontrado'});
+    res.json(data);
+  } catch(e) { res.status(500).json({error:'Erro ao consultar CNPJ: '+e.message}); }
+});
+
+// IPInfo (gratuito, 50k/mês)
+app.get('/api/tools/ipinfo/:target', requireAuth, async (req, res) => {
+  try {
+    const target = decodeURIComponent(req.params.target);
+    const data = await httpGet('https://ipinfo.io/'+encodeURIComponent(target)+'/json');
+    res.json(data);
+  } catch(e) { res.status(500).json({error:'Erro ao consultar IP: '+e.message}); }
+});
+
+// WHOIS via api.whoapi.com (demo) ou fallback DNS
+app.get('/api/tools/whois/:domain', requireAuth, async (req, res) => {
+  try {
+    const domain = decodeURIComponent(req.params.domain).replace(/^https?:\/\//,'').split('/')[0];
+    const data = await httpGet('https://api.whoapi.com/?apikey=demokey&r=whois&q='+encodeURIComponent(domain));
+    if (data && data.whois) {
+      res.json({result: data.whois});
+    } else {
+      // Fallback: resolve DNS básico
+      const [a, mx, ns] = await Promise.allSettled([
+        dns_mod.resolve4(domain),
+        dns_mod.resolveMx(domain),
+        dns_mod.resolveNs(domain)
+      ]);
+      const lines = ['=== DNS INFO (fallback) ===','Domínio: '+domain,''];
+      if (a.status==='fulfilled') lines.push('A (IPv4): '+a.value.join(', '));
+      if (ns.status==='fulfilled') lines.push('NS: '+ns.value.join(', '));
+      if (mx.status==='fulfilled') lines.push('MX: '+mx.value.map(m=>m.exchange).join(', '));
+      res.json({result: lines.join('\n')});
+    }
+  } catch(e) { res.status(500).json({error:'Erro WHOIS: '+e.message}); }
+});
+
+// DNS Lookup
+app.get('/api/tools/dns/:domain', requireAuth, async (req, res) => {
+  try {
+    const domain = decodeURIComponent(req.params.domain).replace(/^https?:\/\//,'').split('/')[0];
+    const [a, aaaa, mx, ns, txt, cname] = await Promise.allSettled([
+      dns_mod.resolve4(domain),
+      dns_mod.resolve6(domain),
+      dns_mod.resolveMx(domain),
+      dns_mod.resolveNs(domain),
+      dns_mod.resolveTxt(domain),
+      dns_mod.resolveCname(domain),
+    ]);
+    const lines = ['=== DNS LOOKUP ===','Domínio: '+domain,''];
+    if (a.status==='fulfilled')     lines.push('A (IPv4):  '+a.value.join(', '));
+    if (aaaa.status==='fulfilled')  lines.push('AAAA (v6): '+aaaa.value.join(', '));
+    if (ns.status==='fulfilled')    lines.push('NS:        '+ns.value.join(', '));
+    if (mx.status==='fulfilled')    lines.push('MX:        '+mx.value.map(m=>m.priority+' '+m.exchange).join(' | '));
+    if (cname.status==='fulfilled') lines.push('CNAME:     '+cname.value.join(', '));
+    if (txt.status==='fulfilled')   lines.push('TXT:       '+txt.value.map(t=>t.join('')).join('\n           '));
+    res.json({result: lines.join('\n')});
+  } catch(e) { res.status(500).json({error:'Erro DNS: '+e.message}); }
+});
+
+// URLScan.io (gratuito, sem chave para busca)
+app.get('/api/tools/urlscan/:target', requireAuth, async (req, res) => {
+  try {
+    const target = decodeURIComponent(req.params.target).replace(/^https?:\/\//,'').split('/')[0];
+    const data = await httpGet('https://urlscan.io/api/v1/search/?q=domain:'+encodeURIComponent(target)+'&size=5');
+    res.json(data);
+  } catch(e) { res.status(500).json({error:'Erro URLScan: '+e.message}); }
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────

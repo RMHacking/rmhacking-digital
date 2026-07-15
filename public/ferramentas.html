@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ferramentas — RMHacking</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:100vh;display:flex}
+
+/* Sidebar */
+.sidebar{width:220px;min-height:100vh;background:#13131f;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
+.sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sidebar-logo h1{font-size:18px;font-weight:700;color:#a5b4fc}
+.sidebar-logo p{font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
+.sidebar-nav{padding:12px 8px;flex:1;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:#9ca3af;font-size:13px;font-weight:500;text-decoration:none;transition:all .15s;cursor:pointer;margin-bottom:2px}
+.nav-item:hover{background:rgba(165,180,252,.08);color:#e2e8f0}
+.nav-item.active{background:rgba(165,180,252,.12);color:#a5b4fc}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,.06);font-size:12px;color:#4b5563}
+.sidebar-footer a{color:#6b7280;text-decoration:none}
+.sidebar-footer a:hover{color:#a5b4fc}
+
+/* Main */
+.main{margin-left:220px;flex:1;padding:24px;min-height:100vh}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.page-header h2{font-size:20px;font-weight:700;color:#f1f5f9}
+.page-header p{font-size:13px;color:#6b7280;margin-top:3px}
+
+/* Alvo global */
+.alvo-bar{background:#13131f;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px 20px;margin-bottom:24px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.alvo-bar .form-group{flex:1;min-width:200px}
+.alvo-bar label{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px}
+.alvo-bar input,
+.alvo-bar select{width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 12px;color:#f1f5f9;font-size:13px;outline:none;transition:border-color .15s}
+.alvo-bar input:focus,
+.alvo-bar select:focus{border-color:#4f46e5}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.tab-btn{padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:transparent;color:#9ca3af;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.04em}
+.tab-btn:hover{border-color:rgba(165,180,252,.3);color:#a5b4fc}
+.tab-btn.active{background:rgba(79,70,229,.2);border-color:#4f46e5;color:#a5b4fc}
+
+/* Tool grid */
+.tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+
+/* Tool card */
+.tool-card{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:18px;transition:border-color .15s}
+.tool-card:hover{border-color:rgba(165,180,252,.2)}
+.tool-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.tool-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.tool-info h3{font-size:14px;font-weight:700;color:#f1f5f9}
+.tool-info p{font-size:11px;color:#6b7280;margin-top:2px}
+.tool-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;margin-left:6px}
+.badge-api{background:rgba(5,150,105,.15);color:#34d399;border:1px solid rgba(5,150,105,.2)}
+.badge-link{background:rgba(79,70,229,.1);color:#a5b4fc;border:1px solid rgba(79,70,229,.2)}
+
+.tool-actions{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.btn-tool{padding:7px 14px;border-radius:7px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
+.btn-launch{background:rgba(79,70,229,.15);color:#a5b4fc;border:1px solid rgba(79,70,229,.3)}
+.btn-launch:hover{background:rgba(79,70,229,.3)}
+.btn-query{background:rgba(5,150,105,.15);color:#34d399;border:1px solid rgba(5,150,105,.3)}
+.btn-query:hover{background:rgba(5,150,105,.3)}
+.btn-save{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+.btn-save:hover{background:rgba(245,158,11,.2)}
+.btn-clear{background:rgba(255,255,255,.05);color:#6b7280;border:1px solid rgba(255,255,255,.08)}
+.btn-clear:hover{background:rgba(255,255,255,.1);color:#9ca3af}
+
+.tool-result{background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:10px;min-height:80px;font-size:11px;color:#9ca3af;font-family:monospace;white-space:pre-wrap;word-break:break-all;resize:vertical;overflow:auto;max-height:300px;outline:none}
+.tool-result[contenteditable]:empty:before{content:attr(data-placeholder);color:#374151}
+.result-json{color:#93c5fd}
+
+/* Status indicator */
+.loading-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4f46e5;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:#1e1e2e;border:1px solid rgba(79,70,229,.4);border-radius:10px;padding:12px 18px;color:#c7d2fe;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* Resultado formatado */
+.result-row{display:flex;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.result-row:last-child{border-bottom:none}
+.result-key{color:#7c3aed;font-weight:600;min-width:120px;flex-shrink:0}
+.result-val{color:#e2e8f0;word-break:break-all}
+.result-val.ok{color:#34d399}
+.result-val.warn{color:#fbbf24}
+.result-val.danger{color:#f87171}
+
+/* Section title */
+.section-title{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.05)}
+
+@media(max-width:768px){.sidebar{transform:translateX(-100%)}.main{margin-left:0}.tools-grid{grid-template-columns:1fr}.alvo-bar{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>🔍 RMHacking</h1>
+    <p>Investigação Digital</p>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item" href="/">
+      <span class="icon">📋</span> Dashboard
+    </a>
+    <a class="nav-item active" href="/ferramentas.html">
+      <span class="icon">🛠️</span> Ferramentas
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="#" onclick="logout()">⬅ Sair</a>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <div>
+      <h2>🛠️ Ferramentas de Investigação</h2>
+      <p>Consultas OSINT, análise de sites, IPs, empresas e mais</p>
+    </div>
+  </div>
+
+  <!-- Alvo Global -->
+  <div class="alvo-bar">
+    <div class="form-group">
+      <label>Alvo (URL, IP, domínio, CNPJ, e-mail...)</label>
+      <input type="text" id="globalTarget" placeholder="ex: example.com ou 8.8.8.8 ou 00.000.000/0000-00" oninput="syncTargets()">
+    </div>
+    <div class="form-group" style="max-width:260px">
+      <label>Vincular resultado à investigação</label>
+      <select id="invSelect">
+        <option value="">— Nenhuma —</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('sites')">🌐 Sites & URLs</button>
+    <button class="tab-btn" onclick="showTab('cnpj')">🏢 CNPJ / Empresa</button>
+    <button class="tab-btn" onclick="showTab('rede')">📡 IP & Rede</button>
+    <button class="tab-btn" onclick="showTab('pessoas')">👤 Pessoas</button>
+    <button class="tab-btn" onclick="showTab('forense')">🔬 Forense</button>
+  </div>
+
+  <!-- TAB: Sites & URLs -->
+  <div id="tab-sites" class="tools-grid">
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(66,133,244,.15)">🛡️</div>
+        <div class="tool-info">
+          <h3>Google Safe Browsing <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Verifica se URL é phishing, malware ou site enganoso</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://transparencyreport.google.com/safe-browsing/search?url='+encodeURIComponent(getTarget()))">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('google-safe','Google Safe Browsing')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('google-safe')">✕</button>
+      </div>
+      <div class="tool-result" id="res-google-safe" contenteditable="true" data-placeholder="Cole aqui o resultado da análise..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(239,68,68,.15)">🕸️</div>
+        <div class="tool-info">
+          <h3>Netcraft <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Relatório completo do site: hosting, SSL, tecnologias, histórico</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://sitereport.netcraft.com/?url='+encodeURIComponent(getTarget()))">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('netcraft','Netcraft')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('netcraft')">✕</button>
+      </div>
+      <div class="tool-result" id="res-netcraft" contenteditable="true" data-placeholder="Cole aqui o resultado da análise..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(16,185,129,.15)">🔍</div>
+        <div class="tool-info">
+          <h3>URLScan.io <span class="tool-badge badge-api">API</span></h3>
+          <p>Escaneia e analisa URLs: scripts, conexões, DOM, captura de tela</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="queryURLScan()">⚡ Consultar</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://urlscan.io/search/#'+encodeURIComponent(getTarget()))">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('urlscan','URLScan.io')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('urlscan')">✕</button>
+      </div>
+      <div class="tool-result" id="res-urlscan" contenteditable="true" data-placeholder="Clique em Consultar ou cole o resultado aqui..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(124,58,237,.15)">🦠</div>
+        <div class="tool-info">
+          <h3>VirusTotal <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Analisa URLs, IPs e arquivos contra 70+ antivírus</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.virustotal.com/gui/search/'+encodeURIComponent(getTarget()))">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('virustotal','VirusTotal')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('virustotal')">✕</button>
+      </div>
+      <div class="tool-result" id="res-virustotal" contenteditable="true" data-placeholder="Cole aqui o resultado da análise..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(245,158,11,.15)">📦</div>
+        <div class="tool-info">
+          <h3>URLVoid <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Reputação de domínios via múltiplas blacklists</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openURLVoid()">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('urlvoid','URLVoid')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('urlvoid')">✕</button>
+      </div>
+      <div class="tool-result" id="res-urlvoid" contenteditable="true" data-placeholder="Cole aqui o resultado da análise..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(6,182,212,.15)">⏱️</div>
+        <div class="tool-info">
+          <h3>Wayback Machine <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Histórico de versões do site arquivadas</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://web.archive.org/web/*/'+encodeURIComponent(getTarget()))">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('wayback','Wayback Machine')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('wayback')">✕</button>
+      </div>
+      <div class="tool-result" id="res-wayback" contenteditable="true" data-placeholder="Cole aqui o resultado da análise..."></div>
+    </div>
+
+  </div>
+
+  <!-- TAB: CNPJ / Empresa -->
+  <div id="tab-cnpj" class="tools-grid" style="display:none">
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(79,70,229,.15)">🏛️</div>
+        <div class="tool-info">
+          <h3>Mind-7 CNPJ <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Consulta completa de CNPJ, sócios e situação cadastral</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://mind-7.org/painel/consultas/cnpj/')">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('mind7','Mind-7 CNPJ')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('mind7')">✕</button>
+      </div>
+      <div class="tool-result" id="res-mind7" contenteditable="true" data-placeholder="Cole aqui o resultado da consulta de CNPJ..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(5,150,105,.15)">📋</div>
+        <div class="tool-info">
+          <h3>ReceitaWS <span class="tool-badge badge-api">API GRÁTIS</span></h3>
+          <p>Dados da Receita Federal: razão social, situação, sócios, endereço</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="queryCNPJ()">⚡ Consultar</button>
+        <button class="btn-tool btn-save" onclick="saveResult('receitaws','ReceitaWS - CNPJ')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('receitaws')">✕</button>
+      </div>
+      <div class="tool-result" id="res-receitaws" contenteditable="true" data-placeholder="Digite o CNPJ no campo Alvo e clique em Consultar..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(219,39,119,.15)">🔎</div>
+        <div class="tool-info">
+          <h3>Consulta Sócios <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Busca empresas por sócio no Portal da Transparência</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://portaldatransparencia.gov.br/pessoa-juridica/busca/lista?termo='+encodeURIComponent(getTarget()))">🔗 Portal Transparência</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.jusbrasil.com.br/consulta-processual/?context=CNJ&q='+encodeURIComponent(getTarget()))">🔗 Jusbrasil</button>
+        <button class="btn-tool btn-save" onclick="saveResult('socios','Consulta Sócios')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('socios')">✕</button>
+      </div>
+      <div class="tool-result" id="res-socios" contenteditable="true" data-placeholder="Cole aqui os resultados..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(217,119,6,.15)">⚖️</div>
+        <div class="tool-info">
+          <h3>Processos Judiciais <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Busca processos no CNJ e Jusbrasil</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.jusbrasil.com.br/consulta-processual/?q='+encodeURIComponent(getTarget()))">🔗 Jusbrasil</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://esaj.tjsp.jus.br/cjsg/consultaCompleta.do?dados.buscaInteiroTeor='+encodeURIComponent(getTarget()))">🔗 TJSP</button>
+        <button class="btn-tool btn-save" onclick="saveResult('processos','Processos Judiciais')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('processos')">✕</button>
+      </div>
+      <div class="tool-result" id="res-processos" contenteditable="true" data-placeholder="Cole aqui os resultados encontrados..."></div>
+    </div>
+
+  </div>
+
+  <!-- TAB: IP & Rede -->
+  <div id="tab-rede" class="tools-grid" style="display:none">
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(6,182,212,.15)">📍</div>
+        <div class="tool-info">
+          <h3>IPInfo <span class="tool-badge badge-api">API GRÁTIS</span></h3>
+          <p>Geolocalização, ASN, organização e provedor do IP</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="queryIPInfo()">⚡ Consultar</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://ipinfo.io/'+encodeURIComponent(getTarget()))">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('ipinfo','IPInfo')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('ipinfo')">✕</button>
+      </div>
+      <div class="tool-result" id="res-ipinfo" contenteditable="true" data-placeholder="Digite o IP no campo Alvo e clique em Consultar..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(239,68,68,.15)">👁️</div>
+        <div class="tool-info">
+          <h3>Shodan <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Busca dispositivos e serviços expostos na internet</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.shodan.io/search?query='+encodeURIComponent(getTarget()))">🔗 Busca</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.shodan.io/host/'+encodeURIComponent(getTarget()))">🔗 Host</button>
+        <button class="btn-tool btn-save" onclick="saveResult('shodan','Shodan')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('shodan')">✕</button>
+      </div>
+      <div class="tool-result" id="res-shodan" contenteditable="true" data-placeholder="Cole aqui o resultado do Shodan..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(124,58,237,.15)">🌐</div>
+        <div class="tool-info">
+          <h3>WHOIS <span class="tool-badge badge-api">API GRÁTIS</span></h3>
+          <p>Registro do domínio: dono, criação, expiração, nameservers</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="queryWhois()">⚡ Consultar</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://who.is/whois/'+encodeURIComponent(getTarget()))">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('whois','WHOIS')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('whois')">✕</button>
+      </div>
+      <div class="tool-result" id="res-whois" contenteditable="true" data-placeholder="Digite o domínio no campo Alvo e clique em Consultar..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(16,185,129,.15)">🔬</div>
+        <div class="tool-info">
+          <h3>Censys <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Análise de certificados, portas abertas e infraestrutura</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://search.censys.io/?q='+encodeURIComponent(getTarget()))">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('censys','Censys')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('censys')">✕</button>
+      </div>
+      <div class="tool-result" id="res-censys" contenteditable="true" data-placeholder="Cole aqui o resultado..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(245,158,11,.15)">📡</div>
+        <div class="tool-info">
+          <h3>DNS Lookup <span class="tool-badge badge-api">API GRÁTIS</span></h3>
+          <p>Registros DNS: A, MX, NS, TXT, CNAME do domínio</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="queryDNS()">⚡ Consultar</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://mxtoolbox.com/SuperTool.aspx?action=dns%3a'+encodeURIComponent(getTarget()))">🔗 MXToolbox</button>
+        <button class="btn-tool btn-save" onclick="saveResult('dns','DNS Lookup')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('dns')">✕</button>
+      </div>
+      <div class="tool-result" id="res-dns" contenteditable="true" data-placeholder="Digite o domínio e clique em Consultar..."></div>
+    </div>
+
+  </div>
+
+  <!-- TAB: Pessoas -->
+  <div id="tab-pessoas" class="tools-grid" style="display:none">
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(239,68,68,.15)">💧</div>
+        <div class="tool-info">
+          <h3>HaveIBeenPwned <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Verifica se e-mail aparece em vazamentos de dados</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://haveibeenpwned.com/account/'+encodeURIComponent(getTarget()))">🔗 Verificar</button>
+        <button class="btn-tool btn-save" onclick="saveResult('hibp','HaveIBeenPwned')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('hibp')">✕</button>
+      </div>
+      <div class="tool-result" id="res-hibp" contenteditable="true" data-placeholder="Cole aqui os vazamentos encontrados..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(29,161,242,.15)">🐦</div>
+        <div class="tool-info">
+          <h3>Busca em Redes Sociais <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Busca o alvo no LinkedIn, Twitter/X, Instagram e Facebook</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.linkedin.com/search/results/all/?keywords='+encodeURIComponent(getTarget()))">🔗 LinkedIn</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://x.com/search?q='+encodeURIComponent(getTarget()))">🔗 X/Twitter</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.instagram.com/'+encodeURIComponent(getTarget().replace('@','')))">🔗 Instagram</button>
+        <button class="btn-tool btn-save" onclick="saveResult('redes','Redes Sociais')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('redes')">✕</button>
+      </div>
+      <div class="tool-result" id="res-redes" contenteditable="true" data-placeholder="Cole aqui os perfis encontrados..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(16,185,129,.15)">📧</div>
+        <div class="tool-info">
+          <h3>Hunter.io — E-mails <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Encontra e-mails corporativos de um domínio</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://hunter.io/search/'+encodeURIComponent(getTarget()))">🔗 Abrir</button>
+        <button class="btn-tool btn-save" onclick="saveResult('hunter','Hunter.io')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('hunter')">✕</button>
+      </div>
+      <div class="tool-result" id="res-hunter" contenteditable="true" data-placeholder="Cole aqui os e-mails encontrados..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(124,58,237,.15)">🔍</div>
+        <div class="tool-info">
+          <h3>Google Dorks <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Busca avançada no Google para encontrar informações expostas</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.google.com/search?q=site%3A'+encodeURIComponent(getTarget()))">🔗 site:</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.google.com/search?q=%22'+encodeURIComponent(getTarget())+'%22+filetype%3Apdf')">🔗 PDFs</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.google.com/search?q=intext%3A%22'+encodeURIComponent(getTarget())+'%22')">🔗 intext:</button>
+        <button class="btn-tool btn-save" onclick="saveResult('dorks','Google Dorks')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('dorks')">✕</button>
+      </div>
+      <div class="tool-result" id="res-dorks" contenteditable="true" data-placeholder="Cole aqui os resultados dos dorks..."></div>
+    </div>
+
+  </div>
+
+  <!-- TAB: Forense -->
+  <div id="tab-forense" class="tools-grid" style="display:none">
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(16,185,129,.15)">🔢</div>
+        <div class="tool-info">
+          <h3>Calculadora de Hash <span class="tool-badge badge-api">LOCAL</span></h3>
+          <p>Calcula MD5, SHA1, SHA256 de texto para verificação de integridade</p>
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <textarea id="hashInput" style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;color:#f1f5f9;font-size:12px;resize:vertical;min-height:60px;font-family:monospace;outline:none" placeholder="Digite o texto para calcular o hash..."></textarea>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="calcHash()">⚡ Calcular</button>
+        <button class="btn-tool btn-save" onclick="saveResult('hash','Hash de Texto')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('hash')">✕</button>
+      </div>
+      <div class="tool-result" id="res-hash" data-placeholder="Resultado do hash aparecerá aqui..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(245,158,11,.15)">🖼️</div>
+        <div class="tool-info">
+          <h3>Exif / Metadados de Imagem <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Extrai metadados de imagens: GPS, câmera, data, autor</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.metadata2go.com/')">🔗 Metadata2Go</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://exif.regex.info/exif.cgi')">🔗 Jeffrey Exif</button>
+        <button class="btn-tool btn-save" onclick="saveResult('exif','Exif/Metadados')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('exif')">✕</button>
+      </div>
+      <div class="tool-result" id="res-exif" contenteditable="true" data-placeholder="Cole aqui os metadados extraídos..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(239,68,68,.15)">📂</div>
+        <div class="tool-info">
+          <h3>Análise de Arquivo <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Analisa arquivos suspeitos em sandbox isolada</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.virustotal.com/gui/home/upload')">🔗 VirusTotal</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://any.run/')">🔗 Any.run</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://hybrid-analysis.com/')">🔗 Hybrid Analysis</button>
+        <button class="btn-tool btn-save" onclick="saveResult('sandbox','Análise de Arquivo')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('sandbox')">✕</button>
+      </div>
+      <div class="tool-result" id="res-sandbox" contenteditable="true" data-placeholder="Cole aqui os resultados da análise..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(79,70,229,.15)">🔐</div>
+        <div class="tool-info">
+          <h3>Decodificador Base64 / URL <span class="tool-badge badge-api">LOCAL</span></h3>
+          <p>Decodifica strings Base64 e URLs codificadas</p>
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <textarea id="decodeInput" style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;color:#f1f5f9;font-size:12px;resize:vertical;min-height:60px;font-family:monospace;outline:none" placeholder="Cole aqui a string para decodificar..."></textarea>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="decodeB64()">⚡ Base64</button>
+        <button class="btn-tool btn-query" onclick="decodeURL()">⚡ URL</button>
+        <button class="btn-tool btn-save" onclick="saveResult('decode','Decodificador')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('decode')">✕</button>
+      </div>
+      <div class="tool-result" id="res-decode" data-placeholder="Resultado da decodificação..."></div>
+    </div>
+
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Utils ───────────────────────────────────────────────────────────────────
+function toast(msg, d=3000) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),d);
+}
+function getTarget() {
+  return document.getElementById('globalTarget').value.trim();
+}
+function syncTargets() {}
+
+// ── Tabs ────────────────────────────────────────────────────────────────────
+function showTab(tab) {
+  ['sites','cnpj','rede','pessoas','forense'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display = t===tab ? 'grid' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', ['sites','cnpj','rede','pessoas','forense'][i]===tab);
+  });
+}
+
+// ── Tool helpers ─────────────────────────────────────────────────────────────
+function openTool(url) {
+  window.open(url,'_blank');
+}
+function openURLVoid() {
+  const t = getTarget().replace(/^https?:\/\//,'').split('/')[0];
+  openTool('https://www.urlvoid.com/scan/'+t+'/');
+}
+function clearResult(id) {
+  const el=document.getElementById('res-'+id);
+  if(el.contentEditable==='true') el.textContent='';
+  else el.textContent='';
+}
+
+// ── Save to investigation ────────────────────────────────────────────────────
+async function saveResult(toolId, toolName) {
+  const invId = document.getElementById('invSelect').value;
+  const el = document.getElementById('res-'+toolId);
+  const result = el.textContent || el.innerText || '';
+  if (!result.trim()) { toast('⚠️ Sem resultado para salvar'); return; }
+  if (!invId) { toast('⚠️ Selecione uma investigação'); return; }
+  const body = {
+    query: getTarget() || toolName,
+    type: 'ferramenta',
+    result: result.trim(),
+    source: toolName,
+  };
+  const r = await fetch('/api/investigations/'+invId+'/osint', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  if (r.ok) toast('✅ Salvo na investigação!');
+  else toast('❌ Erro ao salvar');
+}
+
+// ── Load investigations ──────────────────────────────────────────────────────
+async function loadInvestigations() {
+  try {
+    const r = await fetch('/api/investigations');
+    if (!r.ok) return;
+    const invs = await r.json();
+    const sel = document.getElementById('invSelect');
+    invs.forEach(inv => {
+      const opt = document.createElement('option');
+      opt.value = inv.id;
+      opt.textContent = '#'+inv.id+' — '+inv.title;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+// ── API Queries ──────────────────────────────────────────────────────────────
+async function queryCNPJ() {
+  const cnpj = getTarget().replace(/\D/g,'');
+  if (cnpj.length !== 14) { toast('⚠️ CNPJ deve ter 14 dígitos'); return; }
+  const el = document.getElementById('res-receitaws');
+  el.textContent = '⏳ Consultando Receita Federal...';
+  try {
+    const r = await fetch('/api/tools/cnpj/'+cnpj);
+    const d = await r.json();
+    if (d.error) { el.textContent = '❌ '+d.error; return; }
+    el.textContent = formatCNPJ(d);
+  } catch(e) { el.textContent = '❌ Erro: '+e.message; }
+}
+
+function formatCNPJ(d) {
+  const lines = [
+    '=== DADOS DA EMPRESA ===',
+    'CNPJ: '+(d.cnpj||''),
+    'Razão Social: '+(d.nome||''),
+    'Nome Fantasia: '+(d.fantasia||'—'),
+    'Situação: '+(d.situacao||''),
+    'Data Situação: '+(d.data_situacao||''),
+    'Abertura: '+(d.abertura||''),
+    'Tipo: '+(d.tipo||''),
+    'Porte: '+(d.porte||''),
+    'Natureza Jurídica: '+(d.natureza_juridica||''),
+    'CNAE: '+(d.atividade_principal&&d.atividade_principal[0]?d.atividade_principal[0].text:''),
+    '',
+    '=== ENDEREÇO ===',
+    (d.logradouro||'')+', '+(d.numero||'')+' '+(d.complemento||''),
+    (d.bairro||'')+' — '+(d.municipio||'')+'/'+( d.uf||''),
+    'CEP: '+(d.cep||''),
+    '',
+    '=== CONTATO ===',
+    'Telefone: '+(d.telefone||'—'),
+    'E-mail: '+(d.email||'—'),
+    '',
+    '=== SÓCIOS ===',
+  ];
+  if (d.qsa && d.qsa.length) {
+    d.qsa.forEach(s => lines.push('• '+s.nome+' ('+s.qual+')'));
+  } else {
+    lines.push('Nenhum sócio encontrado');
+  }
+  return lines.join('\n');
+}
+
+async function queryIPInfo() {
+  const target = getTarget();
+  if (!target) { toast('⚠️ Digite um IP'); return; }
+  const el = document.getElementById('res-ipinfo');
+  el.textContent = '⏳ Consultando IPInfo...';
+  try {
+    const r = await fetch('/api/tools/ipinfo/'+encodeURIComponent(target));
+    const d = await r.json();
+    if (d.error) { el.textContent = '❌ '+d.error; return; }
+    el.textContent = [
+      '=== IP INFO ===',
+      'IP: '+(d.ip||target),
+      'Hostname: '+(d.hostname||'—'),
+      'Cidade: '+(d.city||'—'),
+      'Região: '+(d.region||'—'),
+      'País: '+(d.country||'—'),
+      'Localização: '+(d.loc||'—'),
+      'Organização: '+(d.org||'—'),
+      'Timezone: '+(d.timezone||'—'),
+      'Postal: '+(d.postal||'—'),
+    ].join('\n');
+  } catch(e) { el.textContent = '❌ Erro: '+e.message; }
+}
+
+async function queryWhois() {
+  const target = getTarget().replace(/^https?:\/\//,'').split('/')[0];
+  if (!target) { toast('⚠️ Digite um domínio'); return; }
+  const el = document.getElementById('res-whois');
+  el.textContent = '⏳ Consultando WHOIS...';
+  try {
+    const r = await fetch('/api/tools/whois/'+encodeURIComponent(target));
+    const d = await r.json();
+    if (d.error) { el.textContent = '❌ '+d.error; return; }
+    el.textContent = d.result || JSON.stringify(d, null, 2);
+  } catch(e) { el.textContent = '❌ Erro: '+e.message; }
+}
+
+async function queryDNS() {
+  const target = getTarget().replace(/^https?:\/\//,'').split('/')[0];
+  if (!target) { toast('⚠️ Digite um domínio'); return; }
+  const el = document.getElementById('res-dns');
+  el.textContent = '⏳ Consultando DNS...';
+  try {
+    const r = await fetch('/api/tools/dns/'+encodeURIComponent(target));
+    const d = await r.json();
+    if (d.error) { el.textContent = '❌ '+d.error; return; }
+    el.textContent = d.result || JSON.stringify(d, null, 2);
+  } catch(e) { el.textContent = '❌ Erro: '+e.message; }
+}
+
+async function queryURLScan() {
+  const target = getTarget();
+  if (!target) { toast('⚠️ Digite uma URL'); return; }
+  const el = document.getElementById('res-urlscan');
+  el.textContent = '⏳ Consultando URLScan...';
+  try {
+    const r = await fetch('/api/tools/urlscan/'+encodeURIComponent(target));
+    const d = await r.json();
+    if (d.error) { el.textContent = '❌ '+d.error; return; }
+    if (d.results && d.results.length) {
+      const lines = ['=== URLSCAN RESULTADOS ===',''];
+      d.results.slice(0,5).forEach(res=>{
+        lines.push('URL: '+(res.page&&res.page.url||''));
+        lines.push('Status: '+(res.page&&res.page.status||''));
+        lines.push('IP: '+(res.page&&res.page.ip||''));
+        lines.push('País: '+(res.page&&res.page.country||''));
+        lines.push('Score: '+(res.verdicts&&res.verdicts.overall&&res.verdicts.overall.score||0));
+        lines.push('Malicioso: '+(res.verdicts&&res.verdicts.overall&&res.verdicts.overall.malicious?'⚠️ SIM':'✅ Não'));
+        lines.push('Link: https://urlscan.io/result/'+res.task.uuid+'/');
+        lines.push('---');
+      });
+      el.textContent = lines.join('\n');
+    } else {
+      el.textContent = 'Nenhum resultado encontrado no URLScan para este alvo.';
+    }
+  } catch(e) { el.textContent = '❌ Erro: '+e.message; }
+}
+
+// ── Hash calculator ──────────────────────────────────────────────────────────
+async function calcHash() {
+  const text = document.getElementById('hashInput').value;
+  if (!text) { toast('⚠️ Digite um texto'); return; }
+  const el = document.getElementById('res-hash');
+  try {
+    const enc = new TextEncoder();
+    const data = enc.encode(text);
+    const [sha256, sha1] = await Promise.all([
+      crypto.subtle.digest('SHA-256', data),
+      crypto.subtle.digest('SHA-1', data),
+    ]);
+    const toHex = buf => Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    el.textContent = 'SHA-256: '+toHex(sha256)+'\nSHA-1:   '+toHex(sha1);
+  } catch(e) { el.textContent = '❌ Erro: '+e.message; }
+}
+
+// ── Decoders ─────────────────────────────────────────────────────────────────
+function decodeB64() {
+  const text = document.getElementById('decodeInput').value.trim();
+  const el = document.getElementById('res-decode');
+  try { el.textContent = 'Base64:\n'+atob(text); }
+  catch(e) { el.textContent = '❌ Base64 inválido: '+e.message; }
+}
+function decodeURL() {
+  const text = document.getElementById('decodeInput').value.trim();
+  const el = document.getElementById('res-decode');
+  try { el.textContent = 'URL Decoded:\n'+decodeURIComponent(text); }
+  catch(e) { el.textContent = '❌ URL inválida: '+e.message; }
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+async function logout() {
+  await fetch('/api/logout',{method:'POST'});
+  window.location.href='/login';
+}
+
+async function checkAuth() {
+  const r = await fetch('/api/investigations');
+  if (r.status===401) window.location.href='/login';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+checkAuth();
+loadInvestigations();
+</script>
+</body>
+</html>
