@@ -80,6 +80,22 @@
     <div class="footer">🔐 Sessão expira em 8 horas</div>
   </div>
 
+  <!-- ── Tela 2FA ── -->
+  <div class="screen" id="screen2FA">
+    <div class="screen-title">🔐 Verificação em Dois Fatores</div>
+    <div class="screen-sub">Digite o código de 6 dígitos do seu aplicativo autenticador (Google Authenticator, Authy, etc.)</div>
+    <div class="alert error" id="twofaError"></div>
+    <label for="twofaCode">Código TOTP</label>
+    <div class="input-wrap">
+      <input type="text" id="twofaCode" placeholder="000 000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" style="letter-spacing:6px;font-size:20px;text-align:center;padding-right:16px" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)">
+    </div>
+    <button class="btn-main" id="twofaBtn" onclick="verify2FA()">
+      <span id="twofaText">Verificar</span>
+      <div class="spinner" id="twofaSpinner"></div>
+    </button>
+    <button class="btn-secondary" onclick="showScreen('screenLogin')">← Voltar ao Login</button>
+  </div>
+
   <!-- ── Tela de Alterar Senha ── -->
   <div class="screen" id="screenChange">
     <div class="screen-title">🔑 Alterar Senha</div>
@@ -162,8 +178,11 @@
       var d = await r.json();
       if (d.success) {
         window.location.href = '/';
+      } else if (d.twofa_required) {
+        showScreen('screen2FA');
+        setTimeout(function(){ document.getElementById('twofaCode').focus(); }, 100);
       } else {
-        showAlert('loginError', 'Senha incorreta. Tente novamente.');
+        showAlert('loginError', d.message || 'Usuário ou senha incorretos.');
         document.getElementById('pwd').value = '';
         document.getElementById('pwd').focus();
       }
@@ -238,6 +257,39 @@
     } catch(e) {
       showAlert('changeError', 'Erro de conexão com o servidor.');
     }
+  }
+
+  // ── 2FA ────────────────────────────────────────────────────────
+  document.addEventListener('keydown', function(e) {
+    if (document.getElementById('screen2FA').classList.contains('active') && e.key === 'Enter') verify2FA();
+  });
+
+  async function verify2FA() {
+    var code = document.getElementById('twofaCode').value.trim();
+    if (code.length !== 6) { showAlert('twofaError', 'Digite os 6 dígitos do código.'); return; }
+    document.getElementById('twofaBtn').disabled = true;
+    document.getElementById('twofaText').style.display = 'none';
+    document.getElementById('twofaSpinner').style.display = 'block';
+    try {
+      var r = await fetch('/api/2fa/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: code })
+      });
+      var d = await r.json();
+      if (d.success) {
+        window.location.href = '/';
+      } else {
+        showAlert('twofaError', d.message || 'Código inválido.');
+        document.getElementById('twofaCode').value = '';
+        document.getElementById('twofaCode').focus();
+      }
+    } catch(e) {
+      showAlert('twofaError', 'Erro de conexão.');
+    }
+    document.getElementById('twofaBtn').disabled = false;
+    document.getElementById('twofaText').style.display = 'block';
+    document.getElementById('twofaSpinner').style.display = 'none';
   }
 </script>
 </body>

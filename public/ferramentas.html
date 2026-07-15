@@ -245,6 +245,23 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e2e8f
       <div class="tool-result" id="res-wayback" contenteditable="true" data-placeholder="Cole aqui o resultado da análise..."></div>
     </div>
 
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(6,182,212,.15)">📸</div>
+        <div class="tool-info">
+          <h3>Screenshot de Site <span class="tool-badge badge-api">API</span></h3>
+          <p>Captura visual da página sem precisar abrir o navegador</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="queryScreenshot()">⚡ Capturar</button>
+        <button class="btn-tool btn-save" onclick="saveResult('screenshot','Screenshot')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('screenshot')">✕</button>
+      </div>
+      <div id="res-screenshot-img" style="margin-bottom:8px"></div>
+      <div class="tool-result" id="res-screenshot" contenteditable="true" data-placeholder="URL da captura aparecerá aqui..."></div>
+    </div>
+
   </div>
 
   <!-- TAB: CNPJ / Empresa -->
@@ -476,6 +493,60 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e2e8f
         <button class="btn-tool btn-clear" onclick="clearResult('dorks')">✕</button>
       </div>
       <div class="tool-result" id="res-dorks" contenteditable="true" data-placeholder="Cole aqui os resultados dos dorks..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(245,158,11,.15)">🆔</div>
+        <div class="tool-info">
+          <h3>Consulta CPF <span class="tool-badge badge-link">LINKS</span></h3>
+          <p>Acesso rápido aos portais para consulta de CPF</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.serasa.com.br/consulta-cpf-cnpj/')">🔗 Serasa</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://servicos.receita.fazenda.gov.br/Servicos/CPF/ConsultaSituacao/ConsultaPublica.asp')">🔗 Receita</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://mind-7.org/painel/consultas/cpf/')">🔗 Mind-7</button>
+        <button class="btn-tool btn-save" onclick="saveResult('cpf','Consulta CPF')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('cpf')">✕</button>
+      </div>
+      <div class="tool-result" id="res-cpf" contenteditable="true" data-placeholder="Cole aqui o resultado da consulta de CPF..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(16,185,129,.15)">✉️</div>
+        <div class="tool-info">
+          <h3>Verificador de E-mail <span class="tool-badge badge-api">API</span></h3>
+          <p>Valida formato, domínio MX e existência do e-mail</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="verifyEmail()">⚡ Verificar</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://hunter.io/email-verifier/'+encodeURIComponent(getTarget()))">🔗 Hunter.io</button>
+        <button class="btn-tool btn-save" onclick="saveResult('emailver','Verificador Email')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('emailver')">✕</button>
+      </div>
+      <div class="tool-result" id="res-emailver" contenteditable="true" data-placeholder="Digite o e-mail no campo Alvo e clique Verificar..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(124,58,237,.15)">📝</div>
+        <div class="tool-info">
+          <h3>Gerador de Wordlist <span class="tool-badge badge-api">LOCAL</span></h3>
+          <p>Gera variações de senha com base em palavras-chave do alvo</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="generateWordlist()">⚡ Gerar</button>
+        <button class="btn-tool btn-launch" onclick="downloadWordlist()">⬇ Baixar .txt</button>
+        <button class="btn-tool btn-save" onclick="saveResult('wordlist','Wordlist')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('wordlist')">✕</button>
+      </div>
+      <p style="font-size:11px;color:#6b7280;margin-bottom:8px">Digite palavras-chave separadas por vírgula (nome, empresa, data):</p>
+      <input type="text" id="wordlistInput" placeholder="ex: joao, empresa, 2024, rio" style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:8px 10px;color:#f1f5f9;font-size:12px;outline:none;margin-bottom:8px">
+      <div class="tool-result" id="res-wordlist" contenteditable="false" data-placeholder="A wordlist gerada aparecerá aqui..."></div>
     </div>
 
   </div>
@@ -760,6 +831,109 @@ async function queryURLScan() {
       el.textContent = 'Nenhum resultado encontrado no URLScan para este alvo.';
     }
   } catch(e) { el.textContent = '❌ Erro: '+e.message; }
+}
+
+// ── Screenshot ────────────────────────────────────────────────────────────────
+async function queryScreenshot() {
+  const target = getTarget();
+  if (!target) { toast('⚠️ Digite uma URL'); return; }
+  const url = target.startsWith('http') ? target : 'https://'+target;
+  const el = document.getElementById('res-screenshot');
+  const imgEl = document.getElementById('res-screenshot-img');
+  el.textContent = '⏳ Gerando captura...';
+  imgEl.innerHTML = '';
+  try {
+    const r = await fetch('/api/tools/screenshot?url='+encodeURIComponent(url));
+    const d = await r.json();
+    if (d.error) { el.textContent = '❌ '+d.error; return; }
+    el.textContent = 'URL da captura: '+d.screenshot_url+'\nFonte: '+d.source;
+    imgEl.innerHTML = `<img src="${d.screenshot_url}" style="width:100%;border-radius:6px;border:1px solid rgba(255,255,255,.1);margin-bottom:8px" onerror="this.style.display='none'" alt="Screenshot">`;
+  } catch(e) { el.textContent = '❌ Erro: '+e.message; }
+}
+
+// ── Email Verifier ────────────────────────────────────────────────────────────
+async function verifyEmail() {
+  const email = getTarget().trim();
+  const el = document.getElementById('res-emailver');
+  if (!email || !email.includes('@')) { toast('⚠️ Digite um e-mail válido no campo Alvo'); return; }
+  el.textContent = '⏳ Verificando...';
+  const [local, domain] = email.split('@');
+  const lines = ['=== VERIFICAÇÃO DE E-MAIL ===', 'E-mail: '+email, ''];
+  // Validação de formato
+  const emailRe = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+  lines.push('Formato: '+(emailRe.test(email)?'✅ Válido':'❌ Inválido'));
+  lines.push('Domínio: '+domain);
+  // Verificar MX via DNS endpoint
+  try {
+    const r = await fetch('/api/tools/dns/'+encodeURIComponent(domain));
+    const d = await r.json();
+    if (d.result && d.result.includes('MX:')) {
+      const mxLine = d.result.split('\n').find(l=>l.includes('MX:'));
+      lines.push('Servidor MX: ✅ '+mxLine.replace('MX:','').trim());
+    } else {
+      lines.push('Servidor MX: ❌ Não encontrado (domínio pode não receber e-mails)');
+    }
+  } catch(e) { lines.push('MX: Não verificado'); }
+  // Domínios descartáveis conhecidos
+  const disposable = ['mailinator.com','tempmail.com','10minutemail.com','guerrillamail.com','yopmail.com','throwam.com','sharklasers.com'];
+  lines.push('Descartável: '+(disposable.includes(domain.toLowerCase())?'⚠️ SIM (e-mail temporário)':'✅ Não identificado'));
+  lines.push('');
+  lines.push('Links para verificação adicional:');
+  lines.push('• https://hunter.io/email-verifier/'+encodeURIComponent(email));
+  lines.push('• https://haveibeenpwned.com/account/'+encodeURIComponent(email));
+  el.textContent = lines.join('\n');
+}
+
+// ── Wordlist Generator ────────────────────────────────────────────────────────
+let _wordlistData = '';
+function generateWordlist() {
+  const raw = document.getElementById('wordlistInput').value || getTarget();
+  const el = document.getElementById('res-wordlist');
+  if (!raw.trim()) { toast('⚠️ Digite palavras-chave'); return; }
+  const words = raw.split(',').map(w=>w.trim().toLowerCase()).filter(w=>w);
+  const words2 = words.map(w=>w.charAt(0).toUpperCase()+w.slice(1));
+  const years = ['2022','2023','2024','2025','2026'];
+  const sufs = ['','123','321','@','!','#','1','01','007','123!','@123','2024','2025'];
+  const prefsSpecial = ['!','@','#',''];
+  const results = new Set();
+  words.forEach(w => {
+    sufs.forEach(s => {
+      prefsSpecial.forEach(p => {
+        results.add(p+w+s);
+        results.add(p+w.charAt(0).toUpperCase()+w.slice(1)+s);
+      });
+    });
+    years.forEach(y => {
+      results.add(w+y); results.add(w+'@'+y); results.add(y+w);
+      results.add(w.charAt(0).toUpperCase()+w.slice(1)+y);
+    });
+    // Substituições leetspeak
+    const leet = w.replace(/a/g,'@').replace(/e/g,'3').replace(/i/g,'1').replace(/o/g,'0').replace(/s/g,'$');
+    results.add(leet); results.add(leet+'123'); results.add(leet+'!');
+  });
+  // Combinações entre palavras
+  if (words.length >= 2) {
+    for (let i=0;i<words.length;i++) for (let j=i+1;j<words.length;j++) {
+      results.add(words[i]+words[j]);
+      results.add(words[j]+words[i]);
+      results.add(words[i]+'.'+words[j]);
+      results.add(words[i]+'_'+words[j]);
+      results.add(words2[i]+words[j]);
+    }
+  }
+  const list = [...results].sort();
+  _wordlistData = list.join('\n');
+  el.textContent = `=== WORDLIST GERADA (${list.length} entradas) ===\n\n`+list.join('\n');
+  toast(`✅ ${list.length} senhas geradas`);
+}
+function downloadWordlist() {
+  if (!_wordlistData) { toast('⚠️ Gere a wordlist primeiro'); return; }
+  const blob = new Blob([_wordlistData], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'wordlist_rmhacking.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ── Hash calculator ──────────────────────────────────────────────────────────

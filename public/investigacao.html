@@ -240,7 +240,8 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
   <span class="status-pill" id="statusPill">...</span>
   <div style="display:flex;gap:6px;align-items:center">
     <button class="btn-sm" id="themeBtn" onclick="toggleTheme()" title="Alternar modo claro/escuro" style="font-size:15px;padding:5px 10px">🌙</button>
-    <button class="btn-sm" onclick="exportReport()">📄 Relatório PDF</button>
+    <button class="btn-sm" onclick="exportPDF()">📄 Exportar PDF</button>
+    <button class="btn-sm" id="shareBtn" onclick="openShareModal()" style="display:none">🔗 Compartilhar</button>
     <button class="btn-primary" onclick="openEditModal()">✏️ Editar</button>
   </div>
 </div>
@@ -1099,6 +1100,22 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
+<!-- Modal Compartilhar -->
+<div class="overlay hidden" id="shareOverlay">
+  <div class="modal">
+    <h3>🔗 Compartilhar Investigação <button class="modal-close" onclick="document.getElementById('shareOverlay').classList.add('hidden')">×</button></h3>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:16px">Selecione quais usuários podem ver esta investigação. Admin sempre tem acesso a tudo.</p>
+    <div id="shareUserList" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;margin-bottom:16px">
+      <div style="color:#6b7280;font-size:12px">Carregando usuários...</div>
+    </div>
+    <div style="text-align:right;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-sm" onclick="setShareAll()">👥 Todos</button>
+      <button class="btn-sm" onclick="setShareNone()">🔒 Somente Admin</button>
+      <button class="btn-primary" onclick="saveShare()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1159,7 +1176,12 @@ async function loadInvestigation() {
     <div>📊 Prioridade: <strong style="color:#e2e8f0">${priMap[inv.priority]||'Média'}</strong></div>
     <div>🎨 Cor: <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${inv.color||'#4f46e5'};vertical-align:middle;margin-right:4px"></span>${inv.color||'#4f46e5'}</div>
     <div>📋 Status: <strong style="color:#e2e8f0">${stMap[inv.status]||inv.status}</strong></div>
+    ${inv.deadline?`<div>📅 Prazo: <strong style="color:#fbbf24">${inv.deadline}</strong></div>`:''}
+    ${inv.folder?`<div>📁 Pasta: <strong style="color:#67e8f9">${esc(inv.folder)}</strong></div>`:''}
+    ${(inv.shared_with&&inv.shared_with.length)?`<div>🔗 Compartilhado: ${inv.shared_with.length} usuário(s)</div>`:''}
   `;
+  // Mostrar botão Share apenas para admins
+  fetch('/api/users').then(r=>{ if(r.ok){ var sb=document.getElementById('shareBtn'); if(sb) sb.style.display='flex'; } }).catch(()=>{});
 
   if (inv.target) {
     document.getElementById('quickOsint').innerHTML = `
@@ -2261,6 +2283,115 @@ function exportReport() {
   setReportMode('auto'); generateReport();
 }
 
+async function exportPDF() {
+  toast('⏳ Gerando PDF...');
+  // Fetch all data
+  var [ev,nt,evt,osint,nodes,custody] = await Promise.all([
+    fetch('/api/investigations/'+invId+'/evidence').then(r=>r.json()),
+    fetch('/api/investigations/'+invId+'/notes').then(r=>r.json()),
+    fetch('/api/investigations/'+invId+'/events').then(r=>r.json()).then(d=>d.sort((a,b)=>new Date(a.event_date)-new Date(b.event_date))),
+    fetch('/api/investigations/'+invId+'/osint').then(r=>r.json()),
+    fetch('/api/investigations/'+invId+'/nodes').then(r=>r.json()),
+    fetch('/api/investigations/'+invId+'/custody').then(r=>r.json()).catch(()=>[]),
+  ]);
+  var ts = new Date().toLocaleString('pt-BR');
+  var priMap = {high:'Alta',medium:'Média',low:'Baixa'};
+  var stMap  = {open:'Aberta',todo:'Para Fazer',closed:'Finalizada'};
+  var html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Relatório — ${esc(inv.title)}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#1a1a2e;background:#fff;padding:0}
+.page{padding:32px 44px;max-width:900px;margin:0 auto}
+.header{border-bottom:3px solid #4f46e5;padding-bottom:18px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start}
+.header-left h1{font-size:22px;color:#4f46e5;font-weight:700;margin-bottom:4px}
+.header-left .case{font-size:13px;color:#666}
+.header-right{text-align:right;font-size:11px;color:#888}
+.header-right .brand{font-size:14px;font-weight:700;color:#4f46e5;margin-bottom:4px}
+.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px}
+.meta-box{background:#f8f9fc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px}
+.meta-box .label{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.meta-box .value{font-size:13px;font-weight:600;color:#1a1a2e}
+.section{margin-bottom:24px}
+.section h2{font-size:14px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:.8px;padding:8px 0;border-bottom:1px solid #e2e8f0;margin-bottom:12px}
+.item{background:#f8f9fc;border-left:3px solid #4f46e5;border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:8px}
+.item.high{border-left-color:#ef4444}
+.item.low{border-left-color:#9ca3af}
+.item .item-title{font-weight:700;font-size:12px;color:#1a1a2e;margin-bottom:3px}
+.item .item-meta{font-size:10px;color:#888;margin-bottom:4px}
+.item .item-body{font-size:11px;color:#444;line-height:1.5}
+.badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:700;background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;margin-right:6px}
+.badge.evidence{background:#fef3c7;color:#92400e;border-color:#fde68a}
+.badge.osint{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+.hash{font-family:monospace;font-size:10px;color:#059669;background:#ecfdf5;padding:2px 6px;border-radius:3px;word-break:break-all}
+.tl-item{display:flex;gap:12px;margin-bottom:8px}
+.tl-dot{width:10px;height:10px;border-radius:50%;background:#4f46e5;flex-shrink:0;margin-top:4px}
+.tl-dot.high{background:#ef4444}
+.tl-dot.low{background:#9ca3af}
+.footer{border-top:1px solid #e2e8f0;padding-top:12px;margin-top:32px;display:flex;justify-content:space-between;font-size:10px;color:#888}
+.no-data{color:#9ca3af;font-style:italic;font-size:11px;padding:8px 0}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.page-break{page-break-before:always}}
+</style></head><body><div class="page">
+<div class="header">
+  <div class="header-left">
+    <h1>📋 Relatório de Investigação</h1>
+    <div class="case">${esc(inv.title)}${inv.target?' · Alvo: '+esc(inv.target):''}</div>
+  </div>
+  <div class="header-right">
+    <div class="brand">🔍 RMHacking Digital</div>
+    <div>Investigação Digital Profissional</div>
+    <div style="margin-top:4px">${ts}</div>
+  </div>
+</div>
+<div class="meta-grid">
+  <div class="meta-box"><div class="label">Status</div><div class="value">${stMap[inv.status]||inv.status}</div></div>
+  <div class="meta-box"><div class="label">Prioridade</div><div class="value">${priMap[inv.priority]||'Média'}</div></div>
+  <div class="meta-box"><div class="label">Criado em</div><div class="value">${new Date(inv.created_at).toLocaleDateString('pt-BR')}</div></div>
+  <div class="meta-box"><div class="label">Atualizado</div><div class="value">${new Date(inv.updated_at).toLocaleDateString('pt-BR')}</div></div>
+  ${inv.deadline?`<div class="meta-box"><div class="label">Prazo</div><div class="value">${inv.deadline}</div></div>`:''}
+  ${inv.tags?`<div class="meta-box"><div class="label">Tags</div><div class="value">${esc(inv.tags)}</div></div>`:''}
+</div>
+${inv.description?`<div class="section"><h2>Descrição</h2><div style="font-size:12px;line-height:1.6;color:#444">${esc(inv.description)}</div></div>`:''}`;
+
+  if (ev.length) {
+    html += `<div class="section"><h2>🔒 Evidências (${ev.length})</h2>`;
+    ev.forEach(e=>{html+=`<div class="item ${e.importance||''}"><div class="item-title"><span class="badge evidence">${e.type||'texto'}</span>${esc(e.title)}</div>${e.source?`<div class="item-meta">Fonte: ${esc(e.source)}</div>`:''}<div class="item-body">${esc((e.content||'').substring(0,400))}</div>${e.hash_value?`<div style="margin-top:4px"><span class="hash">SHA-256: ${esc(e.hash_value)}</span></div>`:''}</div>`;});
+    html += '</div>';
+  }
+  if (evt.length) {
+    html += `<div class="section"><h2>📅 Linha do Tempo (${evt.length})</h2>`;
+    evt.forEach(e=>{html+=`<div class="tl-item"><div class="tl-dot ${e.importance||''}"></div><div><div style="font-size:10px;color:#4f46e5;font-weight:600">${e.event_date?new Date(e.event_date).toLocaleString('pt-BR'):''}</div><div style="font-weight:700;font-size:12px">${esc(e.title)}</div>${e.description?`<div style="font-size:11px;color:#555">${esc(e.description)}</div>`:''}</div></div>`;});
+    html += '</div>';
+  }
+  if (nt.length) {
+    html += `<div class="section"><h2>📝 Notas (${nt.length})</h2>`;
+    nt.forEach(n=>{html+=`<div class="item" style="border-left-color:${n.color||'#fbbf24'}"><div class="item-title">${esc(n.title)}</div><div class="item-body">${esc((n.content||'').substring(0,300))}</div></div>`;});
+    html += '</div>';
+  }
+  if (osint.length) {
+    html += `<div class="section"><h2>🌐 OSINT (${osint.length})</h2>`;
+    osint.forEach(s=>{html+=`<div class="item"><div class="item-title"><span class="badge osint">${s.type||'osint'}</span>${esc(s.query)}</div>${s.source?`<div class="item-meta">Fonte: ${esc(s.source)}</div>`:''}<div class="item-body">${esc((s.result||'').substring(0,300))}</div></div>`;});
+    html += '</div>';
+  }
+  if (nodes.length) {
+    html += `<div class="section"><h2>🧠 Mapa Mental (${nodes.length} nós)</h2><div style="display:flex;flex-wrap:wrap;gap:6px">`;
+    nodes.forEach(n=>{html+=`<span style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:4px;padding:3px 10px;font-size:11px;color:#4f46e5">${esc(n.label)}</span>`;});
+    html += '</div></div>';
+  }
+  if (custody.length) {
+    html += `<div class="section"><h2>🔐 Cadeia de Custódia (${custody.length})</h2>`;
+    custody.forEach(c=>{html+=`<div class="item"><div class="item-title">${esc(c.item_name)}</div><div class="item-meta">${c.action||''} por ${esc(c.responsible||'')} em ${c.date||''}</div><div class="item-body">${esc(c.observations||'')}</div></div>`;});
+    html += '</div>';
+  }
+
+  html += `<div class="footer"><div>RMHacking Investigação Digital</div><div>Gerado em ${ts}</div></div></div></body></html>`;
+  var w = window.open('','_blank','width=900,height=700');
+  w.document.write(html);
+  w.document.close();
+  w.onload = function(){ setTimeout(function(){ w.print(); },400); };
+  toast('📄 Abrindo PDF para imprimir/baixar...');
+}
+
 async function generateReport() {
   var [ev,nt,evt,osint,nodes]=await Promise.all([
     fetch('/api/investigations/'+invId+'/evidence').then(function(r){ return r.json(); }),
@@ -2351,6 +2482,37 @@ function printAIReport() {
 function loadTemplateFile(input) {
   var file=input.files[0]; if (!file) return;
   var r=new FileReader(); r.onload=function(e){ document.getElementById('tplContent').value=e.target.result; }; r.readAsText(file);
+}
+
+// ─── Compartilhar ─────────────────────────────────────────────────────────────
+var _shareUsers = [];
+async function openShareModal() {
+  document.getElementById('shareOverlay').classList.remove('hidden');
+  const r = await fetch('/api/users');
+  if (!r.ok) { document.getElementById('shareUserList').innerHTML='<div style="color:#ef4444;font-size:12px">Sem permissão</div>'; return; }
+  _shareUsers = (await r.json()).filter(u=>u.role!=='admin');
+  const sharedWith = (inv.shared_with)||[];
+  document.getElementById('shareUserList').innerHTML = _shareUsers.length
+    ? _shareUsers.map(u=>`
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;cursor:pointer">
+        <input type="checkbox" data-uid="${u.id}" ${sharedWith.includes(u.id)?'checked':''} style="width:15px;height:15px;accent-color:#4f46e5">
+        <span style="font-size:13px;color:#e2e8f0">${esc(u.username)}</span>
+        ${u.temporary?'<span style="font-size:10px;padding:2px 6px;background:rgba(245,158,11,.15);color:#fbbf24;border-radius:4px">Temporário</span>':''}
+      </label>`).join('')
+    : '<div style="color:#6b7280;font-size:12px;padding:8px">Nenhum usuário não-admin cadastrado.</div>';
+}
+function setShareAll() {
+  document.querySelectorAll('#shareUserList input[type=checkbox]').forEach(cb=>cb.checked=true);
+}
+function setShareNone() {
+  document.querySelectorAll('#shareUserList input[type=checkbox]').forEach(cb=>cb.checked=false);
+}
+async function saveShare() {
+  const ids = [...document.querySelectorAll('#shareUserList input[type=checkbox]:checked')].map(cb=>cb.dataset.uid);
+  const r = await fetch('/api/investigations/'+invId+'/share',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_ids:ids})});
+  const d = await r.json();
+  if (d.success) { inv.shared_with = ids; document.getElementById('shareOverlay').classList.add('hidden'); toast('✅ Compartilhamento salvo!'); }
+  else toast('❌ '+d.error);
 }
 
 // ─── Modal Editar ─────────────────────────────────────────────────────────────

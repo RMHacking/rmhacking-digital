@@ -138,13 +138,26 @@ app.post('/api/login', async (req, res) => {
     if (!snap.empty) {
       const user = snap.docs[0].data();
       if (verifyPassword(password, user.password_hash)) {
+        // Verificar 2FA
+        if (user.totp_enabled && user.totp_secret) {
+          // Guarda estado pendente na sessão — aguarda código TOTP
+          req.session.pending_2fa = true;
+          req.session.pending_userId = user.id;
+          req.session.pending_username = user.username;
+          req.session.pending_role = user.role;
+          return res.json({ success: false, twofa_required: true });
+        }
         req.session.auth = true;
         req.session.userId = user.id;
         req.session.username = user.username;
         req.session.role = user.role;
+        // Log de acesso
+        fdb.collection('logs').add({ type:'login', username:user.username, role:user.role, ip:req.headers['x-forwarded-for']||req.ip||'', ua:req.headers['user-agent']||'', at:now() }).catch(()=>{});
         return res.json({ success: true, role: user.role });
       }
     }
+    // Log tentativa falha
+    fdb.collection('logs').add({ type:'login_fail', username:username.toLowerCase().trim(), ip:req.headers['x-forwarded-for']||req.ip||'', at:now() }).catch(()=>{});
     return res.status(401).json({ success: false, message: 'Usuário ou senha incorretos.' });
   }
   // Legado: só senha (compatibilidade)
@@ -192,6 +205,70 @@ app.post('/api/change-password', async (req, res) => {
   const adminSnap = await fdb.collection('users').where('role','==','admin').get();
   await Promise.all(adminSnap.docs.map(d => fdb.collection('users').doc(d.id).update({ password_hash: newHash })));
   res.json({ success: true });
+});
+
+// ── 2FA (TOTP) ────────────────────────────────────────────────────────────────
+const speakeasy = (() => { try { return require('speakeasy'); } catch(e) { return null; } })();
+
+// Verificar código TOTP após login com senha correta
+app.post('/api/2fa/login', async (req, res) => {
+  if (!req.session.pending_2fa || !req.session.pending_userId)
+    return res.status(400).json({ success:false, message:'Sessão inválida. Faça login novamente.' });
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ success:false, message:'Código obrigatório.' });
+  const doc = await fdb.collection('users').doc(req.session.pending_userId).get();
+  if (!doc.exists) return res.status(404).json({ success:false, message:'Usuário não encontrado.' });
+  const user = doc.data();
+  if (!speakeasy) return res.status(500).json({ success:false, message:'2FA não disponível.' });
+  const ok = speakeasy.totp.verify({ secret:user.totp_secret, encoding:'base32', token, window:1 });
+  if (!ok) {
+    fdb.collection('logs').add({ type:'2fa_fail', username:user.username, ip:req.headers['x-forwarded-for']||req.ip||'', at:now() }).catch(()=>{});
+    return res.status(401).json({ success:false, message:'Código inválido ou expirado.' });
+  }
+  req.session.auth = true;
+  req.session.userId = user.id;
+  req.session.username = user.username;
+  req.session.role = user.role;
+  req.session.pending_2fa = false;
+  req.session.pending_userId = null;
+  fdb.collection('logs').add({ type:'login', username:user.username, role:user.role, ip:req.headers['x-forwarded-for']||req.ip||'', via:'2fa', at:now() }).catch(()=>{});
+  res.json({ success:true, role:user.role });
+});
+
+// Gerar segredo TOTP para configuração
+app.post('/api/2fa/setup', requireAuth, async (req, res) => {
+  if (!speakeasy) return res.status(500).json({ error:'2FA não disponível.' });
+  const secret = speakeasy.generateSecret({ name:`RMHacking (${req.session.username||'usuario'})`, length:20 });
+  // Salva o segredo temporário até confirmar com um token
+  await fdb.collection('users').doc(req.session.userId).update({ totp_pending_secret: secret.base32 });
+  res.json({ secret: secret.base32, otpauth_url: secret.otpauth_url });
+});
+
+// Confirmar ativação do 2FA com primeiro token
+app.post('/api/2fa/enable', requireAuth, async (req, res) => {
+  if (!speakeasy) return res.status(500).json({ error:'2FA não disponível.' });
+  const { token } = req.body;
+  const doc = await fdb.collection('users').doc(req.session.userId).get();
+  if (!doc.exists) return res.status(404).json({ error:'Usuário não encontrado.' });
+  const pending = doc.data().totp_pending_secret;
+  if (!pending) return res.status(400).json({ error:'Nenhum segredo pendente. Gere primeiro.' });
+  const ok = speakeasy.totp.verify({ secret:pending, encoding:'base32', token, window:1 });
+  if (!ok) return res.status(401).json({ error:'Código inválido. Tente novamente.' });
+  await fdb.collection('users').doc(req.session.userId).update({ totp_secret:pending, totp_enabled:true, totp_pending_secret:null });
+  res.json({ success:true });
+});
+
+// Desabilitar 2FA
+app.post('/api/2fa/disable', requireAuth, async (req, res) => {
+  await fdb.collection('users').doc(req.session.userId).update({ totp_secret:null, totp_enabled:false, totp_pending_secret:null });
+  res.json({ success:true });
+});
+
+// Status do 2FA do usuário atual
+app.get('/api/2fa/status', requireAuth, async (req, res) => {
+  const doc = await fdb.collection('users').doc(req.session.userId).get();
+  if (!doc.exists) return res.json({ enabled:false });
+  res.json({ enabled: doc.data().totp_enabled||false });
 });
 
 // ── Gestão de Usuários ────────────────────────────────────────────────────────
@@ -250,7 +327,11 @@ app.use('/', requireAuth, express.static(path.join(__dirname, 'public')));
 // ── Investigations ────────────────────────────────────────────────────────────
 app.get('/api/investigations', requireAuth, async (req, res) => {
   const snap = await fdb.collection('investigations').get();
-  const list = snap.docs.map(d=>d.data()).sort((a,b)=>b.updated_at>a.updated_at?1:-1);
+  const userId = req.session.userId || '';
+  const role = req.session.role || '';
+  const list = snap.docs.map(d=>d.data())
+    .filter(inv => role === 'admin' || !inv.shared_with || inv.shared_with.length === 0 || inv.shared_with.includes(userId))
+    .sort((a,b)=>b.updated_at>a.updated_at?1:-1);
   res.json(list);
 });
 
@@ -263,7 +344,9 @@ app.get('/api/investigations/:id', requireAuth, async (req, res) => {
 app.post('/api/investigations', requireAuth, async (req, res) => {
   const b = req.body;
   const id = await nextInvId();
-  const inv = { id, title:b.title||'', description:b.description||'', status:b.status||'open', tags:b.tags||'', color:b.color||'#4f46e5', priority:b.priority||'medium', target:b.target||'', overview:'', empresa_notes:'', dossie:{}, created_at:now(), updated_at:now() };
+  const inv = { id, title:b.title||'', description:b.description||'', status:b.status||'open', tags:b.tags||'', color:b.color||'#4f46e5', priority:b.priority||'medium', target:b.target||'', deadline:b.deadline||'', folder:b.folder||'', shared_with:[], overview:'', empresa_notes:'', dossie:{}, created_at:now(), updated_at:now() };
+  // Log atividade
+  fdb.collection('activity').add({ action:'create_investigation', title:inv.title, username:req.session.username||'admin', at:now() }).catch(()=>{});
   await fdb.collection('investigations').doc(String(id)).set(inv);
   res.json(inv);
 });
@@ -273,7 +356,7 @@ app.put('/api/investigations/:id', requireAuth, async (req, res) => {
   if (!doc.exists) return res.status(404).json({ error:'Nao encontrado' });
   const cur = doc.data(); const b = req.body;
   const u = {};
-  ['title','description','status','tags','color','priority','target','overview','empresa_notes'].forEach(k => {
+  ['title','description','status','tags','color','priority','target','deadline','folder','overview','empresa_notes'].forEach(k => {
     if (b[k] !== undefined) u[k] = b[k];
   });
   u.updated_at = now();
@@ -289,6 +372,16 @@ app.delete('/api/investigations/:id', requireAuth, async (req, res) => {
   }
   await fdb.collection('investigations').doc(req.params.id).delete();
   res.json({ success:true });
+});
+
+// ── Compartilhar investigação ─────────────────────────────────────────────────
+app.post('/api/investigations/:id/share', requireAuth, requireAdmin, async (req, res) => {
+  const { user_ids } = req.body; // array of user IDs to share with
+  if (!Array.isArray(user_ids)) return res.status(400).json({ error:'user_ids deve ser array' });
+  const doc = await fdb.collection('investigations').doc(req.params.id).get();
+  if (!doc.exists) return res.status(404).json({ error:'Não encontrado' });
+  await fdb.collection('investigations').doc(req.params.id).update({ shared_with: user_ids, updated_at: now() });
+  res.json({ success: true, shared_with: user_ids });
 });
 
 // ── Dossie ────────────────────────────────────────────────────────────────────
@@ -675,6 +768,31 @@ app.get('/api/tools/urlscan/:target', requireAuth, async (req, res) => {
     const data = await httpGet('https://urlscan.io/api/v1/search/?q=domain:'+encodeURIComponent(target)+'&size=5');
     res.json(data);
   } catch(e) { res.status(500).json({error:'Erro URLScan: '+e.message}); }
+});
+
+// ── Logs de Acesso ────────────────────────────────────────────────────────────
+app.get('/api/logs', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const snap = await fdb.collection('logs').orderBy('at','desc').limit(200).get();
+    res.json(snap.docs.map(d=>d.data()));
+  } catch(e) { res.status(500).json({ error:e.message }); }
+});
+
+// ── Histórico de Atividade ────────────────────────────────────────────────────
+app.get('/api/activity', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const snap = await fdb.collection('activity').orderBy('at','desc').limit(100).get();
+    res.json(snap.docs.map(d=>d.data()));
+  } catch(e) { res.status(500).json({ error:e.message }); }
+});
+
+// ── Screenshot de sites (via screenshotone-compatível) ────────────────────────
+app.get('/api/tools/screenshot', requireAuth, async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).json({ error:'URL obrigatória' });
+  // Usa thum.io (free, no-key) para captura básica
+  const thumbUrl = 'https://image.thum.io/get/width/1280/crop/768/allowJPG/wait/2/noanimate/' + encodeURIComponent(url);
+  res.json({ screenshot_url: thumbUrl, source: 'thum.io' });
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────

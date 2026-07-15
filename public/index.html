@@ -105,7 +105,22 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .toast{position:fixed;bottom:24px;right:24px;background:#1e1e2e;border:1px solid rgba(79,70,229,.4);border-radius:10px;padding:12px 18px;color:#c7d2fe;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s}
 .toast.show{transform:translateY(0);opacity:1}
 
-@media(max-width:900px){.sidebar{transform:translateX(-100%)}.main{margin-left:0}.board{grid-template-columns:1fr}.stats-bar{grid-template-columns:repeat(2,1fr)}}
+/* ── Alerts ── */
+.alerts-banner{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:14px 20px;margin:16px 28px 0;display:none}
+.alerts-banner .alert-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+.alerts-banner .alert-row:last-child{border-bottom:none}
+/* ── Charts ── */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px 28px 0}
+.chart-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:20px}
+.chart-card h4{font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px}
+/* ── Deadline ── */
+.deadline-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;margin-top:4px;display:inline-block}
+.deadline-badge.ok{background:rgba(16,185,129,.1);color:#34d399;border:1px solid rgba(16,185,129,.2)}
+.deadline-badge.late{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}
+.deadline-badge.soon{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.25)}
+/* ── Session timer ── */
+#sessionTimer{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#1e1e2e;border:1px solid rgba(239,68,68,.4);border-radius:8px;padding:6px 14px;color:#f87171;font-size:12px;z-index:300;display:none}
+@media(max-width:900px){.sidebar{transform:translateX(-100%)}.main{margin-left:0}.board{grid-template-columns:1fr}.stats-bar{grid-template-columns:repeat(2,1fr)}.charts-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -130,6 +145,8 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
       <span class="icon">🟢</span> Finalizadas
     </a>
     <div style="height:1px;background:rgba(255,255,255,.06);margin:12px 4px"></div>
+    <div id="folderNav" style="margin-bottom:4px"></div>
+    <div style="height:1px;background:rgba(255,255,255,.06);margin:12px 4px"></div>
     <a class="nav-item" href="#" onclick="showCreateModal()">
       <span class="icon">➕</span> Nova Investigação
     </a>
@@ -138,6 +155,15 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
     </a>
     <a class="nav-item" id="navUsers" href="#" onclick="showUsersModal()" style="display:none">
       <span class="icon">👥</span> Gerenciar Usuários
+    </a>
+    <a class="nav-item" href="#" onclick="show2FAModal()">
+      <span class="icon">🔐</span> Autenticação 2FA
+    </a>
+    <a class="nav-item" id="navLogs" href="#" onclick="showLogsModal()" style="display:none">
+      <span class="icon">📜</span> Logs de Acesso
+    </a>
+    <a class="nav-item" id="navActivity" href="#" onclick="showActivityModal()" style="display:none">
+      <span class="icon">📊</span> Atividade
     </a>
   </nav>
   <div class="sidebar-footer">
@@ -172,6 +198,24 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
     <div class="stat-card open"><div class="num" id="statOpen">0</div><div class="label">🟣 Abertas</div></div>
     <div class="stat-card todo"><div class="num" id="statTodo">0</div><div class="label">🟡 Para Fazer</div></div>
     <div class="stat-card closed"><div class="num" id="statClosed">0</div><div class="label">🟢 Finalizadas</div></div>
+  </div>
+
+  <!-- Alertas de Prazo -->
+  <div class="alerts-banner" id="alertsBanner">
+    <div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:8px">⚠️ Alertas de Prazo</div>
+    <div id="alertsContent"></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h4>📊 Distribuição por Status</h4>
+      <canvas id="chartStatus" height="160"></canvas>
+    </div>
+    <div class="chart-card">
+      <h4>🏴 Distribuição por Prioridade</h4>
+      <canvas id="chartPriority" height="160"></canvas>
+    </div>
   </div>
 
   <div class="board">
@@ -242,6 +286,14 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
       <input type="text" id="fTags" placeholder="OSINT, Forense, Phishing...">
     </div>
     <div class="form-row">
+      <label>Prazo / Deadline</label>
+      <input type="date" id="fDeadline">
+    </div>
+    <div class="form-row">
+      <label>Pasta / Categoria</label>
+      <input type="text" id="fFolder" placeholder="Ex: Clientes, Fraudes, Interno...">
+    </div>
+    <div class="form-row">
       <label>Cor</label>
       <div class="color-row" id="colorPicker"></div>
     </div>
@@ -253,12 +305,34 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="sessionTimer"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const COLORS = ['#4f46e5','#7c3aed','#db2777','#dc2626','#d97706','#059669','#0891b2','#6b7280'];
 let investigations = [];
 let filterSt = null;
+let filterFolder = null;
 let selectedColor = COLORS[0];
+let chartStatus = null, chartPriority = null;
+
+// ── Session Timeout (30 min) ──────────────────────────────────────────────────
+const SESSION_MINUTES = 30;
+let sessionExpiry = Date.now() + SESSION_MINUTES * 60 * 1000;
+function resetSession() { sessionExpiry = Date.now() + SESSION_MINUTES * 60 * 1000; }
+['click','keydown','mousemove','touchstart'].forEach(e => document.addEventListener(e, resetSession, {passive:true}));
+setInterval(async () => {
+  const left = Math.max(0, Math.floor((sessionExpiry - Date.now()) / 1000));
+  const timer = document.getElementById('sessionTimer');
+  if (left <= 120) {
+    timer.style.display = 'block';
+    timer.textContent = `⏱ Sessão expira em ${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
+  } else { timer.style.display = 'none'; }
+  if (left === 0) {
+    await fetch('/api/logout', {method:'POST'});
+    window.location.href = '/login?timeout=1';
+  }
+}, 1000);
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 function esc(s) {
@@ -301,13 +375,59 @@ async function loadAll() {
     document.getElementById('statTodo').textContent   = todo;
     document.getElementById('statClosed').textContent = closed;
     renderBoard();
+    renderCharts(invs);
+    renderFolderNav(invs);
+    checkDeadlineAlerts(invs);
   } catch(e) { if (e.message !== '401') console.error(e); }
+}
+
+function renderFolderNav(invs) {
+  const folders = [...new Set(invs.map(i=>i.folder||'').filter(f=>f))].sort();
+  const nav = document.getElementById('folderNav');
+  if (!folders.length) { nav.innerHTML=''; return; }
+  nav.innerHTML = `<div style="font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.8px;padding:6px 12px">📁 Pastas</div>`
+    + folders.map(f=>`<a class="nav-item ${filterFolder===f?'active':''}" href="#" onclick="setFilterFolder('${f.replace(/'/g,"\\'")}')" style="font-size:12px"><span class="icon">📂</span>${esc(f)} <span style="font-size:10px;color:#4b5563;margin-left:auto">${invs.filter(i=>i.folder===f).length}</span></a>`).join('')
+    + (filterFolder ? `<a class="nav-item" href="#" onclick="setFilterFolder(null)" style="font-size:12px;color:#6b7280"><span class="icon">✕</span>Limpar filtro</a>` : '');
+}
+
+function setFilterFolder(f) {
+  filterFolder = f;
+  document.getElementById('pageTitle').textContent = f ? `📁 ${f}` : 'Todas as Investigações';
+  renderFolderNav(investigations);
+  renderBoard();
+}
+
+function renderCharts(invs) {
+  const statusData = [
+    invs.filter(i=>i.status==='open').length,
+    invs.filter(i=>i.status==='todo').length,
+    invs.filter(i=>i.status==='closed').length
+  ];
+  const priData = [
+    invs.filter(i=>i.priority==='high').length,
+    invs.filter(i=>i.priority==='medium').length,
+    invs.filter(i=>i.priority==='low').length
+  ];
+  const opts = { responsive:true, plugins:{ legend:{ labels:{ color:'#9ca3af', font:{size:11} } } } };
+  if (chartStatus) chartStatus.destroy();
+  chartStatus = new Chart(document.getElementById('chartStatus'), {
+    type:'doughnut',
+    data:{ labels:['Abertas','Para Fazer','Finalizadas'], datasets:[{ data:statusData, backgroundColor:['#4f46e5','#f59e0b','#10b981'], borderWidth:0 }] },
+    options:{...opts, cutout:'65%'}
+  });
+  if (chartPriority) chartPriority.destroy();
+  chartPriority = new Chart(document.getElementById('chartPriority'), {
+    type:'bar',
+    data:{ labels:['Alta','Média','Baixa'], datasets:[{ label:'Investigações', data:priData, backgroundColor:['#ef4444','#f59e0b','#10b981'], borderRadius:6, borderSkipped:false }] },
+    options:{...opts, scales:{ x:{ ticks:{color:'#9ca3af'}, grid:{color:'rgba(255,255,255,.04)'} }, y:{ ticks:{color:'#9ca3af',stepSize:1}, grid:{color:'rgba(255,255,255,.04)'} } }}
+  });
 }
 
 function renderBoard() {
   const q = document.getElementById('searchInput').value.toLowerCase();
   let list = investigations;
   if (filterSt) list = list.filter(i=>i.status===filterSt);
+  if (filterFolder) list = list.filter(i=>(i.folder||'')===filterFolder);
   if (q) list = list.filter(i=>
     i.title.toLowerCase().includes(q) ||
     (i.description||'').toLowerCase().includes(q) ||
@@ -332,6 +452,7 @@ function cardHTML(inv) {
   const pri = inv.priority || 'medium';
   const priMap = {high:'🔴 Alta',medium:'🟡 Média',low:'🟢 Baixa'};
   const date = new Date(inv.updated_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+  const folderBadge = inv.folder ? `<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(6,182,212,.1);color:#67e8f9;border:1px solid rgba(6,182,212,.2)">📁 ${esc(inv.folder)}</span>` : '';
   return `
   <div class="inv-card" onclick="openInv(${inv.id})">
     <div class="inv-card-accent" style="background:${inv.color||'#4f46e5'}"></div>
@@ -344,8 +465,9 @@ function cardHTML(inv) {
     </div>
     ${inv.target ? `<p style="color:#a5b4fc;font-size:11px;margin-bottom:6px">🎯 ${esc(inv.target)}</p>` : ''}
     ${inv.description ? `<p>${esc(inv.description)}</p>` : ''}
+    ${inv.deadline ? (()=>{ const d=new Date(inv.deadline+' 23:59'); const now2=new Date(); const diff=Math.ceil((d-now2)/(1000*60*60*24)); const cls=diff<0?'late':diff<=3?'soon':'ok'; const lbl=diff<0?`⚠️ Venceu ${inv.deadline}`:`📅 Prazo: ${inv.deadline}`; return `<span class="deadline-badge ${cls}">${lbl}</span>`; })() : ''}
     <div class="inv-card-footer">
-      <div class="tags">${tags}</div>
+      <div class="tags">${folderBadge}${tags}</div>
       <div style="display:flex;align-items:center;gap:8px">
         <span class="priority-badge ${pri}">${priMap[pri]}</span>
         <span class="date">${date}</span>
@@ -368,6 +490,8 @@ function showCreateModal(status='open') {
   document.getElementById('fStatus').value = status;
   document.getElementById('fPriority').value = 'medium';
   document.getElementById('fTags').value = '';
+  document.getElementById('fDeadline').value = '';
+  document.getElementById('fFolder').value = '';
   selectedColor = COLORS[0];
   renderColorPicker();
   document.getElementById('createOverlay').classList.remove('hidden');
@@ -401,6 +525,8 @@ async function saveInvestigation() {
     priority: document.getElementById('fPriority').value,
     tags: document.getElementById('fTags').value,
     color: selectedColor,
+    deadline: document.getElementById('fDeadline').value,
+    folder: document.getElementById('fFolder').value.trim(),
   };
   const method = id ? 'PUT' : 'POST';
   const url = id ? `/api/investigations/${id}` : '/api/investigations';
@@ -424,6 +550,8 @@ async function editInv(id) {
   document.getElementById('fStatus').value = inv.status;
   document.getElementById('fPriority').value = inv.priority||'medium';
   document.getElementById('fTags').value = inv.tags||'';
+  document.getElementById('fDeadline').value = inv.deadline||'';
+  document.getElementById('fFolder').value = inv.folder||'';
   selectedColor = inv.color||COLORS[0];
   renderColorPicker();
   document.getElementById('createOverlay').classList.remove('hidden');
@@ -547,15 +675,151 @@ async function resetUserPwd(id, username) {
   toast('✅ Senha redefinida!');
 }
 
+// ── Alertas de Prazo ─────────────────────────────────────────────────────────
+function checkDeadlineAlerts(invs) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const alerts = invs.filter(i => i.deadline && i.status !== 'closed').map(i => {
+    const d = new Date(i.deadline + ' 23:59');
+    const diff = Math.ceil((d - today) / (1000*60*60*24));
+    return { inv:i, diff };
+  }).filter(a => a.diff <= 5).sort((a,b) => a.diff - b.diff);
+
+  const banner = document.getElementById('alertsBanner');
+  const content = document.getElementById('alertsContent');
+  if (!alerts.length) { banner.style.display='none'; return; }
+  banner.style.display = 'block';
+  content.innerHTML = alerts.map(a => {
+    const cls = a.diff < 0 ? '🔴' : a.diff === 0 ? '🟠' : '🟡';
+    const msg = a.diff < 0 ? `Venceu há ${Math.abs(a.diff)} dia(s)` : a.diff === 0 ? 'Vence hoje!' : `Vence em ${a.diff} dia(s)`;
+    return `<div class="alert-row">${cls} <strong style="color:#f1f5f9;cursor:pointer" onclick="openInv(${a.inv.id})">${esc(a.inv.title)}</strong> <span style="color:#9ca3af">— ${msg} (${a.inv.deadline})</span></div>`;
+  }).join('');
+}
+
+// ── 2FA Setup ─────────────────────────────────────────────────────────────────
+async function show2FAModal() {
+  document.getElementById('twofaModalOverlay').style.display = 'flex';
+  const statusEl = document.getElementById('twofa2Status');
+  const setupEl  = document.getElementById('twofa2Setup');
+  const enabledEl = document.getElementById('twofa2Enabled');
+  statusEl.textContent = 'Verificando...';
+  setupEl.style.display = 'none';
+  enabledEl.style.display = 'none';
+  try {
+    const r = await fetch('/api/2fa/status');
+    if (!r.ok) { statusEl.textContent='Sessão não identificada. Faça login novamente.'; return; }
+    const d = await r.json();
+    statusEl.textContent = '';
+    if (d.enabled) {
+      enabledEl.style.display = 'block';
+    } else {
+      setupEl.style.display = 'block';
+    }
+  } catch(e) { statusEl.textContent='Erro: '+e.message; }
+}
+function close2FAModal() { document.getElementById('twofaModalOverlay').style.display = 'none'; }
+
+async function setup2FA() {
+  const qrDiv = document.getElementById('twofa2QR');
+  const secretDiv = document.getElementById('twofa2Secret');
+  const confirmDiv = document.getElementById('twofa2Confirm');
+  qrDiv.innerHTML = '<div style="color:#6b7280;font-size:12px">Gerando chave...</div>';
+  secretDiv.textContent = '';
+  try {
+    const r = await fetch('/api/2fa/setup', { method:'POST' });
+    const d = await r.json();
+    if (d.error) { qrDiv.innerHTML='<div style="color:#ef4444">'+d.error+'</div>'; return; }
+    secretDiv.textContent = d.secret;
+    // Usar QRCode.js via CDN para gerar QR
+    qrDiv.innerHTML = '';
+    if (window.QRCode) {
+      new window.QRCode(qrDiv, { text:d.otpauth_url, width:160, height:160, colorDark:'#4f46e5', colorLight:'#13131f' });
+    } else {
+      qrDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(d.otpauth_url)}" style="border-radius:8px">`;
+    }
+    confirmDiv.style.display = 'block';
+  } catch(e) { qrDiv.innerHTML='<div style="color:#ef4444">Erro: '+e.message+'</div>'; }
+}
+
+async function confirm2FA() {
+  const token = document.getElementById('twofa2Token').value.trim().replace(/\s/g,'');
+  if (token.length !== 6) { toast('⚠️ Digite os 6 dígitos'); return; }
+  const r = await fetch('/api/2fa/enable', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token}) });
+  const d = await r.json();
+  if (d.success) { toast('✅ 2FA ativado! Guarde o app autenticador.'); close2FAModal(); }
+  else toast('❌ '+(d.error||'Código inválido'));
+}
+
+async function disable2FA() {
+  if (!confirm('Desativar autenticação em dois fatores? Isso reduz a segurança da sua conta.')) return;
+  const r = await fetch('/api/2fa/disable', { method:'POST' });
+  const d = await r.json();
+  if (d.success) { toast('2FA desativado.'); close2FAModal(); }
+  else toast('Erro ao desativar.');
+}
+
 // Mostrar menu de usuários só para admin
 async function checkRole() {
   try {
     const r = await fetch('/api/users');
     if (r.ok) {
       document.getElementById('navUsers').style.display = 'flex';
+      document.getElementById('navLogs').style.display = 'flex';
+      document.getElementById('navActivity').style.display = 'flex';
     }
   } catch(e) {}
 }
+
+// ── Logs de Acesso ────────────────────────────────────────────────────────────
+async function showLogsModal() {
+  document.getElementById('logsModalOverlay').style.display = 'flex';
+  const el = document.getElementById('logsContent');
+  el.innerHTML = '<p style="color:#6b7280;font-size:13px;padding:12px">Carregando...</p>';
+  try {
+    const r = await fetch('/api/logs');
+    if (!r.ok) { el.innerHTML='<p style="color:#ef4444">Sem permissão.</p>'; return; }
+    const logs = await r.json();
+    if (!logs.length) { el.innerHTML='<p style="color:#6b7280;font-size:12px;padding:12px">Nenhum log registrado ainda.</p>'; return; }
+    el.innerHTML = logs.map(l => {
+      const fail = l.type==='login_fail';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px">
+        <span style="font-size:16px">${fail?'🔴':'🟢'}</span>
+        <div style="flex:1">
+          <span style="color:${fail?'#f87171':'#a5b4fc'};font-weight:600">${l.username||'?'}</span>
+          <span style="color:#6b7280"> — ${fail?'Falha':'Sucesso'} — IP: ${l.ip||'?'}</span>
+        </div>
+        <span style="color:#374151">${(l.at||'').substring(0,16)}</span>
+      </div>`;
+    }).join('');
+  } catch(e) { el.innerHTML='<p style="color:#ef4444">Erro: '+e.message+'</p>'; }
+}
+function closeLogsModal() { document.getElementById('logsModalOverlay').style.display = 'none'; }
+
+// ── Histórico de Atividade ────────────────────────────────────────────────────
+async function showActivityModal() {
+  document.getElementById('activityModalOverlay').style.display = 'flex';
+  const el = document.getElementById('activityContent');
+  el.innerHTML = '<p style="color:#6b7280;font-size:13px;padding:12px">Carregando...</p>';
+  try {
+    const r = await fetch('/api/activity');
+    if (!r.ok) { el.innerHTML='<p style="color:#ef4444">Sem permissão.</p>'; return; }
+    const acts = await r.json();
+    if (!acts.length) { el.innerHTML='<p style="color:#6b7280;font-size:12px;padding:12px">Nenhuma atividade registrada.</p>'; return; }
+    const icons = { create_investigation:'🆕', delete_investigation:'🗑', update:'✏️' };
+    el.innerHTML = acts.map(a => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px">
+        <span style="font-size:16px">${icons[a.action]||'📌'}</span>
+        <div style="flex:1">
+          <span style="color:#a5b4fc;font-weight:600">${a.username||'sistema'}</span>
+          <span style="color:#9ca3af"> criou </span>
+          <span style="color:#e2e8f0">"${a.title||''}"</span>
+        </div>
+        <span style="color:#374151">${(a.at||'').substring(0,16)}</span>
+      </div>`).join('');
+  } catch(e) { el.innerHTML='<p style="color:#ef4444">Erro: '+e.message+'</p>'; }
+}
+function closeActivityModal() { document.getElementById('activityModalOverlay').style.display = 'none'; }
+
 checkRole();
 init();
 window.addEventListener('pageshow', e => { if (e.persisted) loadAll(); });
@@ -595,6 +859,60 @@ window.addEventListener('pageshow', e => { if (e.persisted) loadAll(); });
       <div id="usersError" style="display:none;color:#ef4444;font-size:12px;margin-top:8px;padding:8px;background:rgba(239,68,68,.1);border-radius:6px"></div>
       <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="createUser()">+ Criar Acesso</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal 2FA -->
+<div id="twofaModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;z-index:1000" onclick="if(event.target===this)close2FAModal()">
+  <div class="modal" style="max-width:460px;width:100%;margin:20px">
+    <h3>🔐 Autenticação em Dois Fatores <button class="modal-close" onclick="close2FAModal()">×</button></h3>
+    <div id="twofa2Status" style="font-size:13px;color:#6b7280;margin-bottom:12px"></div>
+
+    <!-- Já ativado -->
+    <div id="twofa2Enabled" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;margin-bottom:16px">
+        <span style="font-size:24px">✅</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#34d399">2FA Ativado</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">Sua conta está protegida com verificação em dois fatores.</div>
+        </div>
+      </div>
+      <button onclick="disable2FA()" style="width:100%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px;color:#f87171;font-size:13px;cursor:pointer">🗑 Desativar 2FA</button>
+    </div>
+
+    <!-- Configurar 2FA -->
+    <div id="twofa2Setup" style="display:none">
+      <p style="font-size:12px;color:#9ca3af;margin-bottom:16px;line-height:1.6">Ative a verificação em dois fatores para maior segurança. Use Google Authenticator, Authy ou qualquer app TOTP compatível.</p>
+      <button onclick="setup2FA()" class="btn-primary" style="width:100%;margin-bottom:16px">⚡ Gerar QR Code</button>
+      <div id="twofa2QR" style="text-align:center;margin-bottom:12px;min-height:60px"></div>
+      <div style="text-align:center;margin-bottom:8px">
+        <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Ou insira esta chave manualmente:</div>
+        <code id="twofa2Secret" style="font-size:12px;color:#a5b4fc;background:rgba(79,70,229,.1);padding:6px 12px;border-radius:6px;word-break:break-all;display:block"></code>
+      </div>
+      <div id="twofa2Confirm" style="display:none;margin-top:16px">
+        <div class="form-row">
+          <label>Confirme com o código do app</label>
+          <input type="text" id="twofa2Token" placeholder="000000" maxlength="6" inputmode="numeric" style="text-align:center;letter-spacing:6px;font-size:18px">
+        </div>
+        <button onclick="confirm2FA()" class="btn-primary" style="width:100%">✅ Ativar 2FA</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Logs -->
+<div id="logsModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;z-index:1000" onclick="if(event.target===this)closeLogsModal()">
+  <div class="modal" style="max-width:640px;width:100%;margin:20px">
+    <h3>📜 Logs de Acesso <button class="modal-close" onclick="closeLogsModal()">×</button></h3>
+    <div id="logsContent" style="max-height:420px;overflow-y:auto;border:1px solid rgba(255,255,255,.06);border-radius:8px"></div>
+  </div>
+</div>
+
+<!-- Modal Atividade -->
+<div id="activityModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;z-index:1000" onclick="if(event.target===this)closeActivityModal()">
+  <div class="modal" style="max-width:640px;width:100%;margin:20px">
+    <h3>📊 Histórico de Atividade <button class="modal-close" onclick="closeActivityModal()">×</button></h3>
+    <div id="activityContent" style="max-height:420px;overflow-y:auto;border:1px solid rgba(255,255,255,.06);border-radius:8px"></div>
   </div>
 </div>
 
