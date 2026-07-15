@@ -138,15 +138,142 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e2e8f
 
   <!-- Tabs -->
   <div class="tabs">
-    <button class="tab-btn active" onclick="showTab('sites')">🌐 Sites & URLs</button>
+    <button class="tab-btn active" onclick="showTab('osint')">🔎 OSINT Rápido</button>
+    <button class="tab-btn" onclick="showTab('sites')">🌐 Sites & URLs</button>
     <button class="tab-btn" onclick="showTab('cnpj')">🏢 CNPJ / Empresa</button>
     <button class="tab-btn" onclick="showTab('rede')">📡 IP & Rede</button>
     <button class="tab-btn" onclick="showTab('pessoas')">👤 Pessoas</button>
     <button class="tab-btn" onclick="showTab('forense')">🔬 Forense</button>
   </div>
 
+  <!-- TAB: OSINT Rápido -->
+  <div id="tab-osint" class="tools-grid">
+
+    <!-- Grid de links rápidos -->
+    <div class="tool-card" style="grid-column:1/-1">
+      <div class="section-title">⚡ Acesso Rápido — Clique para abrir com o alvo preenchido</div>
+      <div id="osintQuickGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px"></div>
+    </div>
+
+    <!-- Registrar Pesquisa OSINT -->
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(79,70,229,.15)">📋</div>
+        <div class="tool-info">
+          <h3>Registrar Pesquisa OSINT</h3>
+          <p>Salve achados diretamente em uma investigação</p>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Tipo de Pesquisa</label>
+          <select id="osintTypeQ" style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 10px;color:#f1f5f9;font-size:13px;outline:none">
+            <option value="ip">IP / Geolocalização</option>
+            <option value="domain">Domínio / WHOIS</option>
+            <option value="email">E-mail</option>
+            <option value="cpf">CPF / Pessoa</option>
+            <option value="cnpj">CNPJ / Empresa</option>
+            <option value="username">Username / Redes Sociais</option>
+            <option value="url">URL / Site</option>
+            <option value="hash">Hash / Arquivo</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Fonte Consultada</label>
+          <input type="text" id="osintSourceQ" placeholder="Ex: Shodan, VirusTotal, HIBP..." style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 10px;color:#f1f5f9;font-size:13px;outline:none">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Resultado / Achados</label>
+          <textarea id="osintResultQ" style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 10px;color:#f1f5f9;font-size:12px;font-family:monospace;resize:vertical;min-height:100px;outline:none" placeholder="Registre o que você encontrou..."></textarea>
+        </div>
+        <button class="btn-tool btn-save" style="width:100%;justify-content:center" onclick="saveOsintQuick()">💾 Salvar na Investigação</button>
+      </div>
+    </div>
+
+    <!-- IP Lookup rápido -->
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(6,182,212,.15)">🌍</div>
+        <div class="tool-info">
+          <h3>IP Lookup Completo <span class="tool-badge badge-api">API GRÁTIS</span></h3>
+          <p>Geolocalização, ASN, organização e timezone do IP</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-query" onclick="queryIPFull()">⚡ Rastrear IP</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://ip-api.com/#'+encodeURIComponent(getTarget()))">🔗 ip-api.com</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.abuseipdb.com/check/'+encodeURIComponent(getTarget()))">🔗 AbuseIPDB</button>
+        <button class="btn-tool btn-save" onclick="saveResult('iplookup','IP Lookup')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('iplookup')">✕</button>
+      </div>
+      <div class="tool-result" id="res-iplookup" contenteditable="true" data-placeholder="Digite o IP no campo Alvo e clique Rastrear..."></div>
+    </div>
+
+    <!-- Buscas gerais OSINT -->
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(16,185,129,.15)">🌐</div>
+        <div class="tool-info">
+          <h3>Buscas Combinadas OSINT <span class="tool-badge badge-link">LINKS</span></h3>
+          <p>Shodan, Censys, GreyNoise, Maltego e OSINT Framework</p>
+        </div>
+      </div>
+      <div class="tool-actions" style="flex-wrap:wrap">
+        <button class="btn-tool btn-launch" onclick="openTool('https://shodan.io/search?query='+encodeURIComponent(getTarget()))">🔗 Shodan</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://search.censys.io/?q='+encodeURIComponent(getTarget()))">🔗 Censys</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://viz.greynoise.io/ip/'+encodeURIComponent(getTarget()))">🔗 GreyNoise</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://osintframework.com/')">🔗 OSINT Framework</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://intelx.io/?s='+encodeURIComponent(getTarget()))">🔗 IntelX</button>
+        <button class="btn-tool btn-save" onclick="saveResult('osintcomb','Buscas OSINT')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('osintcomb')">✕</button>
+      </div>
+      <div class="tool-result" id="res-osintcomb" contenteditable="true" data-placeholder="Cole aqui as observações e achados..."></div>
+    </div>
+
+    <!-- Busca por imagem -->
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(245,158,11,.15)">🖼️</div>
+        <div class="tool-info">
+          <h3>Busca por Imagem <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Identifica pessoas e locais via busca reversa de imagens</p>
+        </div>
+      </div>
+      <div class="tool-actions" style="flex-wrap:wrap">
+        <button class="btn-tool btn-launch" onclick="openTool('https://images.google.com/')">🔗 Google Imagens</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://yandex.com/images/')">🔗 Yandex</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://pimeyes.com/')">🔗 PimEyes (facial)</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://tineye.com/')">🔗 TinEye</button>
+        <button class="btn-tool btn-save" onclick="saveResult('imgrev','Busca por Imagem')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('imgrev')">✕</button>
+      </div>
+      <div class="tool-result" id="res-imgrev" contenteditable="true" data-placeholder="Cole aqui os resultados da busca reversa..."></div>
+    </div>
+
+    <!-- Telegram OSINT -->
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(0,136,204,.15)">✈️</div>
+        <div class="tool-info">
+          <h3>Telegram & WhatsApp OSINT <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Busca grupos, canais e usuários no Telegram</p>
+        </div>
+      </div>
+      <div class="tool-actions" style="flex-wrap:wrap">
+        <button class="btn-tool btn-launch" onclick="openTool('https://t.me/s/'+encodeURIComponent(getTarget().replace('@','')))">🔗 Telegram</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://tgstat.com/search?q='+encodeURIComponent(getTarget()))">🔗 TGStat</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.google.com/search?q=site:t.me+'+encodeURIComponent(getTarget()))">🔗 Google + t.me</button>
+        <button class="btn-tool btn-save" onclick="saveResult('telegram','Telegram OSINT')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('telegram')">✕</button>
+      </div>
+      <div class="tool-result" id="res-telegram" contenteditable="true" data-placeholder="Cole aqui grupos, canais ou perfis encontrados..."></div>
+    </div>
+
+  </div>
+
   <!-- TAB: Sites & URLs -->
-  <div id="tab-sites" class="tools-grid">
+  <div id="tab-sites" class="tools-grid" style="display:none">
 
     <div class="tool-card">
       <div class="tool-header">
@@ -445,20 +572,61 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e2e8f
 
     <div class="tool-card">
       <div class="tool-header">
-        <div class="tool-icon" style="background:rgba(29,161,242,.15)">🐦</div>
+        <div class="tool-icon" style="background:rgba(29,161,242,.15)">📱</div>
         <div class="tool-info">
           <h3>Busca em Redes Sociais <span class="tool-badge badge-link">LINK</span></h3>
-          <p>Busca o alvo no LinkedIn, Twitter/X, Instagram e Facebook</p>
+          <p>Busca o alvo no LinkedIn, X/Twitter, Instagram, Facebook e TikTok</p>
         </div>
       </div>
-      <div class="tool-actions">
+      <div class="tool-actions" style="flex-wrap:wrap">
         <button class="btn-tool btn-launch" onclick="openTool('https://www.linkedin.com/search/results/all/?keywords='+encodeURIComponent(getTarget()))">🔗 LinkedIn</button>
         <button class="btn-tool btn-launch" onclick="openTool('https://x.com/search?q='+encodeURIComponent(getTarget()))">🔗 X/Twitter</button>
         <button class="btn-tool btn-launch" onclick="openTool('https://www.instagram.com/'+encodeURIComponent(getTarget().replace('@','')))">🔗 Instagram</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.facebook.com/search/top?q='+encodeURIComponent(getTarget()))">🔗 Facebook</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.tiktok.com/search?q='+encodeURIComponent(getTarget()))">🔗 TikTok</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.social-searcher.com/social-buzz/?q='+encodeURIComponent(getTarget()))">🔗 Social Searcher</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
         <button class="btn-tool btn-save" onclick="saveResult('redes','Redes Sociais')">💾 Salvar</button>
         <button class="btn-tool btn-clear" onclick="clearResult('redes')">✕</button>
       </div>
-      <div class="tool-result" id="res-redes" contenteditable="true" data-placeholder="Cole aqui os perfis encontrados..."></div>
+      <div class="tool-result" id="res-redes" contenteditable="true" data-placeholder="Cole aqui os perfis e observações encontrados..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(99,102,241,.15)">🕵️</div>
+        <div class="tool-info">
+          <h3>Sherlock — Username Hunt <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Busca um username em dezenas de redes sociais simultaneamente</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://sherlock-project.github.io/?username='+encodeURIComponent(getTarget().replace('@','')))">🔗 Sherlock Web</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://namechk.com/')">🔗 Namechk</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://checkusernames.com/')">🔗 CheckUsernames</button>
+        <button class="btn-tool btn-save" onclick="saveResult('sherlock','Sherlock Username')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('sherlock')">✕</button>
+      </div>
+      <div class="tool-result" id="res-sherlock" contenteditable="true" data-placeholder="Cole aqui os perfis encontrados nas redes..."></div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-icon" style="background:rgba(217,119,6,.15)">🔗</div>
+        <div class="tool-info">
+          <h3>Maltego / Grafo OSINT <span class="tool-badge badge-link">LINK</span></h3>
+          <p>Mapeamento de entidades e relações entre alvos</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button class="btn-tool btn-launch" onclick="openTool('https://www.maltego.com/')">🔗 Maltego CE</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://viz.greynoise.io/')">🔗 GreyNoise</button>
+        <button class="btn-tool btn-launch" onclick="openTool('https://osintframework.com/')">🔗 OSINT Framework</button>
+        <button class="btn-tool btn-save" onclick="saveResult('maltego','Maltego/Grafo')">💾 Salvar</button>
+        <button class="btn-tool btn-clear" onclick="clearResult('maltego')">✕</button>
+      </div>
+      <div class="tool-result" id="res-maltego" contenteditable="true" data-placeholder="Cole aqui os relacionamentos e observações encontrados..."></div>
     </div>
 
     <div class="tool-card">
@@ -647,13 +815,47 @@ function getTarget() {
 function syncTargets() {}
 
 // ── Tabs ────────────────────────────────────────────────────────────────────
+const ALL_TABS = ['osint','sites','cnpj','rede','pessoas','forense'];
 function showTab(tab) {
-  ['sites','cnpj','rede','pessoas','forense'].forEach(t=>{
-    document.getElementById('tab-'+t).style.display = t===tab ? 'grid' : 'none';
+  ALL_TABS.forEach(t=>{
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t===tab ? 'grid' : 'none';
   });
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
-    b.classList.toggle('active', ['sites','cnpj','rede','pessoas','forense'][i]===tab);
+    b.classList.toggle('active', ALL_TABS[i]===tab);
   });
+}
+
+// ── OSINT Quick Grid ─────────────────────────────────────────────────────────
+const QUICK_TOOLS = [
+  {icon:'🔎',name:'Shodan',url:'https://shodan.io/search?query='},
+  {icon:'🦠',name:'VirusTotal',url:'https://virustotal.com/gui/search/'},
+  {icon:'💧',name:'HIBP',url:'https://haveibeenpwned.com/account/'},
+  {icon:'🕵️',name:'Hunter.io',url:'https://hunter.io/search/'},
+  {icon:'🌍',name:'Who.is',url:'https://who.is/whois/'},
+  {icon:'📍',name:'IP-API',url:'https://ip-api.com/#'},
+  {icon:'📱',name:'Social Search',url:'https://www.social-searcher.com/social-buzz/?q='},
+  {icon:'⏱️',name:'Wayback',url:'https://web.archive.org/web/*/'},
+  {icon:'🔗',name:'URLScan',url:'https://urlscan.io/search/#'},
+  {icon:'💼',name:'LinkedIn',url:'https://www.linkedin.com/search/results/all/?keywords='},
+  {icon:'🐦',name:'X/Twitter',url:'https://twitter.com/search?q='},
+  {icon:'📘',name:'Facebook',url:'https://www.facebook.com/search/top?q='},
+  {icon:'🎵',name:'TikTok',url:'https://www.tiktok.com/search?q='},
+  {icon:'📷',name:'Instagram',url:'https://www.instagram.com/'},
+  {icon:'🔗',name:'Maltego',url:'https://www.maltego.com/'},
+  {icon:'🧠',name:'IntelX',url:'https://intelx.io/?s='},
+  {icon:'🌐',name:'Censys',url:'https://search.censys.io/?q='},
+  {icon:'📊',name:'OSINT FW',url:'https://osintframework.com/'},
+];
+function renderQuickGrid() {
+  const grid = document.getElementById('osintQuickGrid');
+  if (!grid) return;
+  grid.innerHTML = QUICK_TOOLS.map(t => `
+    <button onclick="openTool('${t.url}'+encodeURIComponent(getTarget()))" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 8px;cursor:pointer;transition:all .2s;text-align:center;color:#e2e8f0" onmouseover="this.style.borderColor='rgba(79,70,229,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+      <div style="font-size:22px;margin-bottom:4px">${t.icon}</div>
+      <div style="font-size:11px;font-weight:600;color:#c7d2fe">${t.name}</div>
+    </button>
+  `).join('');
 }
 
 // ── Tool helpers ─────────────────────────────────────────────────────────────
@@ -967,6 +1169,53 @@ function decodeURL() {
   catch(e) { el.textContent = '❌ URL inválida: '+e.message; }
 }
 
+// ── IP Lookup Full ────────────────────────────────────────────────────────────
+async function queryIPFull() {
+  const target = getTarget();
+  if (!target) { toast('⚠️ Digite um IP no campo Alvo'); return; }
+  const el = document.getElementById('res-iplookup');
+  el.textContent = '⏳ Rastreando IP...';
+  try {
+    const r = await fetch('/api/tools/ipinfo/'+encodeURIComponent(target));
+    const d = await r.json();
+    if (d.error) { el.textContent = '❌ '+d.error; return; }
+    el.textContent = [
+      '=== IP LOOKUP ===',
+      'IP: '+(d.ip||target),
+      'Hostname: '+(d.hostname||'—'),
+      'Cidade: '+(d.city||'—'),
+      'Região: '+(d.region||'—'),
+      'País: '+(d.country||'—'),
+      'Localização GPS: '+(d.loc||'—'),
+      'Organização/ASN: '+(d.org||'—'),
+      'Timezone: '+(d.timezone||'—'),
+      'CEP: '+(d.postal||'—'),
+      '',
+      'Google Maps: https://maps.google.com/?q='+(d.loc||''),
+    ].join('\n');
+  } catch(e) { el.textContent = '❌ Erro: '+e.message; }
+}
+
+// ── Save OSINT Quick ──────────────────────────────────────────────────────────
+async function saveOsintQuick() {
+  const invId = document.getElementById('invSelect').value;
+  const result = document.getElementById('osintResultQ').value.trim();
+  const source = document.getElementById('osintSourceQ').value.trim();
+  const type = document.getElementById('osintTypeQ').value;
+  if (!result) { toast('⚠️ Preencha o campo Resultado'); return; }
+  if (!invId) { toast('⚠️ Selecione uma investigação'); return; }
+  const r = await fetch('/api/investigations/'+invId+'/osint', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ query: getTarget()||source, type, result, source: source||'Ferramentas' })
+  });
+  if (r.ok) {
+    toast('✅ Salvo na investigação!');
+    document.getElementById('osintResultQ').value = '';
+    document.getElementById('osintSourceQ').value = '';
+  } else toast('❌ Erro ao salvar');
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 async function logout() {
   await fetch('/api/logout',{method:'POST'});
@@ -979,8 +1228,14 @@ async function checkAuth() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+// Inicializa na aba OSINT Rápido (primeira aba)
+ALL_TABS.forEach(t => {
+  const el = document.getElementById('tab-'+t);
+  if (el) el.style.display = t==='osint' ? 'grid' : 'none';
+});
 checkAuth();
 loadInvestigations();
+renderQuickGrid();
 </script>
 </body>
 </html>
