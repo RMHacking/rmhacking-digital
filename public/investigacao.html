@@ -1108,7 +1108,7 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
     </div>
 
     <!-- Grid -->
-    <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+    <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
       <div style="color:#4b5563;font-size:13px;grid-column:1/-1;text-align:center;padding:40px">Carregando galeria...</div>
     </div>
   </div>
@@ -3233,7 +3233,7 @@ function renderPinList() {
   if (!mapPins.length) { el.innerHTML = '<div style="color:#374151;font-size:12px;text-align:center;padding:10px">Nenhum ponto adicionado</div>'; return; }
   el.innerHTML = mapPins.map(function(p){
     return '<div class="map-pin"><div class="map-pin-dot" style="background:'+(pinColors[p.type]||'#4f46e5')+'"></div>'
-      +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.label)+'</div>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.label)+'</div>'
       +'<div style="font-size:10px;color:#4b5563">'+esc(p.target||'')+(p.lat?(' · '+p.lat.toFixed(3)+','+p.lng.toFixed(3)):'')+'</div></div>'
       +'<button class="del-btn" onclick="removeMapPin('+p.id+')">×</button></div>';
   }).join('');
@@ -3868,10 +3868,10 @@ function renderGallery() {
   }
   grid.innerHTML = _galleryItems.map(item=>`
     <div onclick="openLightbox('${item.id}')" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='rgba(79,70,229,.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
-      <div style="height:150px;overflow:hidden;background:#07070e;display:flex;align-items:center;justify-content:center">
+      <div style="height:210px;overflow:hidden;background:#07070e;display:flex;align-items:center;justify-content:center">
         <img src="${item.image_data}" style="width:100%;height:100%;object-fit:cover" loading="lazy" onerror="this.parentElement.innerHTML='<span style=\\'color:#374151;font-size:24px\\'>🖼️</span>'">
       </div>
-      <div style="padding:10px 12px">
+      <div style="padding:12px 14px">
         <div style="font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.title||'Sem título')}</div>
         ${item.comment?`<div style="font-size:11px;color:#6b7280;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.comment)}</div>`:''}
         <div style="font-size:10px;color:#374151;margin-top:5px">${item.created_by||''} · ${item.created_at?new Date(item.created_at).toLocaleDateString('pt-BR'):''}</div>
