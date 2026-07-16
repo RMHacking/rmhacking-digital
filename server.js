@@ -271,6 +271,15 @@ app.get('/api/2fa/status', requireAuth, async (req, res) => {
   res.json({ enabled: doc.data().totp_enabled||false });
 });
 
+// ── Sessão atual ─────────────────────────────────────────────────────────────
+app.get('/api/me', requireAuth, (req, res) => {
+  res.json({
+    userId:   req.session.userId,
+    username: req.session.username || 'usuário',
+    role:     req.session.role     || 'user',
+  });
+});
+
 // ── Gestão de Usuários ────────────────────────────────────────────────────────
 app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
   const snap = await fdb.collection('users').get();
@@ -330,7 +339,12 @@ app.get('/api/investigations', requireAuth, async (req, res) => {
   const userId = req.session.userId || '';
   const role = req.session.role || '';
   const list = snap.docs.map(d=>d.data())
-    .filter(inv => role === 'admin' || !inv.shared_with || inv.shared_with.length === 0 || inv.shared_with.includes(userId))
+    .filter(inv => {
+      if (role === 'admin') return true;
+      if (role === 'cliente') return Array.isArray(inv.shared_with) && inv.shared_with.includes(userId);
+      // role 'user': vê todas ou as compartilhadas consigo
+      return !inv.shared_with || inv.shared_with.length === 0 || inv.shared_with.includes(userId);
+    })
     .sort((a,b)=>b.updated_at>a.updated_at?1:-1);
   res.json(list);
 });

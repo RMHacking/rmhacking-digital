@@ -348,6 +348,56 @@ body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.88);point
 <div class="toast" id="toast"></div>
 <div id="sessionTimer"></div>
 
+<!-- Modal Gerenciar Usuários -->
+<div id="usersModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#13131f;border:1px solid rgba(255,255,255,.1);border-radius:16px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column">
+    <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between">
+      <h3 style="font-size:16px;font-weight:700;color:#f1f5f9">👥 Gerenciar Usuários</h3>
+      <button onclick="closeUsersModal()" style="background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;padding:0 4px">×</button>
+    </div>
+    <div style="padding:20px 24px;overflow-y:auto;flex:1">
+      <!-- Criar novo usuário -->
+      <div style="background:rgba(79,70,229,.06);border:1px solid rgba(79,70,229,.2);border-radius:12px;padding:16px;margin-bottom:20px">
+        <div style="font-size:12px;font-weight:700;color:#a5b4fc;margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">➕ Criar Novo Acesso</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:4px">Usuário</label>
+            <input id="newUsername" type="text" placeholder="nome_usuario" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f1f5f9;font-size:13px;outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:4px">Senha</label>
+            <div style="display:flex;gap:6px">
+              <input id="newUserPwd" type="password" placeholder="mínimo 6 chars" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f1f5f9;font-size:13px;outline:none">
+              <button onclick="generateTempPwd()" title="Gerar senha" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);border-radius:8px;padding:8px;color:#a5b4fc;cursor:pointer;font-size:13px">🎲</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:4px">Perfil de acesso</label>
+            <select id="newUserRole" style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f1f5f9;font-size:13px;outline:none">
+              <option value="user">👤 Usuário — acesso completo</option>
+              <option value="cliente">👁 Cliente — somente leitura</option>
+              <option value="admin">🔑 Admin — controle total</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:2px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#9ca3af">
+              <input id="newUserTemp" type="checkbox" style="width:16px;height:16px;accent-color:#4f46e5">
+              Acesso temporário
+            </label>
+          </div>
+        </div>
+        <div id="usersError" style="display:none;color:#f87171;font-size:12px;margin-bottom:10px;padding:8px 12px;background:rgba(239,68,68,.08);border-radius:6px"></div>
+        <button onclick="createUser()" style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;border-radius:8px;padding:9px 18px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;width:100%">✅ Criar Acesso</button>
+      </div>
+      <!-- Lista de usuários -->
+      <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Usuários cadastrados</div>
+      <div id="usersList"></div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const COLORS = ['#4f46e5','#7c3aed','#db2777','#dc2626','#d97706','#059669','#0891b2','#6b7280'];
@@ -356,6 +406,7 @@ let filterSt = null;
 let filterFolder = null;
 let selectedColor = COLORS[0];
 let chartStatus = null, chartPriority = null;
+let _me = { username:'', role:'user' };
 
 // ── Session Timeout (30 min) ──────────────────────────────────────────────────
 const SESSION_MINUTES = 30;
@@ -391,8 +442,54 @@ function toast(msg, duration=3000) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
+  // Carrega dados do usuário logado
+  try {
+    const mr = await fetch('/api/me');
+    if (mr.ok) _me = await mr.json();
+  } catch(e) {}
+
+  applyRoleUI();
   await loadAll();
   renderColorPicker();
+}
+
+function applyRoleUI() {
+  const isAdmin   = _me.role === 'admin';
+  const isCliente = _me.role === 'cliente';
+
+  // Admin: mostra nav de usuários e logs
+  if (isAdmin) {
+    document.getElementById('navUsers').style.display = '';
+    const navLogs = document.getElementById('navLogs');
+    if (navLogs) navLogs.style.display = '';
+    const navActivity = document.getElementById('navActivity');
+    if (navActivity) navActivity.style.display = '';
+  }
+
+  // Cliente: modo leitura — esconde botões de criar/editar
+  if (isCliente) {
+    // Esconde botão + Nova Investigação na topbar
+    const btnNova = document.querySelector('.btn-primary');
+    if (btnNova) btnNova.style.display = 'none';
+    // Esconde + nas colunas
+    document.querySelectorAll('.col-add').forEach(b => b.style.display='none');
+    // Esconde ferramentas e rastreador na sidebar
+    const ferrLink = document.querySelector('a[href="/ferramentas.html"]');
+    if (ferrLink) ferrLink.style.display = 'none';
+    const rastrLink = document.querySelector('a[href="/rastreador.html"]');
+    if (rastrLink) rastrLink.style.display = 'none';
+    // Sidebar: esconde config e 2FA
+    const navConf = document.querySelector('a[onclick*="showSettingsModal"]');
+    if (navConf) navConf.style.display = 'none';
+    const nav2fa = document.querySelector('a[onclick*="show2FAModal"]');
+    if (nav2fa) nav2fa.style.display = 'none';
+  }
+
+  // Atualiza badge do sidebar
+  document.getElementById('userDisplayName').textContent = _me.username || 'Usuário';
+  document.getElementById('userDisplayRole').textContent =
+    _me.role === 'admin' ? 'Administrador' :
+    _me.role === 'cliente' ? '👁 Modo Cliente' : 'Investigador';
 }
 
 async function apiFetch(url, opts) {
@@ -494,19 +591,44 @@ function cardHTML(inv) {
   const priMap = {high:'🔴 Alta',medium:'🟡 Média',low:'🟢 Baixa'};
   const date = new Date(inv.updated_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
   const folderBadge = inv.folder ? `<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(6,182,212,.1);color:#67e8f9;border:1px solid rgba(6,182,212,.2)">📁 ${esc(inv.folder)}</span>` : '';
+  const isCliente = _me.role === 'cliente';
+
+  // Indicador de progresso baseado em campos preenchidos
+  const checks = [
+    !!(inv.title),
+    !!(inv.target),
+    !!(inv.description),
+    !!(inv.tags),
+    !!(inv.deadline),
+    !!(inv.folder),
+    inv.status === 'closed',
+  ];
+  const progressPct = Math.round((checks.filter(Boolean).length / checks.length) * 100);
+  const progressColor = progressPct >= 80 ? '#10b981' : progressPct >= 40 ? '#f59e0b' : '#4f46e5';
+
   return `
   <div class="inv-card" onclick="openInv(${inv.id})">
     <div class="inv-card-accent" style="background:${inv.color||'#4f46e5'}"></div>
     <div class="inv-card-header">
       <h3>${esc(inv.title)}</h3>
-      <div class="inv-card-actions" onclick="event.stopPropagation()">
+      ${!isCliente ? `<div class="inv-card-actions" onclick="event.stopPropagation()">
         <button class="card-btn" onclick="editInv(${inv.id})">✏️</button>
         <button class="card-btn delete" onclick="deleteInv(${inv.id})">🗑</button>
-      </div>
+      </div>` : ''}
     </div>
     ${inv.target ? `<p style="color:#a5b4fc;font-size:11px;margin-bottom:6px">🎯 ${esc(inv.target)}</p>` : ''}
     ${inv.description ? `<p>${esc(inv.description)}</p>` : ''}
     ${inv.deadline ? (()=>{ const d=new Date(inv.deadline+' 23:59'); const now2=new Date(); const diff=Math.ceil((d-now2)/(1000*60*60*24)); const cls=diff<0?'late':diff<=3?'soon':'ok'; const lbl=diff<0?`⚠️ Venceu ${inv.deadline}`:`📅 Prazo: ${inv.deadline}`; return `<span class="deadline-badge ${cls}">${lbl}</span>`; })() : ''}
+    <!-- Barra de progresso -->
+    <div style="margin:8px 0 4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:10px;color:#6b7280;font-weight:600">PROGRESSO</span>
+        <span style="font-size:10px;font-weight:700;color:${progressColor}">${progressPct}%</span>
+      </div>
+      <div style="background:rgba(255,255,255,.06);border-radius:4px;height:4px;overflow:hidden">
+        <div style="width:${progressPct}%;height:100%;background:${progressColor};border-radius:4px;transition:width .4s"></div>
+      </div>
+    </div>
     <div class="inv-card-footer">
       <div class="tags">${folderBadge}${tags}</div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -634,16 +756,19 @@ async function loadUsersList() {
   const el = document.getElementById('usersList');
   if (!users.length) { el.innerHTML = '<p style="color:#6b7280;font-size:13px;text-align:center;padding:12px">Nenhum usuário cadastrado.</p>'; return; }
   el.innerHTML = users.map(u => {
-    const isAdmin = u.role === 'admin';
-    const isTemp  = u.temporary === true;
-    const badge   = isAdmin
+    const isAdmin   = u.role === 'admin';
+    const isCliente = u.role === 'cliente';
+    const isTemp    = u.temporary === true;
+    const badge = isAdmin
       ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(79,70,229,.2);color:#a5b4fc;font-weight:700">ADMIN</span>'
-      : isTemp
-        ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(245,158,11,.15);color:#fbbf24;font-weight:700">TEMPORÁRIO</span>'
-        : '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.06);color:#9ca3af;font-weight:700">USUÁRIO</span>';
+      : isCliente
+        ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(6,182,212,.15);color:#67e8f9;font-weight:700">CLIENTE</span>'
+        : isTemp
+          ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(245,158,11,.15);color:#fbbf24;font-weight:700">TEMPORÁRIO</span>'
+          : '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.06);color:#9ca3af;font-weight:700">USUÁRIO</span>';
     return `
     <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px">
-      <div style="width:36px;height:36px;border-radius:50%;background:${isAdmin?'#4f46e5':isTemp?'rgba(245,158,11,.3)':'#374151'};display:flex;align-items:center;justify-content:center;font-size:16px">${isAdmin?'🔑':isTemp?'⏳':'👤'}</div>
+      <div style="width:36px;height:36px;border-radius:50%;background:${isAdmin?'#4f46e5':isCliente?'rgba(6,182,212,.3)':isTemp?'rgba(245,158,11,.3)':'#374151'};display:flex;align-items:center;justify-content:center;font-size:16px">${isAdmin?'🔑':isCliente?'👁':isTemp?'⏳':'👤'}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:#f9fafb;display:flex;align-items:center;gap:6px">${u.username} ${badge}</div>
         <div style="font-size:11px;color:#6b7280;margin-top:2px">Criado em ${(u.created_at||'').substring(0,10)}</div>
