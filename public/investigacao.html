@@ -1243,7 +1243,7 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
     <div class="grid-2">
       <div class="form-row"><label>Status</label>
         <select id="eStatus">
-          <option value="open">🟣 Aberta</option>
+          <option value="open">🟣 Em Processo</option>
           <option value="todo">🟡 Para Fazer</option>
           <option value="closed">🟢 Finalizada</option>
         </select>
@@ -1345,7 +1345,7 @@ async function loadInvestigation() {
   document.title = `RMHacking — ${inv.title}`;
   document.getElementById('invTitle').textContent = inv.title;
   const sp = document.getElementById('statusPill');
-  const stMap = {open:'🟣 Aberta',todo:'🟡 Para Fazer',closed:'🟢 Finalizada'};
+  const stMap = {open:'🟣 Em Processo',todo:'🟡 Para Fazer',closed:'🟢 Finalizada'};
   sp.textContent = stMap[inv.status]||inv.status;
   sp.className = `status-pill ${inv.status}`;
 
@@ -2495,7 +2495,7 @@ async function exportPDF() {
   ]);
   var ts = new Date().toLocaleString('pt-BR');
   var priMap = {high:'Alta',medium:'Média',low:'Baixa'};
-  var stMap  = {open:'Aberta',todo:'Para Fazer',closed:'Finalizada'};
+  var stMap  = {open:'Em Processo',todo:'Para Fazer',closed:'Finalizada'};
   var html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>Relatório — ${esc(inv.title)}</title>
 <style>

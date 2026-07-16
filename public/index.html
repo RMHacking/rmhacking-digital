@@ -170,7 +170,7 @@ body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.88);point
     <a class="nav-item active" href="/" data-label="Dashboard">
       <span class="icon">📋</span><span class="nav-label"> Dashboard</span>
     </a>
-    <a class="nav-item" href="#" onclick="filterStatus('open')" data-label="Abertas">
+    <a class="nav-item" href="#" onclick="filterStatus('open')" data-label="Em Processo">
       <span class="icon">🟣</span><span class="nav-label"> Em Processo</span>
     </a>
     <a class="nav-item" href="#" onclick="filterStatus('todo')" data-label="Para Fazer">
@@ -318,7 +318,7 @@ body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.88);point
       <div class="form-row">
         <label>Status</label>
         <select id="fStatus">
-          <option value="open">🟣 Aberta</option>
+          <option value="open">🟣 Em Processo</option>
           <option value="todo">🟡 Para Fazer</option>
           <option value="closed">🟢 Finalizada</option>
         </select>
@@ -560,7 +560,7 @@ function renderCharts(invs) {
   if (chartStatus) chartStatus.destroy();
   chartStatus = new Chart(document.getElementById('chartStatus'), {
     type:'doughnut',
-    data:{ labels:['Abertas','Para Fazer','Finalizadas'], datasets:[{ data:statusData, backgroundColor:['#4f46e5','#f59e0b','#10b981'], borderWidth:0 }] },
+    data:{ labels:['Em Processo','Para Fazer','Finalizadas'], datasets:[{ data:statusData, backgroundColor:['#4f46e5','#f59e0b','#10b981'], borderWidth:0 }] },
     options:{...opts, cutout:'65%'}
   });
   if (chartPriority) chartPriority.destroy();
@@ -785,7 +785,7 @@ async function deleteInv(id) {
 
 function filterStatus(s) {
   filterSt = filterSt===s ? null : s;
-  const titles = {open:'Investigações Abertas',todo:'Para Fazer',closed:'Finalizadas'};
+  const titles = {open:'Em Processo',todo:'Para Fazer',closed:'Finalizadas'};
   document.getElementById('pageTitle').textContent = filterSt ? titles[filterSt] : 'Todas as Investigações';
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   renderBoard();
