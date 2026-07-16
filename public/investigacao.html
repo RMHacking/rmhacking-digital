@@ -2027,45 +2027,58 @@ function setupFormAutosave(key, fields) {
 
 // ─── Anexos ────────────────────────────────────────────────────────────────────
 function handleAttach(inputId, previewId, dataId) {
-  var input=document.getElementById(inputId);
-  var file=input.files[0];
+  var input = document.getElementById(inputId);
+  var file = input.files[0];
   if (!file) return;
-  var progId=inputId.replace('File','AttachProgress');
-  var prog=document.getElementById(progId);
-  if (prog) prog.textContent='⏳ Enviando...';
-  var fd=new FormData(); fd.append('file',file); fd.append('investigation_id',invId);
-  fetch('/api/upload',{method:'POST',body:fd})
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if (prog) prog.textContent='';
-      var hidden=document.getElementById(dataId);
-      if (hidden) hidden.value=JSON.stringify({url:d.url,name:d.name,type:d.type});
-      var preview=document.getElementById(previewId);
-      if (preview) {
-        preview.innerHTML='';
-        var chip=document.createElement('div'); chip.className='attach-chip';
-        chip.innerHTML='📎 '+esc(d.name)+' <button onclick="clearAttach(\''+dataId+'\',\''+previewId+'\')">×</button>';
-        preview.appendChild(chip);
-        if (d.type&&d.type.startsWith('image/')) {
-          var img=document.createElement('img'); img.src=d.url; img.className='attach-thumb';
-          img.onclick=function(){ window.open(d.url,'_blank'); };
-          preview.appendChild(img);
-        }
+  var prog = document.getElementById(inputId.replace('File','AttachProgress'));
+  if (prog) prog.textContent = '⏳ Lendo arquivo...';
+  var MAX_B64 = 950000;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result;
+    if (base64.length > MAX_B64) {
+      if (prog) prog.textContent = '';
+      toast('❌ Arquivo muito grande. Máximo ~700KB.');
+      input.value = '';
+      return;
+    }
+    if (prog) prog.textContent = '';
+    var hidden = document.getElementById(dataId);
+    if (hidden) hidden.value = JSON.stringify({ data: base64, name: file.name, type: file.type });
+    var preview = document.getElementById(previewId);
+    if (preview) {
+      preview.innerHTML = '';
+      var sizeStr = file.size > 1024 ? Math.round(file.size/1024)+'KB' : file.size+'B';
+      var chip = document.createElement('div'); chip.className = 'attach-chip';
+      chip.innerHTML = '📎 '+esc(file.name)+' ('+sizeStr+') <button onclick="clearAttach(\''+dataId+'\',\''+previewId+'\',\''+inputId+'\')">×</button>';
+      preview.appendChild(chip);
+      if (file.type && file.type.startsWith('image/')) {
+        var img = document.createElement('img'); img.src = base64; img.className = 'attach-thumb';
+        img.onclick = function(){ window.open(base64,'_blank'); };
+        preview.appendChild(img);
       }
-      toast('Arquivo enviado!');
-    })
-    .catch(function(){ if(prog) prog.textContent='❌ Erro no upload'; });
+    }
+    toast('📎 '+file.name+' pronto para envio!');
+  };
+  reader.onerror = function(){ if(prog) prog.textContent=''; toast('❌ Erro ao ler arquivo'); };
+  reader.readAsDataURL(file);
 }
 
-function clearAttach(dataId, previewId) {
+function clearAttach(dataId, previewId, inputId) {
   document.getElementById(dataId).value='';
   document.getElementById(previewId).innerHTML='';
+  if (inputId) { var inp=document.getElementById(inputId); if(inp) inp.value=''; }
 }
 
-function renderAttachItem(url, name, type) {
-  if (!url) return '';
-  if (type&&type.startsWith('image/')) return '<a href="'+url+'" target="_blank"><img src="'+url+'" class="attach-thumb" style="max-width:220px"></a>';
-  return '<a href="'+url+'" target="_blank" class="attach-file-link">📎 '+esc(name||'arquivo')+'</a>';
+function renderAttachItem(url, name, type, fileData) {
+  var src = fileData || url;
+  if (!src) return '';
+  var isImg = type && type.startsWith('image/');
+  if (isImg) return '<a href="'+src+'" target="_blank"><img src="'+src+'" class="attach-thumb" style="max-width:220px;border-radius:6px;margin-top:6px"></a>';
+  var icon = type&&type.includes('pdf') ? '📄' : type&&type.includes('word') ? '📝' : type&&(type.includes('sheet')||type.includes('excel')) ? '📊' : '📎';
+  if (fileData) return '<a href="'+fileData+'" download="'+esc(name||'arquivo')+'" class="attach-file-link">'+icon+' '+esc(name||'arquivo')+'</a>';
+  if (url) return '<a href="'+url+'" target="_blank" class="attach-file-link">'+icon+' '+esc(name||'arquivo')+'</a>';
+  return '';
 }
 
 // ─── Notas ────────────────────────────────────────────────────────────────────
@@ -2075,7 +2088,7 @@ async function loadNotes() {
   notes.forEach(function(n){
     var d=document.createElement('div'); d.className='item';
     d.style.borderLeft='3px solid '+(n.color||'#fef9c3');
-    d.innerHTML='<div class="item-body"><div class="item-title">'+esc(n.title)+'</div><div class="item-content">'+esc(n.content)+'</div>'+renderAttachItem(n.file_url,n.file_name,n.file_type)+'</div><div class="item-actions"><button class="del-btn" onclick="deleteNote(\''+n.id+'\')">🗑</button></div>';
+    d.innerHTML='<div class="item-body"><div class="item-title">'+esc(n.title)+'</div><div class="item-content">'+esc(n.content)+'</div>'+renderAttachItem(n.file_url,n.file_name,n.file_type,n.file_data)+'</div><div class="item-actions"><button class="del-btn" onclick="deleteNote(\''+n.id+'\')">🗑</button></div>';
     list.appendChild(d);
   });
 }
@@ -2085,7 +2098,7 @@ async function addNote() {
   var content=document.getElementById('noteContent').value.trim();
   if (!title) { toast('Digite o título!'); return; }
   var att=document.getElementById('noteAttachData').value; att=att?JSON.parse(att):{};
-  await fetch('/api/investigations/'+invId+'/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title,content:content,color:noteColor,file_url:att.url||'',file_name:att.name||'',file_type:att.type||''})});
+  await fetch('/api/investigations/'+invId+'/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title,content:content,color:noteColor,file_url:att.url||'',file_name:att.name||'',file_type:att.type||'',file_data:att.data||''})});
   document.getElementById('noteTitle').value=''; document.getElementById('noteContent').value='';
   clearAttach('noteAttachData','noteAttachPreview'); clearDraft('notes');
   loadNotes(); loadOverviewData(); toast('Nota adicionada!');
@@ -2103,7 +2116,7 @@ async function loadEvidence() {
   var list=document.getElementById('evidenceList'); list.innerHTML='';
   evs.forEach(function(e){
     var d=document.createElement('div'); d.className='item';
-    d.innerHTML='<div class="item-body"><div class="item-title"><span class="ev-type-badge '+e.type+'">'+e.type+'</span> '+esc(e.title)+'</div><div class="item-meta">Fonte: '+esc(e.source||'—')+' · '+new Date(e.created_at).toLocaleString('pt-BR')+'</div>'+(e.content?'<div class="item-content">'+esc(e.content)+'</div>':'')+(e.hash_value?'<div class="hash-value">SHA-256: '+esc(e.hash_value)+'</div>':'')+(e.custody_chain?'<div style="font-size:11px;color:#6b7280;margin-top:4px">🔗 '+esc(e.custody_chain)+'</div>':'')+renderAttachItem(e.file_url,e.file_name,e.file_type)+'</div><div class="item-actions"><button class="del-btn" onclick="deleteEvidence(\''+e.id+'\')">🗑</button></div>';
+    d.innerHTML='<div class="item-body"><div class="item-title"><span class="ev-type-badge '+e.type+'">'+e.type+'</span> '+esc(e.title)+'</div><div class="item-meta">Fonte: '+esc(e.source||'—')+' · '+new Date(e.created_at).toLocaleString('pt-BR')+'</div>'+(e.content?'<div class="item-content">'+esc(e.content)+'</div>':'')+(e.hash_value?'<div class="hash-value">SHA-256: '+esc(e.hash_value)+'</div>':'')+(e.custody_chain?'<div style="font-size:11px;color:#6b7280;margin-top:4px">🔗 '+esc(e.custody_chain)+'</div>':'')+renderAttachItem(e.file_url,e.file_name,e.file_type,e.file_data)+'</div><div class="item-actions"><button class="del-btn" onclick="deleteEvidence(\''+e.id+'\')">🗑</button></div>';
     list.appendChild(d);
   });
 }
@@ -2112,7 +2125,7 @@ async function addEvidence() {
   var title=document.getElementById('evTitle').value.trim();
   if (!title) { toast('Digite o título!'); return; }
   var att=document.getElementById('evAttachData').value; att=att?JSON.parse(att):{};
-  await fetch('/api/investigations/'+invId+'/evidence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title,type:document.getElementById('evType').value,content:document.getElementById('evContent').value.trim(),source:document.getElementById('evSource').value.trim(),hash_value:document.getElementById('evHash').value.trim(),custody_chain:document.getElementById('evCustody').value.trim(),tags:document.getElementById('evTags').value.trim(),file_url:att.url||'',file_name:att.name||'',file_type:att.type||''})});
+  await fetch('/api/investigations/'+invId+'/evidence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title,type:document.getElementById('evType').value,content:document.getElementById('evContent').value.trim(),source:document.getElementById('evSource').value.trim(),hash_value:document.getElementById('evHash').value.trim(),custody_chain:document.getElementById('evCustody').value.trim(),tags:document.getElementById('evTags').value.trim(),file_url:att.url||'',file_name:att.name||'',file_type:att.type||'',file_data:att.data||''})});
   ['evTitle','evContent','evSource','evHash','evCustody','evTags'].forEach(function(id){ document.getElementById(id).value=''; });
   clearAttach('evAttachData','evAttachPreview'); clearDraft('evidence');
   loadEvidence(); loadOverviewData(); toast('Evidência registrada!');
@@ -2130,7 +2143,7 @@ async function loadEvents() {
   var tl=document.getElementById('timelineList'); tl.innerHTML='';
   evts.sort(function(a,b){ return new Date(a.event_date)-new Date(b.event_date); }).forEach(function(e){
     var d=document.createElement('div'); d.className='tl-item';
-    d.innerHTML='<div class="tl-dot '+(e.importance||'normal')+'"></div><div class="tl-content"><div class="tl-date">'+(e.event_date?new Date(e.event_date).toLocaleString('pt-BR'):'Sem data')+'</div><div class="tl-title">'+esc(e.title)+'</div>'+(e.description?'<div class="tl-desc">'+esc(e.description)+'</div>':'')+renderAttachItem(e.file_url,e.file_name,e.file_type)+'</div><div style="margin-top:4px"><button class="del-btn" onclick="deleteEvent(\''+e.id+'\')">🗑 Remover</button></div>';
+    d.innerHTML='<div class="tl-dot '+(e.importance||'normal')+'"></div><div class="tl-content"><div class="tl-date">'+(e.event_date?new Date(e.event_date).toLocaleString('pt-BR'):'Sem data')+'</div><div class="tl-title">'+esc(e.title)+'</div>'+(e.description?'<div class="tl-desc">'+esc(e.description)+'</div>':'')+renderAttachItem(e.file_url,e.file_name,e.file_type,e.file_data)+'</div><div style="margin-top:4px"><button class="del-btn" onclick="deleteEvent(\''+e.id+'\')">🗑 Remover</button></div>';
     tl.appendChild(d);
   });
 }

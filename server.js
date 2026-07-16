@@ -460,7 +460,7 @@ app.get('/api/investigations/:id/notes', requireAuth, async (req, res) => {
 app.post('/api/investigations/:id/notes', requireAuth, async (req, res) => {
   const b = req.body;
   const id = await nextItemId('notes', req.params.id);
-  const note = { id, investigation_id:Number(req.params.id), title:b.title||'Nota', content:b.content||'', color:b.color||'#fef9c3', file_url:b.file_url||'', file_name:b.file_name||'', file_type:b.file_type||'', created_at:now(), updated_at:now() };
+  const note = { id, investigation_id:Number(req.params.id), title:b.title||'Nota', content:b.content||'', color:b.color||'#fef9c3', file_url:b.file_url||'', file_name:b.file_name||'', file_type:b.file_type||'', file_data:b.file_data||'', created_at:now(), updated_at:now() };
   await fdb.collection('notes').doc(req.params.id+'_'+id).set(note);
   res.json(note);
 });
@@ -485,7 +485,7 @@ app.get('/api/investigations/:id/evidence', requireAuth, async (req, res) => {
 app.post('/api/investigations/:id/evidence', requireAuth, async (req, res) => {
   const b = req.body;
   const id = await nextItemId('evidence', req.params.id);
-  const ev = { id, investigation_id:Number(req.params.id), title:b.title||'', type:b.type||'text', content:b.content||'', tags:b.tags||'', hash:b.hash||b.hash_value||'', source:b.source||'', chain_of_custody:b.chain_of_custody||b.custody_chain||'', file_url:b.file_url||'', file_name:b.file_name||'', file_type:b.file_type||'', created_at:now() };
+  const ev = { id, investigation_id:Number(req.params.id), title:b.title||'', type:b.type||'text', content:b.content||'', tags:b.tags||'', hash:b.hash||b.hash_value||'', source:b.source||'', chain_of_custody:b.chain_of_custody||b.custody_chain||'', file_url:b.file_url||'', file_name:b.file_name||'', file_type:b.file_type||'', file_data:b.file_data||'', created_at:now() };
   await fdb.collection('evidence').doc(req.params.id+'_'+id).set(ev);
   res.json(ev);
 });
