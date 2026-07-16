@@ -1163,43 +1163,35 @@ let inv = null, network = null, nodes_ds = null, edges_ds = null;
 let hierarchyMode = false, selectedNodeId = null;
 let noteColor = '#fef9c3';
 
-// ─── Sessão ────────────────────────────────────────────────────────────────────
+// ─── Sessão (carrega em background — não bloqueia init) ──────────────────────
 let _me = { username:'', role:'user' };
-async function loadMe() {
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 3000);
-    const r = await fetch('/api/me', { signal: ctrl.signal });
-    clearTimeout(t);
-    if (r.ok) { const d = await r.json(); if(d && d.role) _me = d; }
-  } catch(e) { /* silencioso — usa default */ }
+function loadMeBackground() {
+  fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => {
+    if (d && d.role) {
+      _me = d;
+      if (_me.role === 'cliente') applyClienteMode();
+    }
+  }).catch(() => {});
 }
 
 function applyClienteMode() {
-  if (_me.role !== 'cliente') return;
-  // Esconde todos botões de salvar/editar/deletar
-  document.querySelectorAll(
-    '.btn-primary, .btn-save, [onclick*="save"], [onclick*="Save"], [onclick*="delete"], [onclick*="Delete"], [onclick*="add"], [onclick*="Add"]'
-  ).forEach(el => {
-    // Mantém só botões de leitura (exportar, copiar)
-    const txt = (el.textContent||'').toLowerCase();
-    if (!txt.includes('export') && !txt.includes('pdf') && !txt.includes('copiar') && !txt.includes('relatório')) {
-      el.style.display = 'none';
-    }
-  });
-  // Banner de modo cliente
   const banner = document.createElement('div');
   banner.innerHTML = '👁 <strong>Modo Cliente</strong> — Visualização somente leitura';
   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(6,182,212,.15);border-bottom:1px solid rgba(6,182,212,.3);color:#67e8f9;font-size:12px;text-align:center;padding:6px;z-index:9999';
   document.body.prepend(banner);
+  document.querySelectorAll('button').forEach(el => {
+    const txt = (el.textContent||'').toLowerCase();
+    if (!txt.includes('pdf') && !txt.includes('export') && !txt.includes('voltar') && !txt.includes('copiar')) {
+      el.disabled = true; el.style.opacity = '0.3'; el.style.cursor = 'not-allowed';
+    }
+  });
 }
 
 // ─── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
   if (!invId) { location.href='/'; return; }
-  await loadMe();
+  loadMeBackground(); // não bloqueia
   await loadInvestigation();
-  applyClienteMode();
   await loadOverviewData();
   initMindMap();
   loadNotes();
@@ -2364,7 +2356,7 @@ function exportReport() {
 async function exportPDF() {
   toast('⏳ Gerando PDF...');
   // Busca username do usuário logado
-  var currentUser = _me.username || 'rmhacking';
+  var currentUser = (_me && _me.username) ? _me.username : 'rmhacking';
   // Fetch all data
   var [ev,nt,evt,osint,nodes,custody] = await Promise.all([
     fetch('/api/investigations/'+invId+'/evidence').then(r=>r.json()),

@@ -982,6 +982,57 @@ app.post('/api/shorten', requireAuth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: 'Erro ao encurtar: ' + e.message }); }
 });
 
+
+// ── Galeria de Evidências ─────────────────────────────────────────────────────
+// GET /api/investigations/:id/gallery
+app.get('/api/investigations/:id/gallery', requireAuth, async (req, res) => {
+  try {
+    const snap = await fdb.collection('investigations').doc(req.params.id)
+      .collection('gallery').orderBy('created_at','desc').get();
+    res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/investigations/:id/gallery
+app.post('/api/investigations/:id/gallery', requireAuth, async (req, res) => {
+  try {
+    const { title, comment, image_data, file_type } = req.body;
+    if (!image_data) return res.status(400).json({ error: 'Dados da imagem obrigatórios' });
+    // Verifica tamanho (~1MB limite)
+    if (image_data.length > 1400000) return res.status(400).json({ error: 'Arquivo muito grande. Máximo 1MB.' });
+    const doc = {
+      title: title || 'Sem título',
+      comment: comment || '',
+      image_data,
+      file_type: file_type || 'image/jpeg',
+      created_by: req.session.username || req.session.userId,
+      created_at: now(),
+    };
+    const ref = await fdb.collection('investigations').doc(req.params.id)
+      .collection('gallery').add(doc);
+    res.json({ id: ref.id, ...doc });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/investigations/:id/gallery/:itemId
+app.delete('/api/investigations/:id/gallery/:itemId', requireAuth, async (req, res) => {
+  try {
+    await fdb.collection('investigations').doc(req.params.id)
+      .collection('gallery').doc(req.params.itemId).delete();
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/investigations/:id/gallery/:itemId — atualizar comentário/título
+app.patch('/api/investigations/:id/gallery/:itemId', requireAuth, async (req, res) => {
+  try {
+    const { title, comment } = req.body;
+    await fdb.collection('investigations').doc(req.params.id)
+      .collection('gallery').doc(req.params.itemId).update({ title, comment, updated_at: now() });
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 if (require.main === module) {
   app.listen(PORT, () => console.log('RMHacking Digital — porta ' + PORT));
