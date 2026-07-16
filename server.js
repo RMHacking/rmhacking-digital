@@ -796,9 +796,24 @@ app.get('/api/tools/screenshot', requireAuth, async (req, res) => {
 });
 
 // ── Chat Interno ──────────────────────────────────────────────────────────────
+// Verifica se o usuário tem acesso a uma investigação específica
+async function canAccessInvestigation(invId, session) {
+  if (session.role === 'admin') return true;
+  try {
+    const doc = await db.collection('investigations').doc(String(invId)).get();
+    if (!doc.exists) return false;
+    const inv = doc.data();
+    const shared = inv.shared_with || [];
+    // Acesso se: shared_with vazio (público interno) OU userId está na lista
+    return shared.length === 0 || shared.includes(session.userId);
+  } catch(e) { return false; }
+}
+
 // GET /api/investigations/:id/chat — últimas 60 mensagens
 app.get('/api/investigations/:id/chat', requireAuth, async (req, res) => {
   try {
+    if (!(await canAccessInvestigation(req.params.id, req.session)))
+      return res.status(403).json({ error: 'Sem acesso a esta investigação' });
     const snap = await db.collection('investigations').doc(String(req.params.id))
       .collection('chat').orderBy('at','asc').limitToLast(60).get();
     const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -809,6 +824,8 @@ app.get('/api/investigations/:id/chat', requireAuth, async (req, res) => {
 // POST /api/investigations/:id/chat — enviar mensagem
 app.post('/api/investigations/:id/chat', requireAuth, async (req, res) => {
   try {
+    if (!(await canAccessInvestigation(req.params.id, req.session)))
+      return res.status(403).json({ error: 'Sem acesso a esta investigação' });
     const { message } = req.body;
     if (!message || !message.trim()) return res.status(400).json({ error: 'Mensagem vazia' });
     const doc = {
