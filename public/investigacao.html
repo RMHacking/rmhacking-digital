@@ -251,6 +251,7 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
     <button class="btn-sm" onclick="exportPDF()">📄 Relatório PDF</button>
     <button class="btn-sm" onclick="openPropostaModal()" style="border-color:rgba(52,211,153,.35);color:#34d399">📋 Proposta</button>
     <button class="btn-sm" onclick="openContratoModal()" style="border-color:rgba(251,191,36,.35);color:#fbbf24">📜 Contrato</button>
+    <button class="btn-sm" id="portalBtn" onclick="openClientPortal()" style="display:none;border-color:rgba(52,211,153,.35);color:#34d399" title="Copiar link do portal do cliente">👁️ Portal Cliente</button>
     <button class="btn-sm" id="shareBtn" onclick="openShareModal()" style="display:none">🔗 Compartilhar</button>
     <button class="btn-primary" onclick="openEditModal()">✏️ Editar</button>
   </div>
@@ -1369,7 +1370,7 @@ async function loadInvestigation() {
     ${(inv.shared_with&&inv.shared_with.length)?`<div>🔗 Compartilhado: ${inv.shared_with.length} usuário(s)</div>`:''}
   `;
   // Mostrar botão Share apenas para admins
-  fetch('/api/users').then(r=>{ if(r.ok){ var sb=document.getElementById('shareBtn'); if(sb) sb.style.display='flex'; } }).catch(()=>{});
+  fetch('/api/users').then(r=>{ if(r.ok){ var sb=document.getElementById('shareBtn'); if(sb) sb.style.display='flex'; var pb=document.getElementById('portalBtn'); if(pb) pb.style.display='flex'; } }).catch(()=>{});
 
   if (inv.target) {
     document.getElementById('quickOsint').innerHTML = `
@@ -2498,13 +2499,14 @@ async function exportPDF() {
   // Busca username do usuário logado
   var currentUser = (_me && _me.username) ? _me.username : 'rmhacking';
   // Fetch all data
-  var [ev,nt,evt,osint,nodes,custody] = await Promise.all([
+  var [ev,nt,evt,osint,nodes,custody,gallery] = await Promise.all([
     fetch('/api/investigations/'+invId+'/evidence').then(r=>r.json()),
     fetch('/api/investigations/'+invId+'/notes').then(r=>r.json()),
     fetch('/api/investigations/'+invId+'/events').then(r=>r.json()).then(d=>d.sort((a,b)=>new Date(a.event_date)-new Date(b.event_date))),
     fetch('/api/investigations/'+invId+'/osint').then(r=>r.json()),
     fetch('/api/investigations/'+invId+'/nodes').then(r=>r.json()),
     fetch('/api/investigations/'+invId+'/custody').then(r=>r.json()).catch(()=>[]),
+    fetch('/api/investigations/'+invId+'/gallery').then(r=>r.json()).catch(()=>[]),
   ]);
   var ts = new Date().toLocaleString('pt-BR');
   var priMap = {high:'Alta',medium:'Média',low:'Baixa'};
@@ -2594,6 +2596,39 @@ ${inv.description?`<div class="section"><h2>Descrição</h2><div style="font-siz
     html += `<div class="section"><h2>🔐 Cadeia de Custódia (${custody.length})</h2>`;
     custody.forEach(c=>{html+=`<div class="item"><div class="item-title">${esc(c.item_name)}</div><div class="item-meta">${c.action||''} por ${esc(c.responsible||'')} em ${c.date||''}</div><div class="item-body">${esc(c.observations||'')}</div></div>`;});
     html += '</div>';
+  }
+
+  // Dossiê da Empresa
+  var dos = inv.dossie||{};
+  if (dos.razao||dos.cnpj) {
+    html += '<div class="section page-break"><h2>🏢 Dossiê da Empresa</h2><div class="item">';
+    if (dos.razao)    html += '<div class="item-title">'+esc(dos.razao)+'</div>';
+    if (dos.cnpj)     html += '<div class="item-meta">CNPJ: '+esc(dos.cnpj)+'</div>';
+    if (dos.situacao) html += '<div class="item-meta">Situação: '+esc(dos.situacao)+'</div>';
+    if (dos.porte)    html += '<div class="item-meta">Porte: '+esc(dos.porte)+'</div>';
+    if (dos.cnae)     html += '<div class="item-meta">CNAE: '+esc(dos.cnae)+'</div>';
+    if (dos.endereco) html += '<div class="item-meta">Endereço: '+esc(dos.endereco)+'</div>';
+    if (dos.capital)  html += '<div class="item-meta">Capital Social: '+esc(dos.capital)+'</div>';
+    if (dos.abertura) html += '<div class="item-meta">Abertura: '+esc(dos.abertura)+'</div>';
+    if (dos.socios)   html += '<div class="item-body" style="margin-top:6px"><strong>Sócios:</strong><br>'+esc(dos.socios).replace(/\n/g,'<br>')+'</div>';
+    if (dos.redes)    html += '<div class="item-body" style="margin-top:6px"><strong>Redes Sociais:</strong><br>'+esc(dos.redes).replace(/\n/g,'<br>')+'</div>';
+    if (dos.obs)      html += '<div class="item-body" style="margin-top:6px"><strong>Observações:</strong><br>'+esc(dos.obs).replace(/\n/g,'<br>')+'</div>';
+    html += '</div></div>';
+  }
+
+  // Galeria de Evidências (imagens)
+  var galImgs = gallery.filter(function(g){ return g.image_data; });
+  if (galImgs.length) {
+    html += '<div class="section page-break"><h2>🖼️ Galeria de Evidências ('+galImgs.length+' imagem'+(galImgs.length>1?'ns':'')+')</h2>';
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">';
+    galImgs.forEach(function(g){
+      html += '<div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;page-break-inside:avoid">';
+      html += '<img src="'+g.image_data+'" style="width:100%;height:140px;object-fit:cover;display:block">';
+      html += '<div style="padding:6px 8px;font-size:10px;font-weight:700;color:#1a1a2e">'+esc(g.title||'Sem título')+'</div>';
+      if (g.comment) html += '<div style="padding:0 8px 6px;font-size:9px;color:#6b7280">'+esc(g.comment)+'</div>';
+      html += '</div>';
+    });
+    html += '</div></div>';
   }
 
   // Calcula hash SHA-256 do conteúdo do relatório
@@ -2909,6 +2944,15 @@ ${claus?`<div class="clause"><h3>Cláusula 7ª — Disposições Adicionais</h3>
   w.onload = function(){ setTimeout(()=>w.print(),400); };
   document.getElementById('contratoOverlay').classList.add('hidden');
   toast('📜 Contrato gerado!');
+}
+
+function openClientPortal() {
+  var url = location.origin + '/cliente?id=' + invId;
+  navigator.clipboard.writeText(url).then(function(){
+    toast('🔗 Link do portal copiado! Cole e envie para o cliente.');
+  }).catch(function(){
+    window.open(url, '_blank');
+  });
 }
 
 async function openShareModal() {
