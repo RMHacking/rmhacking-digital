@@ -261,18 +261,20 @@ async function shortenAndCopy(url, btn) {
   btn.textContent = '⏳ Encurtando...';
   btn.disabled = true;
   try {
-    // TinyURL API gratuita, sem chave
-    const r = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(url));
-    if (!r.ok) throw new Error('TinyURL falhou');
-    const short = await r.text();
-    if (!short.startsWith('http')) throw new Error('Resposta inválida');
+    const r = await fetch('/api/shorten', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    const short = d.short;
     await navigator.clipboard.writeText(short).catch(()=>{ prompt('Copie o link disfarçado:', short); });
     toast('✅ Link curto copiado: ' + short);
-    // Mostra o link curto visualmente no botão por 3s
     btn.textContent = '✅ ' + short.replace('https://','');
     setTimeout(()=>{ btn.textContent = orig; btn.disabled = false; }, 4000);
   } catch(e) {
-    toast('❌ Erro ao encurtar — tente novamente');
+    toast('❌ Erro ao encurtar: ' + e.message);
     btn.textContent = orig;
     btn.disabled = false;
   }

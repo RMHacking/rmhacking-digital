@@ -919,6 +919,26 @@ app.delete('/api/tracker/:id', requireAuth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// ── Encurtador de URL (proxy TinyURL sem CORS) ───────────────────────────────
+app.post('/api/shorten', requireAuth, async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL obrigatória' });
+  try {
+    const short = await new Promise((resolve, reject) => {
+      https_mod.get('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(url), r => {
+        let body = '';
+        r.on('data', c => body += c);
+        r.on('end', () => {
+          if (body.startsWith('http')) resolve(body.trim());
+          else reject(new Error('Resposta inválida: ' + body.substring(0, 100)));
+        });
+      }).on('error', reject);
+    });
+    res.json({ short });
+  } catch(e) { res.status(500).json({ error: 'Erro ao encurtar: ' + e.message }); }
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 if (require.main === module) {
   app.listen(PORT, () => console.log('RMHacking Digital — porta ' + PORT));
