@@ -795,6 +795,34 @@ app.get('/api/tools/screenshot', requireAuth, async (req, res) => {
   res.json({ screenshot_url: thumbUrl, source: 'thum.io' });
 });
 
+// ── Chat Interno ──────────────────────────────────────────────────────────────
+// GET /api/investigations/:id/chat — últimas 60 mensagens
+app.get('/api/investigations/:id/chat', requireAuth, async (req, res) => {
+  try {
+    const snap = await db.collection('investigations').doc(String(req.params.id))
+      .collection('chat').orderBy('at','asc').limitToLast(60).get();
+    const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json(msgs);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/investigations/:id/chat — enviar mensagem
+app.post('/api/investigations/:id/chat', requireAuth, async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message || !message.trim()) return res.status(400).json({ error: 'Mensagem vazia' });
+    const doc = {
+      message: message.trim(),
+      username: req.session.username || req.session.userId || 'usuário',
+      at: now(),
+      userId: req.session.userId,
+    };
+    const ref = await db.collection('investigations').doc(String(req.params.id))
+      .collection('chat').add(doc);
+    res.json({ id: ref.id, ...doc });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 if (require.main === module) {
   app.listen(PORT, () => console.log('RMHacking Digital — porta ' + PORT));

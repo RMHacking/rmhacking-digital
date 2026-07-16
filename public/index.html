@@ -713,6 +713,36 @@ async function resetUserPwd(id, username) {
   toast('✅ Senha redefinida!');
 }
 
+// ── Notificações Push ─────────────────────────────────────────────────────────
+async function requestNotifPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission !== 'denied') {
+    const p = await Notification.requestPermission();
+    return p === 'granted';
+  }
+  return false;
+}
+
+const _notifiedIds = new Set(JSON.parse(localStorage.getItem('_notified')||'[]'));
+
+async function sendDeadlineNotif(inv, diff) {
+  const key = inv.id+'_'+inv.deadline;
+  if (_notifiedIds.has(key)) return;
+  const granted = await requestNotifPermission();
+  if (!granted) return;
+  const msg = diff < 0 ? `Prazo VENCIDO há ${Math.abs(diff)} dia(s)` : diff === 0 ? 'Prazo vence HOJE!' : `Prazo em ${diff} dia(s)`;
+  const n = new Notification('⚠️ RMHacking — ' + inv.title, {
+    body: msg + ' • ' + inv.deadline,
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    tag: 'deadline_'+inv.id,
+  });
+  n.onclick = () => { window.focus(); window.location.href = '/investigacao.html?id='+inv.id; };
+  _notifiedIds.add(key);
+  localStorage.setItem('_notified', JSON.stringify([..._notifiedIds].slice(-50)));
+}
+
 // ── Alertas de Prazo ─────────────────────────────────────────────────────────
 function checkDeadlineAlerts(invs) {
   const today = new Date();
@@ -722,6 +752,9 @@ function checkDeadlineAlerts(invs) {
     const diff = Math.ceil((d - today) / (1000*60*60*24));
     return { inv:i, diff };
   }).filter(a => a.diff <= 5).sort((a,b) => a.diff - b.diff);
+
+  // Envia notificações push para prazos urgentes (≤ 1 dia)
+  alerts.filter(a => a.diff <= 1).forEach(a => sendDeadlineNotif(a.inv, a.diff));
 
   const banner = document.getElementById('alertsBanner');
   const content = document.getElementById('alertsContent');
@@ -993,6 +1026,21 @@ function removeBg() {
   document.body.style.backgroundImage = "url('/bg.jpg')";
 }
 
+async function ativarNotificacoes() {
+  const btn = document.getElementById('notifBtn');
+  if (!('Notification' in window)) { toast('⚠️ Seu navegador não suporta notificações'); return; }
+  if (Notification.permission === 'granted') { toast('✅ Notificações já estão ativas!'); btn.textContent='✅ Notificações Ativas'; btn.style.color='#34d399'; return; }
+  const p = await Notification.requestPermission();
+  if (p === 'granted') {
+    btn.textContent = '✅ Notificações Ativas';
+    btn.style.background = 'rgba(16,185,129,.2)';
+    toast('✅ Notificações ativadas! Você será avisado sobre prazos.');
+    new Notification('✅ RMHacking — Notificações ativadas!', { body: 'Você receberá alertas de prazo aqui.', icon: '/favicon.ico' });
+  } else {
+    toast('❌ Permissão negada. Habilite nas configurações do navegador.');
+  }
+}
+
 function previewOverlay(val) {
   document.getElementById('overlayVal').textContent = val + '%';
   applyOverlayStyle(val);
@@ -1099,6 +1147,14 @@ window.addEventListener('pageshow', e => { if (e.persisted) loadAll(); });
           <span id="overlayVal" style="font-size:12px;color:#a5b4fc;width:36px">82%</span>
         </div>
         <div style="font-size:11px;color:#4b5563;margin-top:4px">Controla quanto o overlay escurece o fundo para facilitar a leitura.</div>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">🔔 Notificações de Prazo</div>
+        <button onclick="ativarNotificacoes()" id="notifBtn" style="width:100%;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:10px;color:#34d399;font-size:13px;cursor:pointer">
+          🔔 Ativar Notificações do Navegador
+        </button>
+        <div style="font-size:11px;color:#4b5563;margin-top:6px">Receba alertas mesmo com o site em segundo plano quando um prazo estiver vencendo.</div>
       </div>
     </div>
 
