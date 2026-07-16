@@ -171,7 +171,7 @@ body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.88);point
       <span class="icon">📋</span><span class="nav-label"> Dashboard</span>
     </a>
     <a class="nav-item" href="#" onclick="filterStatus('open')" data-label="Abertas">
-      <span class="icon">🟣</span><span class="nav-label"> Abertas</span>
+      <span class="icon">🟣</span><span class="nav-label"> Em Processo</span>
     </a>
     <a class="nav-item" href="#" onclick="filterStatus('todo')" data-label="Para Fazer">
       <span class="icon">🟡</span><span class="nav-label"> Para Fazer</span>
@@ -182,9 +182,7 @@ body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.88);point
     <div style="height:1px;background:rgba(255,255,255,.06);margin:12px 4px"></div>
     <div id="folderNav" style="margin-bottom:4px"></div>
     <div style="height:1px;background:rgba(255,255,255,.06);margin:12px 4px"></div>
-    <a class="nav-item" href="#" onclick="showCreateModal()" data-label="Nova Investigação">
-      <span class="icon">➕</span><span class="nav-label"> Nova Investigação</span>
-    </a>
+
     <a class="nav-item" href="/ferramentas.html" data-label="Ferramentas">
       <span class="icon">🛠️</span><span class="nav-label"> Ferramentas</span>
     </a>
@@ -236,7 +234,7 @@ body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.88);point
 
   <div class="stats-bar">
     <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">Total</div></div>
-    <div class="stat-card open"><div class="num" id="statOpen">0</div><div class="label">🟣 Abertas</div></div>
+    <div class="stat-card open"><div class="num" id="statOpen">0</div><div class="label">🟣 Em Processo</div></div>
     <div class="stat-card todo"><div class="num" id="statTodo">0</div><div class="label">🟡 Para Fazer</div></div>
     <div class="stat-card closed"><div class="num" id="statClosed">0</div><div class="label">🟢 Finalizadas</div></div>
   </div>
@@ -262,17 +260,17 @@ body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.88);point
   <div class="board">
     <div>
       <div class="col-header">
-        <div class="col-title"><div class="dot open"></div>Abertas<span class="col-count" id="countOpen">0</span></div>
-        <button class="col-add" onclick="showCreateModal('open')" title="Nova">+</button>
-      </div>
-      <div id="col-open"></div>
-    </div>
-    <div>
-      <div class="col-header">
         <div class="col-title"><div class="dot todo"></div>Para Fazer<span class="col-count" id="countTodo">0</span></div>
         <button class="col-add" onclick="showCreateModal('todo')" title="Nova">+</button>
       </div>
       <div id="col-todo"></div>
+    </div>
+    <div>
+      <div class="col-header">
+        <div class="col-title"><div class="dot open"></div>Em Processo<span class="col-count" id="countOpen">0</span></div>
+        <button class="col-add" onclick="showCreateModal('open')" title="Nova">+</button>
+      </div>
+      <div id="col-open"></div>
     </div>
     <div>
       <div class="col-header">
