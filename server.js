@@ -844,46 +844,75 @@ function genCode(len=8) {
   return crypto.randomBytes(len).toString('base64url').substring(0,len);
 }
 
-// Rota pública — captura clique e redireciona
+// Rota pública — captura clique e redireciona com página camuflada
 app.get('/r/:code', async (req, res) => {
   try {
     const snap = await fdb.collection('tracker_links').where('code','==',req.params.code).limit(1).get();
-    if (snap.empty) return res.status(404).send('<h2>Link não encontrado</h2>');
+    if (snap.empty) return res.redirect('https://google.com');
     const doc = snap.docs[0];
     const link = doc.data();
-    // Captura dados do visitante
+    const target = link.target_url || 'https://google.com';
+
+    // Bot de preview (WhatsApp, Telegram, Facebook, TikTok, etc.) — NÃO registra clique, só vê os OG tags
+    const ua = req.headers['user-agent'] || '';
+    const isBot = /whatsapp|facebookexternalhit|telegrambot|twitterbot|linkedinbot|slackbot|discordbot|preview|spider|crawler|bot/i.test(ua);
+
+    if (isBot) {
+      // Serve página com OG tags camuflados como o site de destino
+      const ogTitle = link.og_title || link.title || 'Acesso Seguro';
+      const ogDesc  = link.og_desc  || 'Clique para acessar';
+      const ogImage = link.og_image || '';
+      const ogUrl   = target;
+      return res.send(`<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<title>${ogTitle}</title>
+<meta property="og:title" content="${ogTitle}">
+<meta property="og:description" content="${ogDesc}">
+<meta property="og:url" content="${ogUrl}">
+${ogImage ? `<meta property="og:image" content="${ogImage}">` : ''}
+<meta name="robots" content="noindex">
+</head><body><script>location.href=${JSON.stringify(target)}</script></body></html>`);
+    }
+
+    // Usuário real — registra clique
     const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || '?';
-    const ua = req.headers['user-agent'] || '?';
     const referer = req.headers['referer'] || '—';
-    // Geolocalização via ipinfo.io
     let geo = {};
-    try {
-      geo = await httpGet('https://ipinfo.io/'+encodeURIComponent(ip)+'/json');
-    } catch(e) {}
+    try { geo = await httpGet('https://ipinfo.io/'+encodeURIComponent(ip)+'/json'); } catch(e) {}
     const click = {
       ip, ua, referer,
       city: geo.city||'?', region: geo.region||'?', country: geo.country||'?',
       org: geo.org||'?', loc: geo.loc||'?', timezone: geo.timezone||'?',
       at: now(),
     };
-    // Salva o clique
     await fdb.collection('tracker_links').doc(doc.id).update({
       clicks: admin.firestore.FieldValue.arrayUnion(click),
       last_click: now(),
     });
-    // Redireciona para o alvo
-    res.redirect(link.target_url || 'https://google.com');
+
+    // Página de loading camuflada — redireciona em 0ms via JS (sem 302 que mostra domínio)
+    const ogTitle2 = link.og_title || link.title || 'Carregando...';
+    res.send(`<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<title>${ogTitle2}</title>
+<meta http-equiv="refresh" content="0;url=${target}">
+<script>location.replace(${JSON.stringify(target)})</script>
+</head><body></body></html>`);
+
   } catch(e) { res.redirect('https://google.com'); }
 });
 
 // POST /api/tracker — criar link rastreável
 app.post('/api/tracker', requireAuth, async (req, res) => {
   try {
-    const { title, target_url, inv_id } = req.body;
+    const { title, target_url, inv_id, og_title, og_desc, og_image } = req.body;
     if (!target_url) return res.status(400).json({ error: 'URL alvo obrigatória' });
     const code = genCode(7);
     const doc = {
       code, title: title||'Link rastreável', target_url,
+      og_title: og_title || title || 'Acesso Seguro',
+      og_desc:  og_desc  || 'Clique para acessar',
+      og_image: og_image || '',
       inv_id: inv_id||null,
       created_by: req.session.username || req.session.userId,
       created_at: now(),

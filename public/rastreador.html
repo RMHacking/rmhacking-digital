@@ -146,18 +146,30 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e2e8f
 function toast(msg,d=3000){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),d)}
 
 const PRESETS = [
-  {icon:'📘',name:'Facebook',desc:'Alerta de segurança',url:'https://www.facebook.com',title:'Alerta de Segurança — Facebook'},
-  {icon:'📸',name:'Instagram',desc:'Foto marcada em você',url:'https://www.instagram.com',title:'Você foi marcado em uma foto'},
-  {icon:'💬',name:'WhatsApp',desc:'Mensagem de voz',url:'https://web.whatsapp.com',title:'Mensagem de voz recebida'},
-  {icon:'🎵',name:'TikTok',desc:'Seu vídeo viralizou',url:'https://www.tiktok.com',title:'Seu vídeo atingiu 10k views'},
-  {icon:'🐦',name:'X/Twitter',desc:'Menção viral',url:'https://x.com',title:'Você foi mencionado em post viral'},
-  {icon:'📦',name:'Correios',desc:'Pacote retido',url:'https://www.correios.com.br',title:'Seu pacote está retido — Ação necessária'},
-  {icon:'🏦',name:'Banco',desc:'Transação suspeita',url:'https://www.google.com',title:'Transação suspeita detectada na sua conta'},
-  {icon:'🍎',name:'iCloud',desc:'Login desconhecido',url:'https://icloud.com',title:'Novo login detectado — Apple ID'},
-  {icon:'📧',name:'Gmail',desc:'Verificação de conta',url:'https://mail.google.com',title:'Verificação de segurança — Google'},
-  {icon:'🎮',name:'Steam',desc:'Presente recebido',url:'https://store.steampowered.com',title:'Você recebeu um presente na Steam'},
-  {icon:'📺',name:'Netflix',desc:'Conta suspensa',url:'https://www.netflix.com',title:'Sua conta Netflix foi suspensa'},
-  {icon:'🛒',name:'Mercado Livre',desc:'Venda realizada',url:'https://www.mercadolivre.com.br',title:'Você tem uma nova venda!'},
+  {icon:'📘',name:'Facebook',desc:'Alerta de segurança',url:'https://www.facebook.com',
+   title:'Alerta de Segurança — Facebook',og_title:'Alerta de Segurança — Facebook',og_desc:'Uma atividade suspeita foi detectada na sua conta. Clique para verificar.'},
+  {icon:'📸',name:'Instagram',desc:'Foto marcada em você',url:'https://www.instagram.com',
+   title:'Você foi marcado em uma foto',og_title:'Você foi marcado em uma foto',og_desc:'Alguém marcou você em uma nova publicação. Toque para ver.'},
+  {icon:'💬',name:'WhatsApp',desc:'Mensagem de voz',url:'https://web.whatsapp.com',
+   title:'Mensagem de voz recebida',og_title:'Mensagem de voz recebida',og_desc:'Você recebeu uma mensagem de voz. Clique para ouvir.'},
+  {icon:'🎵',name:'TikTok',desc:'Seu vídeo viralizou',url:'https://www.tiktok.com',
+   title:'Seu vídeo atingiu 10k views',og_title:'Seu vídeo atingiu 10.000 visualizações!',og_desc:'Parabéns! Seu vídeo está bombando. Veja as estatísticas agora.'},
+  {icon:'🐦',name:'X/Twitter',desc:'Menção viral',url:'https://x.com',
+   title:'Você foi mencionado em post viral',og_title:'Você foi mencionado em um post viral',og_desc:'Seu perfil está sendo citado em um post com milhares de curtidas.'},
+  {icon:'📦',name:'Correios',desc:'Pacote retido',url:'https://www.correios.com.br',
+   title:'Seu pacote está retido',og_title:'Aviso: Seu pacote está retido',og_desc:'É necessária uma ação para liberação da sua encomenda. Clique para regularizar.'},
+  {icon:'🏦',name:'Banco',desc:'Transação suspeita',url:'https://www.google.com',
+   title:'Transação suspeita detectada',og_title:'Transação suspeita detectada',og_desc:'Identificamos uma movimentação incomum na sua conta. Acesse para confirmar.'},
+  {icon:'🍎',name:'iCloud',desc:'Login desconhecido',url:'https://icloud.com',
+   title:'Novo login detectado — Apple ID',og_title:'Novo login detectado no seu Apple ID',og_desc:'Um dispositivo desconhecido acessou sua conta. Verifique agora.'},
+  {icon:'📧',name:'Gmail',desc:'Verificação de conta',url:'https://mail.google.com',
+   title:'Verificação de segurança — Google',og_title:'Verificação de segurança necessária — Google',og_desc:'Sua conta precisa de verificação para continuar ativa. Acesse agora.'},
+  {icon:'🎮',name:'Steam',desc:'Presente recebido',url:'https://store.steampowered.com',
+   title:'Você recebeu um presente na Steam',og_title:'Você recebeu um presente na Steam!',og_desc:'Um amigo enviou um jogo para você. Clique para resgatar.'},
+  {icon:'📺',name:'Netflix',desc:'Conta suspensa',url:'https://www.netflix.com',
+   title:'Sua conta Netflix foi suspensa',og_title:'Sua conta Netflix foi suspensa',og_desc:'Houve um problema com seu pagamento. Atualize para continuar assistindo.'},
+  {icon:'🛒',name:'Mercado Livre',desc:'Venda realizada',url:'https://www.mercadolivre.com.br',
+   title:'Você tem uma nova venda!',og_title:'🎉 Você realizou uma venda!',og_desc:'Seu produto foi vendido. Acesse para preparar o envio.'},
 ];
 
 function renderPresets() {
@@ -169,8 +181,10 @@ function renderPresets() {
     </div>`).join('');
 }
 
+let _activePreset = null;
 function usePreset(i) {
   const p = PRESETS[i];
+  _activePreset = p;
   document.getElementById('newTitle').value = p.title;
   document.getElementById('newTarget').value = p.url;
   document.getElementById('newTitle').focus();
@@ -183,9 +197,11 @@ async function createLink() {
   const inv_id = document.getElementById('newInv').value;
   if (!target_url) { toast('⚠️ Informe a URL de destino'); return; }
   try {
+    const og_title = _activePreset ? _activePreset.og_title : title;
+    const og_desc  = _activePreset ? _activePreset.og_desc  : 'Clique para acessar';
     const r = await fetch('/api/tracker', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ title, target_url, inv_id: inv_id||null })
+      body: JSON.stringify({ title, target_url, inv_id: inv_id||null, og_title, og_desc })
     });
     const d = await r.json();
     if (d.error) { toast('❌ '+d.error); return; }
@@ -194,6 +210,7 @@ async function createLink() {
     toast('✅ Link criado e copiado: '+d.track_url);
     document.getElementById('newTitle').value = '';
     document.getElementById('newTarget').value = '';
+    _activePreset = null;
     await loadLinks();
   } catch(e) { toast('❌ Erro: '+e.message); }
 }
