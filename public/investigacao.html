@@ -1080,7 +1080,7 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 </div><!-- /content -->
 
 <!-- ══ CHAT ══════════════════════════════════════════════════════════════════════ -->
-<div class="section" id="sec-chat" style="display:none">
+<div class="section" id="sec-chat">
   <div style="display:flex;gap:16px;height:520px">
     <!-- Mensagens -->
     <div style="flex:1;display:flex;flex-direction:column;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;overflow:hidden">
@@ -1304,6 +1304,13 @@ function switchTab(name, el) {
   if (name==='mindmap') setTimeout(function(){ if(mmCanvas){ var c=document.getElementById('mindmap-container'); mmCanvas.width=c.offsetWidth||800; mmCanvas.height=c.offsetHeight||560; mmRender(); } },100);
   if (name==='mapa') { setTimeout(function(){ if(mapInstance) mapInstance.invalidateSize(); else initMap(); },200); }
   if (name==='entidades') { setTimeout(function(){ if(entCanvas){ var r=entCanvas.getBoundingClientRect(); entCanvas.width=r.width; entCanvas.height=r.height; renderEntities(); } },150); }
+  // Chat
+  if (name==='chat') {
+    loadChat(true);
+    if (!_chatInterval) _chatInterval = setInterval(()=>loadChat(), 4000);
+  } else {
+    if (_chatInterval) { clearInterval(_chatInterval); _chatInterval = null; }
+  }
 }
 
 // ─── Mind Map (Canvas puro, sem dependências externas) ────────────────────────
@@ -3558,17 +3565,7 @@ function escapeHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
 
-// Inicia polling quando entra na aba de chat
-const _origSwitchTab = switchTab;
-function switchTab(name, el) {
-  _origSwitchTab(name, el);
-  if (name === 'chat') {
-    loadChat(true);
-    if (!_chatInterval) _chatInterval = setInterval(()=>loadChat(), 4000);
-  } else {
-    if (_chatInterval) { clearInterval(_chatInterval); _chatInterval = null; }
-  }
-}
+// Chat polling é controlado diretamente no switchTab original
 </script>
 </body>
 </html>
