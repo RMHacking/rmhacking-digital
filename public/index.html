@@ -292,6 +292,18 @@ body::before{content:'';position:fixed;inset:0;background:rgba(5,5,12,.88);point
       <button class="modal-close" onclick="closeModal()">×</button>
     </h3>
     <input type="hidden" id="editId">
+    <div class="form-row" id="templatePickerRow">
+      <label>📋 Template de Caso</label>
+      <select id="caseTemplate" onchange="applyCaseTemplate(this.value)" style="background:rgba(79,70,229,.07);border:1px solid rgba(79,70,229,.25);color:#a5b4fc">
+        <option value="">— Investigação em branco —</option>
+        <option value="pessoa">👤 Pessoa Física</option>
+        <option value="empresa">🏢 Empresa / CNPJ</option>
+        <option value="fraude">🎣 Fraude Online / Phishing</option>
+        <option value="stalker">📱 Stalkerware / Espionagem</option>
+        <option value="pix">💸 Golpe PIX / Estelionato</option>
+        <option value="cyber">🔴 Incidente Cibernético</option>
+      </select>
+    </div>
     <div class="form-row">
       <label>Título *</label>
       <input type="text" id="fTitle" placeholder="Nome da investigação">
@@ -644,6 +656,49 @@ function openInv(id) {
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
+const CASE_TEMPLATES = {
+  pessoa: {
+    title:'Investigação — Pessoa Física', tags:'OSINT,Pessoa Física',
+    folder:'Pessoas', priority:'medium',
+    desc:'Investigação de pessoa física.\n\nChecklist:\n☐ Coleta de dados básicos (nome completo, CPF, data de nascimento)\n☐ Redes sociais (Facebook, Instagram, LinkedIn, Twitter/X)\n☐ Histórico de endereços e contatos\n☐ Vínculos familiares e profissionais\n☐ Antecedentes criminais / processos judiciais\n☐ Patrimônio e veículos\n☐ Análise de imagens e metadados'
+  },
+  empresa: {
+    title:'Investigação — Empresa / CNPJ', tags:'OSINT,Empresa,CNPJ',
+    folder:'Empresas', priority:'medium',
+    desc:'Investigação de pessoa jurídica.\n\nChecklist:\n☐ Dados cadastrais na Receita Federal (CNPJ)\n☐ Sócios e administradores\n☐ Situação financeira e dívidas\n☐ Processos judiciais e trabalhistas\n☐ Endereços físicos e sites\n☐ Reclamações e reputação online\n☐ Contratos públicos e licitações'
+  },
+  fraude: {
+    title:'Investigação — Fraude Online / Phishing', tags:'Phishing,Fraude,Cibercrime',
+    folder:'Fraudes', priority:'high',
+    desc:'Investigação de fraude digital ou phishing.\n\nChecklist:\n☐ Coleta da URL / domínio fraudulento\n☐ WHOIS e histórico do domínio\n☐ IP do servidor e geolocalização\n☐ Capturas de tela e arquivos baixados\n☐ Análise de e-mails/mensagens recebidas\n☐ Identificação das vítimas\n☐ Notificação a registradoras e hospedagens\n☐ Boletim de ocorrência'
+  },
+  stalker: {
+    title:'Investigação — Stalkerware / Espionagem', tags:'Stalkerware,Privacidade,Celular',
+    folder:'Stalkerware', priority:'high',
+    desc:'Investigação de aplicativo de espionagem ou monitoramento não autorizado.\n\nChecklist:\n☐ Verificação de apps suspeitos no dispositivo\n☐ Análise de permissões excessivas\n☐ Logs de acesso e tráfego de rede\n☐ Identificação do perpetrador\n☐ Coleta de evidências digitais\n☐ Orientação à vítima\n☐ Registro policial / medidas protetivas'
+  },
+  pix: {
+    title:'Investigação — Golpe PIX / Estelionato', tags:'PIX,Golpe,Estelionato,Financeiro',
+    folder:'Golpes', priority:'high',
+    desc:'Investigação de golpe via PIX ou estelionato digital.\n\nChecklist:\n☐ Comprovante da transação PIX\n☐ Chave PIX do destinatário (CPF/CNPJ/telefone/e-mail/EVP)\n☐ Consulta à base BACEN\n☐ Print da conversa / anúncio fraudulento\n☐ Dados do golpista (telefone, perfis)\n☐ Contato com o banco para contestação\n☐ Boletim de ocorrência + PROCON'
+  },
+  cyber: {
+    title:'Investigação — Incidente Cibernético', tags:'Incidente,Malware,Forense',
+    folder:'Incidentes', priority:'high',
+    desc:'Investigação de incidente de segurança cibernética.\n\nChecklist:\n☐ Identificar sistemas afetados e escopo\n☐ Coletar logs de acesso e eventos\n☐ Identificar vetor de ataque (phishing, exploit, credencial vazada)\n☐ Analisar artefatos maliciosos (hash, C2, IoCs)\n☐ Isolar sistemas comprometidos\n☐ Notificar partes afetadas / LGPD\n☐ Relatório de resposta a incidente'
+  }
+};
+
+function applyCaseTemplate(type) {
+  const t = CASE_TEMPLATES[type];
+  if (!t) return;
+  if (t.title) document.getElementById('fTitle').value = t.title;
+  if (t.tags) document.getElementById('fTags').value = t.tags;
+  if (t.folder) document.getElementById('fFolder').value = t.folder;
+  if (t.priority) document.getElementById('fPriority').value = t.priority;
+  if (t.desc) document.getElementById('fDesc').value = t.desc;
+}
+
 function showCreateModal(status='open') {
   document.getElementById('modalTitle').textContent = 'Nova Investigação';
   document.getElementById('editId').value = '';
@@ -655,6 +710,8 @@ function showCreateModal(status='open') {
   document.getElementById('fTags').value = '';
   document.getElementById('fDeadline').value = '';
   document.getElementById('fFolder').value = '';
+  if (document.getElementById('caseTemplate')) document.getElementById('caseTemplate').value = '';
+  if (document.getElementById('templatePickerRow')) document.getElementById('templatePickerRow').style.display='';
   selectedColor = COLORS[0];
   renderColorPicker();
   document.getElementById('createOverlay').classList.remove('hidden');
@@ -706,6 +763,7 @@ async function editInv(id) {
   const inv = investigations.find(i=>i.id===id);
   if (!inv) return;
   document.getElementById('modalTitle').textContent = 'Editar Investigação';
+  if (document.getElementById('templatePickerRow')) document.getElementById('templatePickerRow').style.display='none';
   document.getElementById('editId').value = id;
   document.getElementById('fTitle').value = inv.title;
   document.getElementById('fTarget').value = inv.target||'';

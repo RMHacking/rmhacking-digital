@@ -248,7 +248,9 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
   <span class="status-pill" id="statusPill">...</span>
   <div style="display:flex;gap:6px;align-items:center">
     <button class="btn-sm" id="themeBtn" onclick="toggleTheme()" title="Alternar modo claro/escuro" style="font-size:15px;padding:5px 10px">🌙</button>
-    <button class="btn-sm" onclick="exportPDF()">📄 Exportar PDF</button>
+    <button class="btn-sm" onclick="exportPDF()">📄 Relatório PDF</button>
+    <button class="btn-sm" onclick="openPropostaModal()" style="border-color:rgba(52,211,153,.35);color:#34d399">📋 Proposta</button>
+    <button class="btn-sm" onclick="openContratoModal()" style="border-color:rgba(251,191,36,.35);color:#fbbf24">📜 Contrato</button>
     <button class="btn-sm" id="shareBtn" onclick="openShareModal()" style="display:none">🔗 Compartilhar</button>
     <button class="btn-primary" onclick="openEditModal()">✏️ Editar</button>
   </div>
@@ -270,6 +272,7 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
   <div class="tab" onclick="switchTab('watchlist',this)">👁️ Watchlist</div>
   <div class="tab" onclick="switchTab('custodia',this)">🔐 Custódia</div>
   <div class="tab" onclick="switchTab('chat',this)">💬 Chat</div>
+  <div class="tab" onclick="switchTab('galeria',this)">🖼️ Galeria</div>
   <div class="tab" onclick="switchTab('report',this)">📊 Relatório</div>
   <div class="sidebar-brand">
     <div class="sidebar-brand-name">Rafael Moreno</div>
@@ -1080,6 +1083,51 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 </div><!-- /content -->
 
 <!-- ══ CHAT ══════════════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-galeria">
+  <div class="panel">
+    <div class="panel-title">
+      🖼️ Galeria de Evidências
+      <button class="btn-primary" onclick="document.getElementById('galleryUploadArea').style.display=document.getElementById('galleryUploadArea').style.display==='none'?'block':'none'">+ Adicionar</button>
+    </div>
+
+    <!-- Upload area -->
+    <div id="galleryUploadArea" style="display:none;background:rgba(255,255,255,.02);border:2px dashed rgba(79,70,229,.3);border-radius:12px;padding:24px;margin-bottom:20px;text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">📸</div>
+      <div style="font-size:13px;color:#9ca3af;margin-bottom:12px">Clique ou arraste imagens aqui (JPEG, PNG, WebP — máx. 1MB)</div>
+      <input type="file" id="galleryFileInput" accept="image/*" multiple style="display:none" onchange="handleGalleryFiles(this.files)">
+      <button class="btn-sm" onclick="document.getElementById('galleryFileInput').click()">📁 Escolher arquivos</button>
+      <div id="galleryUploadPreview" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;justify-content:center"></div>
+      <div id="galleryUploadForm" style="display:none;margin-top:16px;text-align:left">
+        <div class="form-row"><label>Título da Evidência</label><input type="text" id="galleryTitle" placeholder="Ex: Print da conversa" maxlength="100"></div>
+        <div class="form-row"><label>Comentário / Análise</label><textarea id="galleryComment" placeholder="Descreva o que foi encontrado..." style="min-height:60px"></textarea></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button class="btn-sm" onclick="document.getElementById('galleryUploadArea').style.display='none';resetGalleryForm()">Cancelar</button>
+          <button class="btn-primary" onclick="uploadGalleryItem()" id="galleryUploadBtn">💾 Salvar na Galeria</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+      <div style="color:#4b5563;font-size:13px;grid-column:1/-1;text-align:center;padding:40px">Carregando galeria...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox Galeria -->
+<div id="galleryLightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+  <button onclick="closeLightbox()" style="position:absolute;top:16px;right:20px;background:none;border:none;color:#9ca3af;font-size:28px;cursor:pointer;line-height:1">×</button>
+  <img id="lbImage" src="" style="max-width:90vw;max-height:70vh;border-radius:8px;object-fit:contain">
+  <div style="text-align:center;max-width:600px;padding:0 20px">
+    <div id="lbTitle" style="font-size:15px;font-weight:600;color:#e2e8f0;margin-bottom:6px"></div>
+    <div id="lbComment" style="font-size:13px;color:#9ca3af;white-space:pre-wrap"></div>
+    <div id="lbMeta" style="font-size:11px;color:#374151;margin-top:8px"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+      <button id="lbDeleteBtn" onclick="deleteGalleryItem()" class="btn-sm" style="color:#ef4444;border-color:rgba(239,68,68,.3)">🗑 Excluir</button>
+    </div>
+  </div>
+</div>
+
 <div class="section" id="sec-chat">
   <div style="display:flex;gap:16px;height:520px">
     <!-- Mensagens -->
@@ -1104,6 +1152,83 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
     <div style="width:200px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px">
       <div style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Participantes</div>
       <div id="chatParticipants" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Proposta Comercial -->
+<div class="overlay hidden" id="propostaOverlay">
+  <div class="modal" style="max-width:560px">
+    <h3>📋 Proposta Comercial <button class="modal-close" onclick="document.getElementById('propostaOverlay').classList.add('hidden')">×</button></h3>
+    <div class="grid-2">
+      <div class="form-row"><label>Nome do Cliente</label><input type="text" id="pCliente" placeholder="Ex: João Silva / Empresa XYZ"></div>
+      <div class="form-row"><label>Data da Proposta</label><input type="date" id="pData"></div>
+    </div>
+    <div class="form-row"><label>Tipo de Serviço</label>
+      <select id="pServico">
+        <option value="Investigação OSINT">🌐 Investigação OSINT</option>
+        <option value="Análise Forense Digital">🔬 Análise Forense Digital</option>
+        <option value="Resposta a Incidente">🔴 Resposta a Incidente</option>
+        <option value="Investigação de Fraude">🎣 Investigação de Fraude</option>
+        <option value="Monitoramento de Ameaças">👁 Monitoramento de Ameaças</option>
+        <option value="Consultoria em Segurança">🛡 Consultoria em Segurança</option>
+        <option value="Investigação Corporativa">🏢 Investigação Corporativa</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Descrição do Escopo</label>
+      <textarea id="pEscopo" placeholder="Descreva o que está incluso no serviço..." style="min-height:80px"></textarea>
+    </div>
+    <div class="grid-2">
+      <div class="form-row"><label>Valor (R$)</label><input type="text" id="pValor" placeholder="Ex: 1.500,00"></div>
+      <div class="form-row"><label>Prazo de Entrega</label><input type="text" id="pPrazo" placeholder="Ex: 7 dias úteis"></div>
+    </div>
+    <div class="form-row"><label>Forma de Pagamento</label>
+      <select id="pPagamento">
+        <option value="PIX à vista">💸 PIX à vista</option>
+        <option value="50% entrada + 50% na entrega">📋 50% entrada + 50% na entrega</option>
+        <option value="Boleto bancário">🏦 Boleto bancário</option>
+        <option value="Transferência bancária">🔁 Transferência bancária</option>
+        <option value="Cartão de crédito">💳 Cartão de crédito (até 3x)</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Validade da Proposta</label>
+      <input type="text" id="pValidade" placeholder="Ex: 15 dias" value="15 dias">
+    </div>
+    <div style="text-align:right;margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-sm" onclick="document.getElementById('propostaOverlay').classList.add('hidden')">Cancelar</button>
+      <button class="btn-primary" onclick="gerarPropostaPDF()">📄 Gerar PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Contrato Digital -->
+<div class="overlay hidden" id="contratoOverlay">
+  <div class="modal" style="max-width:560px">
+    <h3>📜 Contrato de Serviço <button class="modal-close" onclick="document.getElementById('contratoOverlay').classList.add('hidden')">×</button></h3>
+    <div class="grid-2">
+      <div class="form-row"><label>Nome do Contratante</label><input type="text" id="cContratante" placeholder="Nome completo ou razão social"></div>
+      <div class="form-row"><label>CPF / CNPJ</label><input type="text" id="cDocumento" placeholder="000.000.000-00"></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-row"><label>Endereço</label><input type="text" id="cEndereco" placeholder="Rua, nº, cidade/UF"></div>
+      <div class="form-row"><label>Data do Contrato</label><input type="date" id="cData"></div>
+    </div>
+    <div class="form-row"><label>Objeto / Serviço</label>
+      <textarea id="cObjeto" placeholder="Descreva o serviço contratado..." style="min-height:70px"></textarea>
+    </div>
+    <div class="grid-2">
+      <div class="form-row"><label>Valor Total (R$)</label><input type="text" id="cValor" placeholder="Ex: 2.000,00"></div>
+      <div class="form-row"><label>Prazo de Execução</label><input type="text" id="cPrazo" placeholder="Ex: 10 dias úteis"></div>
+    </div>
+    <div class="form-row"><label>Forma de Pagamento</label>
+      <input type="text" id="cPagamento" placeholder="Ex: PIX 50% entrada + 50% entrega">
+    </div>
+    <div class="form-row"><label>Cláusulas Adicionais (opcional)</label>
+      <textarea id="cClausulas" placeholder="Sigilo, limitações de responsabilidade, etc." style="min-height:60px"></textarea>
+    </div>
+    <div style="text-align:right;margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-sm" onclick="document.getElementById('contratoOverlay').classList.add('hidden')">Cancelar</button>
+      <button class="btn-primary" onclick="gerarContratoPDF()">📄 Gerar Contrato PDF</button>
     </div>
   </div>
 </div>
@@ -1329,6 +1454,8 @@ function switchTab(name, el) {
   if (name==='mindmap') setTimeout(function(){ if(mmCanvas){ var c=document.getElementById('mindmap-container'); mmCanvas.width=c.offsetWidth||800; mmCanvas.height=c.offsetHeight||560; mmRender(); } },100);
   if (name==='mapa') { setTimeout(function(){ if(mapInstance) mapInstance.invalidateSize(); else initMap(); },200); }
   if (name==='entidades') { setTimeout(function(){ if(entCanvas){ var r=entCanvas.getBoundingClientRect(); entCanvas.width=r.width; entCanvas.height=r.height; renderEntities(); } },150); }
+  // Galeria
+  if (name==='galeria') loadGallery();
   // Chat
   if (name==='chat') {
     loadChat(true);
@@ -2456,15 +2583,27 @@ ${inv.description?`<div class="section"><h2>Descrição</h2><div style="font-siz
     html += '</div>';
   }
 
+  // Calcula hash SHA-256 do conteúdo do relatório
+  var reportText = html + ts + currentUser + (inv.title||'') + (inv.target||'');
+  var encoder = new TextEncoder();
+  var data = encoder.encode(reportText);
+  var hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  var hashArray = Array.from(new Uint8Array(hashBuffer));
+  var hashHex = hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
+
   html += `<div class="footer">
   <div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;color:#4f46e5">@${currentUser}</span> · RMHacking Investigação Digital</div>
   <div>Gerado em ${ts}</div>
-</div></div></body></html>`;
+</div>
+<div style="border-top:1px dashed #e2e8f0;padding:10px 0;margin-top:8px;font-family:monospace;font-size:9px;color:#9ca3af;word-break:break-all">
+  🔐 Integridade SHA-256: ${hashHex}
+</div>
+</div></body></html>`;
   var w = window.open('','_blank','width=900,height=700');
   w.document.write(html);
   w.document.close();
   w.onload = function(){ setTimeout(function(){ w.print(); },400); };
-  toast('📄 Abrindo PDF para imprimir/baixar...');
+  toast('📄 Abrindo PDF · Hash SHA-256 gerado!');
 }
 
 async function generateReport() {
@@ -2561,6 +2700,204 @@ function loadTemplateFile(input) {
 
 // ─── Compartilhar ─────────────────────────────────────────────────────────────
 var _shareUsers = [];
+// ─── Proposta Comercial ───────────────────────────────────────────────────────
+function openPropostaModal() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('pData').value = today;
+  document.getElementById('pCliente').value = '';
+  document.getElementById('pEscopo').value = inv ? ('Investigação: '+esc(inv.title)+(inv.target?'\nAlvo: '+esc(inv.target):'')) : '';
+  document.getElementById('propostaOverlay').classList.remove('hidden');
+}
+
+function gerarPropostaPDF() {
+  const cli  = document.getElementById('pCliente').value.trim() || 'Cliente';
+  const data = document.getElementById('pData').value;
+  const serv = document.getElementById('pServico').value;
+  const esc_ = document.getElementById('pEscopo').value.trim();
+  const val  = document.getElementById('pValor').value.trim();
+  const prazo= document.getElementById('pPrazo').value.trim();
+  const pag  = document.getElementById('pPagamento').value;
+  const valid= document.getElementById('pValidade').value.trim();
+  const user = (_me&&_me.username) ? _me.username : 'RMHacking';
+  const dataFmt = data ? new Date(data+'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+  const htmlDoc = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Proposta Comercial</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a2e;background:#fff}
+.page{padding:36px 50px;max-width:860px;margin:0 auto}
+.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid #4f46e5;padding-bottom:18px;margin-bottom:28px}
+.brand{font-size:22px;font-weight:800;color:#4f46e5;letter-spacing:-1px}
+.brand-sub{font-size:11px;color:#6b7280;margin-top:3px}
+.doc-title{text-align:right}
+.doc-title h1{font-size:18px;font-weight:700;color:#1a1a2e}
+.doc-title .num{font-size:11px;color:#6b7280;margin-top:4px}
+.section{margin-bottom:22px}
+.section h2{font-size:12px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:12px}
+.field{display:flex;gap:8px;margin-bottom:8px;font-size:12px}
+.field .label{color:#6b7280;min-width:140px;font-weight:600}
+.field .value{color:#1a1a2e;font-weight:500}
+.value-box{background:#f0f4ff;border:2px solid #4f46e5;border-radius:8px;padding:16px 20px;text-align:center;margin:16px 0}
+.value-box .amount{font-size:28px;font-weight:800;color:#4f46e5}
+.value-box .label{font-size:11px;color:#6b7280;margin-top:4px}
+.escopo{background:#f8f9fc;border-left:3px solid #4f46e5;border-radius:0 6px 6px 0;padding:12px 16px;font-size:12px;line-height:1.7;white-space:pre-wrap}
+.footer{border-top:1px solid #e2e8f0;padding-top:16px;margin-top:32px;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af}
+.assinatura{margin-top:40px;border-top:1px solid #1a1a2e;padding-top:8px;font-size:11px;color:#4b5563;text-align:center;width:220px}
+.obs{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 14px;font-size:11px;color:#92400e;margin-top:12px}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body><div class="page">
+<div class="header">
+  <div><div class="brand">🔍 RMHacking</div><div class="brand-sub">Investigação Digital Profissional</div></div>
+  <div class="doc-title"><h1>PROPOSTA COMERCIAL</h1><div class="num">Data: ${dataFmt} &nbsp;|&nbsp; Investigador: @${user}</div></div>
+</div>
+
+<div class="section">
+  <h2>Informações do Cliente</h2>
+  <div class="field"><span class="label">Cliente:</span><span class="value">${esc(cli)}</span></div>
+  <div class="field"><span class="label">Serviço:</span><span class="value">${esc(serv)}</span></div>
+  ${inv?'<div class="field"><span class="label">Caso:</span><span class="value">'+esc(inv.title)+'</span></div>':''}
+</div>
+
+<div class="section">
+  <h2>Escopo do Serviço</h2>
+  <div class="escopo">${esc(esc_)||'(a definir)'}</div>
+</div>
+
+<div class="section">
+  <h2>Valores e Condições</h2>
+  <div class="value-box">
+    <div class="amount">R$ ${esc(val)||'—'}</div>
+    <div class="label">Investimento Total</div>
+  </div>
+  <div class="field"><span class="label">Prazo de entrega:</span><span class="value">${esc(prazo)||'A combinar'}</span></div>
+  <div class="field"><span class="label">Forma de pagamento:</span><span class="value">${esc(pag)}</span></div>
+  <div class="field"><span class="label">Validade da proposta:</span><span class="value">${esc(valid)}</span></div>
+</div>
+
+<div class="obs">⚠️ Todos os serviços são prestados de forma ética e legal, em conformidade com a LGPD e legislação vigente. As informações obtidas são de uso exclusivo do contratante para fins legítimos.</div>
+
+<div style="display:flex;justify-content:space-between;margin-top:48px">
+  <div class="assinatura">Contratante<br><br><small>${esc(cli)}</small></div>
+  <div class="assinatura">Prestador de Serviço<br><br><small>@${user} — RMHacking</small></div>
+</div>
+
+<div class="footer">
+  <div>RMHacking Investigação Digital · @${user}</div>
+  <div>Gerado em ${new Date().toLocaleString('pt-BR')}</div>
+</div>
+</div></body></html>`;
+  const w = window.open('','_blank','width=860,height=700');
+  w.document.write(htmlDoc);
+  w.document.close();
+  w.onload = function(){ setTimeout(()=>w.print(),400); };
+  document.getElementById('propostaOverlay').classList.add('hidden');
+  toast('📋 Proposta gerada!');
+}
+
+// ─── Contrato Digital ─────────────────────────────────────────────────────────
+function openContratoModal() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('cData').value = today;
+  document.getElementById('cContratante').value = '';
+  document.getElementById('cDocumento').value = '';
+  document.getElementById('cEndereco').value = '';
+  document.getElementById('cObjeto').value = inv ? ('Investigação: '+esc(inv.title)+(inv.target?'\nAlvo: '+esc(inv.target):'')) : '';
+  document.getElementById('cValor').value = '';
+  document.getElementById('cPrazo').value = '';
+  document.getElementById('cPagamento').value = '';
+  document.getElementById('cClausulas').value = '';
+  document.getElementById('contratoOverlay').classList.remove('hidden');
+}
+
+function gerarContratoPDF() {
+  const contratante = document.getElementById('cContratante').value.trim() || 'CONTRATANTE';
+  const doc   = document.getElementById('cDocumento').value.trim();
+  const end   = document.getElementById('cEndereco').value.trim();
+  const dataV = document.getElementById('cData').value;
+  const obj   = document.getElementById('cObjeto').value.trim();
+  const valor = document.getElementById('cValor').value.trim();
+  const prazo = document.getElementById('cPrazo').value.trim();
+  const pag   = document.getElementById('cPagamento').value.trim();
+  const claus = document.getElementById('cClausulas').value.trim();
+  const user  = (_me&&_me.username) ? _me.username : 'RMHacking';
+  const dataFmt = dataV ? new Date(dataV+'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+  const htmlDoc = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Contrato de Serviço</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a2e;background:#fff}
+.page{padding:36px 50px;max-width:860px;margin:0 auto}
+.header{text-align:center;border-bottom:3px double #1a1a2e;padding-bottom:16px;margin-bottom:24px}
+.header h1{font-size:16px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.header .sub{font-size:11px;color:#6b7280}
+.clause{margin-bottom:18px}
+.clause h3{font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:8px;color:#1a1a2e}
+.clause p{font-size:12px;line-height:1.8;color:#333;text-align:justify}
+.clause pre{font-family:Arial,sans-serif;font-size:12px;line-height:1.8;color:#333;white-space:pre-wrap;text-align:justify}
+.highlight{background:#f0f4ff;border-left:3px solid #4f46e5;padding:8px 12px;border-radius:0 4px 4px 0;margin:6px 0}
+.assinaturas{margin-top:50px;display:flex;justify-content:space-between}
+.assinatura{text-align:center;width:220px}
+.assinatura .linha{border-top:1px solid #1a1a2e;padding-top:8px;margin-top:40px;font-size:11px}
+.footer{border-top:1px solid #e2e8f0;padding-top:12px;margin-top:24px;font-size:10px;color:#9ca3af;text-align:center}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body><div class="page">
+<div class="header">
+  <h1>Contrato de Prestação de Serviços</h1>
+  <div class="sub">Investigação Digital Profissional · RMHacking · @${user}</div>
+</div>
+
+<div class="clause">
+  <h3>Cláusula 1ª — Das Partes</h3>
+  <p><strong>CONTRATADO:</strong> @${user} — RMHacking Investigação Digital, doravante denominado CONTRATADO.</p>
+  <p style="margin-top:8px"><strong>CONTRATANTE:</strong> ${esc(contratante)}${doc?' — CPF/CNPJ: '+esc(doc):''}${end?', com endereço em '+esc(end):''}, doravante denominado CONTRATANTE.</p>
+</div>
+
+<div class="clause">
+  <h3>Cláusula 2ª — Do Objeto</h3>
+  <div class="highlight"><pre>${esc(obj)||'(a definir)'}</pre></div>
+</div>
+
+<div class="clause">
+  <h3>Cláusula 3ª — Do Valor e Pagamento</h3>
+  <p>Pelos serviços prestados, o CONTRATANTE pagará ao CONTRATADO o valor de <strong>R$ ${esc(valor)||'(a definir)'}</strong>, mediante ${esc(pag)||'forma a combinar'}.</p>
+</div>
+
+<div class="clause">
+  <h3>Cláusula 4ª — Do Prazo</h3>
+  <p>O prazo de execução dos serviços é de <strong>${esc(prazo)||'a definir'}</strong>, a contar da data de assinatura e do pagamento da entrada, quando aplicável.</p>
+</div>
+
+<div class="clause">
+  <h3>Cláusula 5ª — Da Confidencialidade</h3>
+  <p>As partes se comprometem a manter sigilo absoluto sobre todas as informações, dados e resultados obtidos durante a prestação dos serviços. O CONTRATADO não divulgará quaisquer dados do CONTRATANTE a terceiros sem autorização expressa.</p>
+</div>
+
+<div class="clause">
+  <h3>Cláusula 6ª — Da Legalidade</h3>
+  <p>Os serviços contratados serão prestados em conformidade com a legislação brasileira vigente, incluindo a LGPD (Lei nº 13.709/2018), o Marco Civil da Internet (Lei nº 12.965/2014) e demais normas aplicáveis. O CONTRATANTE declara que as finalidades do serviço são legítimas e lícitas.</p>
+</div>
+
+${claus?`<div class="clause"><h3>Cláusula 7ª — Disposições Adicionais</h3><pre>${esc(claus)}</pre></div>`:''}
+
+<div class="clause">
+  <h3>Foro</h3>
+  <p>As partes elegem o foro da comarca do CONTRATADO para dirimir quaisquer dúvidas oriundas do presente contrato, com renúncia de qualquer outro, por mais privilegiado que seja.</p>
+  <p style="margin-top:8px">Celebrado em ${dataFmt}.</p>
+</div>
+
+<div class="assinaturas">
+  <div class="assinatura"><div class="linha">${esc(contratante)}<br>CONTRATANTE</div></div>
+  <div class="assinatura"><div class="linha">@${user} — RMHacking<br>CONTRATADO</div></div>
+</div>
+
+<div class="footer">RMHacking Investigação Digital · @${user} · Gerado em ${new Date().toLocaleString('pt-BR')}</div>
+</div></body></html>`;
+  const w = window.open('','_blank','width=860,height=700');
+  w.document.write(htmlDoc);
+  w.document.close();
+  w.onload = function(){ setTimeout(()=>w.print(),400); };
+  document.getElementById('contratoOverlay').classList.add('hidden');
+  toast('📜 Contrato gerado!');
+}
+
 async function openShareModal() {
   document.getElementById('shareOverlay').classList.remove('hidden');
   const r = await fetch('/api/users');
@@ -3510,6 +3847,142 @@ async function importBackup(input) {
 
 
 window.onload = init;
+
+// ── Galeria de Evidências ─────────────────────────────────────────────────────
+let _galleryItems = [];
+let _galleryPendingFiles = [];
+let _lbCurrentId = null;
+
+async function loadGallery() {
+  const r = await fetch('/api/investigations/'+invId+'/gallery').catch(()=>null);
+  if (!r || !r.ok) { document.getElementById('galleryGrid').innerHTML='<div style="color:#4b5563;font-size:13px;text-align:center;padding:40px">Erro ao carregar galeria.</div>'; return; }
+  _galleryItems = await r.json();
+  renderGallery();
+}
+
+function renderGallery() {
+  const grid = document.getElementById('galleryGrid');
+  if (!_galleryItems.length) {
+    grid.innerHTML='<div style="color:#4b5563;font-size:13px;text-align:center;padding:40px">Nenhuma evidência na galeria ainda.<br><span style="font-size:11px">Clique em "+ Adicionar" para fazer upload.</span></div>';
+    return;
+  }
+  grid.innerHTML = _galleryItems.map(item=>`
+    <div onclick="openLightbox('${item.id}')" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='rgba(79,70,229,.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+      <div style="height:150px;overflow:hidden;background:#07070e;display:flex;align-items:center;justify-content:center">
+        <img src="${item.image_data}" style="width:100%;height:100%;object-fit:cover" loading="lazy" onerror="this.parentElement.innerHTML='<span style=\\'color:#374151;font-size:24px\\'>🖼️</span>'">
+      </div>
+      <div style="padding:10px 12px">
+        <div style="font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.title||'Sem título')}</div>
+        ${item.comment?`<div style="font-size:11px;color:#6b7280;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.comment)}</div>`:''}
+        <div style="font-size:10px;color:#374151;margin-top:5px">${item.created_by||''} · ${item.created_at?new Date(item.created_at).toLocaleDateString('pt-BR'):''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function openLightbox(id) {
+  const item = _galleryItems.find(i=>i.id===id);
+  if (!item) return;
+  _lbCurrentId = id;
+  document.getElementById('lbImage').src = item.image_data;
+  document.getElementById('lbTitle').textContent = item.title||'Sem título';
+  document.getElementById('lbComment').textContent = item.comment||'';
+  document.getElementById('lbMeta').textContent = (item.created_by||'') + (item.created_at?' · '+new Date(item.created_at).toLocaleString('pt-BR'):'');
+  const lb = document.getElementById('galleryLightbox');
+  lb.style.display = 'flex';
+  lb.onclick = function(e){ if(e.target===lb) closeLightbox(); };
+}
+
+function closeLightbox() {
+  document.getElementById('galleryLightbox').style.display='none';
+  _lbCurrentId = null;
+}
+
+async function deleteGalleryItem() {
+  if (!_lbCurrentId) return;
+  if (!confirm('Excluir esta evidência da galeria?')) return;
+  const r = await fetch('/api/investigations/'+invId+'/gallery/'+_lbCurrentId,{method:'DELETE'});
+  if (r.ok) {
+    _galleryItems = _galleryItems.filter(i=>i.id!==_lbCurrentId);
+    closeLightbox();
+    renderGallery();
+    toast('🗑 Evidência removida da galeria');
+  } else toast('❌ Erro ao excluir');
+}
+
+function handleGalleryFiles(files) {
+  _galleryPendingFiles = [];
+  document.getElementById('galleryUploadPreview').innerHTML='';
+  if (!files.length) return;
+  Array.from(files).slice(0,5).forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const dataUrl = e.target.result;
+      _galleryPendingFiles.push({file, dataUrl});
+      const img = document.createElement(
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.style.cssText='width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,.1)';
+      document.getElementById('galleryUploadPreview').appendChild(img);
+      if (_galleryPendingFiles.length===1) document.getElementById('galleryUploadForm').style.display='block';
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function compressImage(dataUrl, maxBytes) {
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = function(){
+      let q = 0.85;
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const MAX_DIM = 1200;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        const scale = MAX_DIM / Math.max(w, h);
+        w = Math.round(w * scale); h = Math.round(h * scale);
+      }
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      let result = canvas.toDataURL('image/jpeg', q);
+      while (result.length > maxBytes && q > 0.3) { q -= 0.1; result = canvas.toDataURL('image/jpeg', q); }
+      resolve(result);
+    };
+    img.src = dataUrl;
+  });
+}
+
+async function uploadGalleryItem() {
+  if (!_galleryPendingFiles.length) { toast('Selecione ao menos uma imagem'); return; }
+  const title = document.getElementById('galleryTitle').value.trim();
+  const comment = document.getElementById('galleryComment').value.trim();
+  const btn = document.getElementById('galleryUploadBtn');
+  btn.disabled = true; btn.textContent = 'Enviando\u2026';
+  try {
+    for (const {dataUrl, file} of _galleryPendingFiles) {
+      const compressed = await compressImage(dataUrl, 1000000);
+      const body = { image_data: compressed, title: title||file.name, comment, file_type: file.type||'image/jpeg' };
+      const r = await fetch('/api/investigations/'+invId+'/gallery',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const item = await r.json();
+      if (r.ok && item.id) _galleryItems.unshift(item);
+      else toast('\u274c '+(item.error||'Erro ao enviar'));
+    }
+    renderGallery();
+    toast('\u2705 '+_galleryPendingFiles.length+' evidência(s) salva(s) na galeria!');
+    document.getElementById('galleryUploadArea').style.display='none';
+    resetGalleryForm();
+  } catch(e) { toast('\u274c Erro: '+e.message); }
+  btn.disabled = false; btn.textContent = '\ud83d\udcbe Salvar na Galeria';
+}
+
+function resetGalleryForm() {
+  _galleryPendingFiles = [];
+  document.getElementById('galleryUploadPreview').innerHTML='';
+  document.getElementById('galleryUploadForm').style.display='none';
+  document.getElementById('galleryTitle').value='';
+  document.getElementById('galleryComment').value='';
+  document.getElementById('galleryFileInput').value='';
+}
 
 // ── Chat Interno ──────────────────────────────────────────────────────────────
 let _chatInterval = null;
