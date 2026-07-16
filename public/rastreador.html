@@ -226,7 +226,10 @@ async function loadLinks() {
         </div>
         <div class="link-url">
           <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.track_url)}</span>
-          <button class="btn btn-copy" onclick="copyLink('${esc(l.track_url)}')">📋 Copiar</button>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn btn-copy" onclick="copyLink('${esc(l.track_url)}')">📋 Copiar</button>
+            <button class="btn" style="background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.2);font-size:12px;padding:5px 10px" onclick="shortenAndCopy('${esc(l.track_url)}', this)">🔗 Link Curto</button>
+          </div>
         </div>
         ${hasClicks ? `
         <div style="margin-top:4px">
@@ -248,9 +251,31 @@ async function loadLinks() {
 }
 
 function copyLink(url) {
-  navigator.clipboard.writeText(url).then(()=>toast('✅ Link copiado!')).catch(()=>{
+  navigator.clipboard.writeText(url).then(()=>toast('✅ Link rastreável copiado!')).catch(()=>{
     prompt('Copie o link:', url);
   });
+}
+
+async function shortenAndCopy(url, btn) {
+  const orig = btn.textContent;
+  btn.textContent = '⏳ Encurtando...';
+  btn.disabled = true;
+  try {
+    // TinyURL API gratuita, sem chave
+    const r = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(url));
+    if (!r.ok) throw new Error('TinyURL falhou');
+    const short = await r.text();
+    if (!short.startsWith('http')) throw new Error('Resposta inválida');
+    await navigator.clipboard.writeText(short).catch(()=>{ prompt('Copie o link disfarçado:', short); });
+    toast('✅ Link curto copiado: ' + short);
+    // Mostra o link curto visualmente no botão por 3s
+    btn.textContent = '✅ ' + short.replace('https://','');
+    setTimeout(()=>{ btn.textContent = orig; btn.disabled = false; }, 4000);
+  } catch(e) {
+    toast('❌ Erro ao encurtar — tente novamente');
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
 }
 
 async function deleteLink(id) {
