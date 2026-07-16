@@ -800,11 +800,10 @@ app.get('/api/tools/screenshot', requireAuth, async (req, res) => {
 async function canAccessInvestigation(invId, session) {
   if (session.role === 'admin') return true;
   try {
-    const doc = await db.collection('investigations').doc(String(invId)).get();
+    const doc = await fdb.collection('investigations').doc(String(invId)).get();
     if (!doc.exists) return false;
     const inv = doc.data();
     const shared = inv.shared_with || [];
-    // Acesso se: shared_with vazio (público interno) OU userId está na lista
     return shared.length === 0 || shared.includes(session.userId);
   } catch(e) { return false; }
 }
@@ -814,7 +813,7 @@ app.get('/api/investigations/:id/chat', requireAuth, async (req, res) => {
   try {
     if (!(await canAccessInvestigation(req.params.id, req.session)))
       return res.status(403).json({ error: 'Sem acesso a esta investigação' });
-    const snap = await db.collection('investigations').doc(String(req.params.id))
+    const snap = await fdb.collection('investigations').doc(String(req.params.id))
       .collection('chat').orderBy('at','asc').limitToLast(60).get();
     const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     res.json(msgs);
@@ -834,9 +833,89 @@ app.post('/api/investigations/:id/chat', requireAuth, async (req, res) => {
       at: now(),
       userId: req.session.userId,
     };
-    const ref = await db.collection('investigations').doc(String(req.params.id))
+    const ref = await fdb.collection('investigations').doc(String(req.params.id))
       .collection('chat').add(doc);
     res.json({ id: ref.id, ...doc });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Rastreador de Links ───────────────────────────────────────────────────────
+function genCode(len=8) {
+  return crypto.randomBytes(len).toString('base64url').substring(0,len);
+}
+
+// Rota pública — captura clique e redireciona
+app.get('/r/:code', async (req, res) => {
+  try {
+    const snap = await fdb.collection('tracker_links').where('code','==',req.params.code).limit(1).get();
+    if (snap.empty) return res.status(404).send('<h2>Link não encontrado</h2>');
+    const doc = snap.docs[0];
+    const link = doc.data();
+    // Captura dados do visitante
+    const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || '?';
+    const ua = req.headers['user-agent'] || '?';
+    const referer = req.headers['referer'] || '—';
+    // Geolocalização via ipinfo.io
+    let geo = {};
+    try {
+      geo = await httpGet('https://ipinfo.io/'+encodeURIComponent(ip)+'/json');
+    } catch(e) {}
+    const click = {
+      ip, ua, referer,
+      city: geo.city||'?', region: geo.region||'?', country: geo.country||'?',
+      org: geo.org||'?', loc: geo.loc||'?', timezone: geo.timezone||'?',
+      at: now(),
+    };
+    // Salva o clique
+    await fdb.collection('tracker_links').doc(doc.id).update({
+      clicks: admin.firestore.FieldValue.arrayUnion(click),
+      last_click: now(),
+    });
+    // Redireciona para o alvo
+    res.redirect(link.target_url || 'https://google.com');
+  } catch(e) { res.redirect('https://google.com'); }
+});
+
+// POST /api/tracker — criar link rastreável
+app.post('/api/tracker', requireAuth, async (req, res) => {
+  try {
+    const { title, target_url, inv_id } = req.body;
+    if (!target_url) return res.status(400).json({ error: 'URL alvo obrigatória' });
+    const code = genCode(7);
+    const doc = {
+      code, title: title||'Link rastreável', target_url,
+      inv_id: inv_id||null,
+      created_by: req.session.username || req.session.userId,
+      created_at: now(),
+      clicks: [],
+      last_click: null,
+    };
+    const ref = await fdb.collection('tracker_links').add(doc);
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    res.json({ id: ref.id, ...doc, track_url: `${baseUrl}/r/${code}` });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/tracker — listar links do usuário
+app.get('/api/tracker', requireAuth, async (req, res) => {
+  try {
+    const isAdmin = req.session.role === 'admin';
+    let query = fdb.collection('tracker_links').orderBy('created_at','desc').limit(100);
+    const snap = await query.get();
+    let links = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!isAdmin) links = links.filter(l => l.created_by === (req.session.username||req.session.userId));
+    // Adiciona URL de rastreamento
+    const base = `${req.protocol}://${req.get('host')}`;
+    links = links.map(l => ({ ...l, track_url: `${base}/r/${l.code}` }));
+    res.json(links);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/tracker/:id
+app.delete('/api/tracker/:id', requireAuth, async (req, res) => {
+  try {
+    await fdb.collection('tracker_links').doc(req.params.id).delete();
+    res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
