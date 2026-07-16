@@ -3918,7 +3918,6 @@ function handleGalleryFiles(files) {
     reader.onload = function(e){
       const dataUrl = e.target.result;
       _galleryPendingFiles.push({file, dataUrl});
-      const img = document.createElement(
       const img = document.createElement('img');
       img.src = dataUrl;
       img.style.cssText='width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,.1)';
