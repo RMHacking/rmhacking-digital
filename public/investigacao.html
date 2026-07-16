@@ -1166,7 +1166,13 @@ let noteColor = '#fef9c3';
 // ─── Sessão ────────────────────────────────────────────────────────────────────
 let _me = { username:'', role:'user' };
 async function loadMe() {
-  try { const r = await fetch('/api/me'); if(r.ok) _me = await r.json(); } catch(e){}
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 3000);
+    const r = await fetch('/api/me', { signal: ctrl.signal });
+    clearTimeout(t);
+    if (r.ok) { const d = await r.json(); if(d && d.role) _me = d; }
+  } catch(e) { /* silencioso — usa default */ }
 }
 
 function applyClienteMode() {
@@ -2358,8 +2364,7 @@ function exportReport() {
 async function exportPDF() {
   toast('⏳ Gerando PDF...');
   // Busca username do usuário logado
-  var currentUser = 'rmhacking';
-  try { const mr = await fetch('/api/me'); if(mr.ok){ const md=await mr.json(); currentUser=md.username||currentUser; } } catch(e){}
+  var currentUser = _me.username || 'rmhacking';
   // Fetch all data
   var [ev,nt,evt,osint,nodes,custody] = await Promise.all([
     fetch('/api/investigations/'+invId+'/evidence').then(r=>r.json()),
