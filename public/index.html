@@ -995,10 +995,14 @@ async function setup2FA() {
     secretDiv.textContent = d.secret;
     // Render QR via api.qrserver.com (white background, high contrast)
     const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&ecc=M&bgcolor=ffffff&color=1a1a2e&data='+encodeURIComponent(d.otpauth_url);
-    qrDiv.innerHTML = '<div style="background:#fff;display:inline-block;padding:10px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.3)">'
-      +'<img src="'+qrUrl+'" width="160" height="160" style="display:block" onerror="this.parentElement.innerHTML=\'<p style=\\'color:#ef4444;font-size:11px\\'>QR indisponível. Use a chave manual abaixo.</p>\'">'
-      +'</div>';
-    confirmDiv.style.display = 'block';
+    var qrImg = document.createElement('img');
+    qrImg.src = qrUrl; qrImg.width = 160; qrImg.height = 160; qrImg.style.display = 'block';
+    qrImg.onerror = function(){ qrDiv.innerHTML = '<p style="color:#ef4444;font-size:11px">QR indisponível. Use a chave manual abaixo.</p>'; };
+    var qrWrap = document.createElement('div');
+    qrWrap.style.cssText = 'background:#fff;display:inline-block;padding:10px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.3)';
+    qrWrap.appendChild(qrImg);
+    qrDiv.innerHTML = ''; qrDiv.appendChild(qrWrap);
+        confirmDiv.style.display = 'block';
     if (btn) { btn.disabled=false; btn.textContent='🔄 Regenerar QR Code'; }
   } catch(e) {
     qrDiv.innerHTML='<div style="color:#ef4444;font-size:12px;padding:8px">❌ Erro: '+e.message+'</div>';
