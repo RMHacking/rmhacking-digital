@@ -1161,7 +1161,7 @@ async function disable2FA() {
 }
 
 // Mostrar menu de usuários só para admin
-async async function checkRole() {
+async function checkRole() {
   try {
     const r = await fetch('/api/users');
     if (r.ok) {
@@ -1680,8 +1680,6 @@ async function gsRun(q) {
     } catch(e) {
       html += `<div class="gs-card"><div class="gs-card-sub">⚠️ Erro ao consultar CEP.</div></div>`;
     }
-  }
-
   } else if (type === 'placa') {
     const pc = q.replace(/[-\s]/g,'').toUpperCase();
     const isMerc = /^[A-Z]{3}\d[A-Z]\d{2}$/.test(pc);
