@@ -47,6 +47,28 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .user-badge .role{font-size:10px;color:#6b7280}
 .logout-btn{background:none;border:none;cursor:pointer;color:#6b7280;font-size:13px;padding:0;transition:color .2s;flex-shrink:0}
 .logout-btn:hover{color:#ef4444}
+/* Nav sections */
+.nav-section-label{font-size:9px;font-weight:800;color:#374151;letter-spacing:1.5px;text-transform:uppercase;padding:8px 12px 4px;transition:opacity .2s}
+.sidebar.collapsed .nav-section-label{opacity:0;height:0;overflow:hidden;padding:0}
+.nav-divider{height:1px;background:rgba(255,255,255,.05);margin:8px 8px}
+.sidebar.collapsed .nav-divider{margin:6px 8px}
+/* User card */
+.user-card{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(79,70,229,.07);border-radius:10px;border:1px solid rgba(79,70,229,.12);cursor:pointer;transition:all .2s;margin-bottom:8px;overflow:hidden}
+.user-card:hover{background:rgba(79,70,229,.12);border-color:rgba(79,70,229,.25)}
+.sidebar.collapsed .user-card{justify-content:center;padding:8px 4px}
+.user-card .avatar{width:30px;height:30px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;box-shadow:0 2px 8px rgba(79,70,229,.4)}
+.user-card-info{flex:1;min-width:0;transition:opacity .2s,width .2s}
+.sidebar.collapsed .user-card-info{opacity:0;width:0;overflow:hidden}
+.user-card .name{font-size:12px;font-weight:600;color:#c7d2fe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-card .role{font-size:10px;color:#6b7280;white-space:nowrap}
+/* Logout button */
+.logout-full-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.15);border-radius:10px;color:#f87171;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.3px}
+.logout-full-btn:hover{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.35);color:#fca5a5}
+.logout-icon{font-size:14px;transition:transform .2s}
+.logout-full-btn:hover .logout-icon{transform:scale(1.2)}
+.logout-text{transition:opacity .2s,width .2s;white-space:nowrap}
+.sidebar.collapsed .logout-text{opacity:0;width:0;overflow:hidden}
+.sidebar.collapsed .logout-full-btn{padding:9px 0}
 .sidebar.collapsed .nav-item{position:relative}
 .sidebar.collapsed .nav-item:hover::after{content:attr(data-label);position:absolute;left:60px;background:#1a1a2e;color:#e2e8f0;font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid rgba(79,70,229,.3);white-space:nowrap;z-index:999;pointer-events:none}
 
@@ -200,54 +222,61 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
     <button class="sidebar-toggle" onclick="toggleSidebar()" id="sidebarToggleBtn" title="Recolher menu">◀</button>
   </div>
   <nav class="sidebar-nav">
+    <div class="nav-section-label">INVESTIGAÇÕES</div>
     <a class="nav-item active" href="/" data-label="Dashboard">
-      <span class="icon">📋</span><span class="nav-label"> Dashboard</span>
-    </a>
-    <a class="nav-item" href="#" onclick="filterStatus('open')" data-label="Em Processo">
-      <span class="icon">🟣</span><span class="nav-label"> Em Processo</span>
+      <span class="icon">📋</span><span class="nav-label">Dashboard</span>
     </a>
     <a class="nav-item" href="#" onclick="filterStatus('todo')" data-label="Para Fazer">
-      <span class="icon">🟡</span><span class="nav-label"> Para Fazer</span>
+      <span class="icon">🕐</span><span class="nav-label">Para Fazer</span>
+    </a>
+    <a class="nav-item" href="#" onclick="filterStatus('open')" data-label="Em Processo">
+      <span class="icon">🔍</span><span class="nav-label">Em Processo</span>
     </a>
     <a class="nav-item" href="#" onclick="filterStatus('closed')" data-label="Finalizadas">
-      <span class="icon">🟢</span><span class="nav-label"> Finalizadas</span>
+      <span class="icon">✅</span><span class="nav-label">Finalizadas</span>
     </a>
-    <div style="height:1px;background:rgba(255,255,255,.06);margin:12px 4px"></div>
-    <div id="folderNav" style="margin-bottom:4px"></div>
-    <div style="height:1px;background:rgba(255,255,255,.06);margin:12px 4px"></div>
+    <div id="folderNav" style="margin-top:2px"></div>
 
-    <a class="nav-item" href="/ferramentas.html" data-label="Ferramentas">
-      <span class="icon">🛠️</span><span class="nav-label"> Ferramentas</span>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">FERRAMENTAS</div>
+    <a class="nav-item" href="/ferramentas.html" data-label="Ferramentas OSINT">
+      <span class="icon">🛠️</span><span class="nav-label">Ferramentas OSINT</span>
     </a>
     <a class="nav-item" href="/rastreador.html" data-label="Rastreador de Links">
-      <span class="icon">🎣</span><span class="nav-label"> Rastreador</span>
+      <span class="icon">🎣</span><span class="nav-label">Rastreador de Links</span>
     </a>
-    <a class="nav-item" id="navUsers" href="#" onclick="showUsersModal()" style="display:none" data-label="Gerenciar Usuários">
-      <span class="icon">👥</span><span class="nav-label"> Gerenciar Usuários</span>
-    </a>
-    <a class="nav-item" href="#" onclick="showSettingsModal()" data-label="Configurações">
-      <span class="icon">⚙️</span><span class="nav-label"> Configurações</span>
+
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">CONFIGURAÇÕES</div>
+    <a class="nav-item" href="#" onclick="showSettingsModal()" data-label="Perfil & Aparência">
+      <span class="icon">⚙️</span><span class="nav-label">Perfil & Aparência</span>
     </a>
     <a class="nav-item" href="#" onclick="show2FAModal()" data-label="Autenticação 2FA">
-      <span class="icon">🔐</span><span class="nav-label"> Autenticação 2FA</span>
+      <span class="icon">🔐</span><span class="nav-label">Autenticação 2FA</span>
+    </a>
+    <a class="nav-item" id="navUsers" href="#" onclick="showUsersModal()" style="display:none" data-label="Gerenciar Usuários">
+      <span class="icon">👥</span><span class="nav-label">Gerenciar Usuários</span>
     </a>
     <a class="nav-item" id="navLogs" href="#" onclick="showLogsModal()" style="display:none" data-label="Logs de Acesso">
-      <span class="icon">📜</span><span class="nav-label"> Logs de Acesso</span>
+      <span class="icon">📜</span><span class="nav-label">Logs de Acesso</span>
     </a>
     <a class="nav-item" id="navActivity" href="#" onclick="showActivityModal()" style="display:none" data-label="Atividade">
-      <span class="icon">📊</span><span class="nav-label"> Atividade</span>
+      <span class="icon">📊</span><span class="nav-label">Atividade do Sistema</span>
     </a>
   </nav>
+
   <div class="sidebar-footer">
-    <div class="sidebar-brand-mark"><img src="/bg.jpg" alt=""></div>
-    <div class="user-badge" style="cursor:pointer" onclick="showSettingsModal()">
+    <div class="user-card" onclick="showSettingsModal()">
       <div class="avatar" id="userAvatar" style="overflow:hidden;flex-shrink:0">RM</div>
-      <div class="info">
+      <div class="user-card-info">
         <div class="name" id="userDisplayName">Rafael Moreno</div>
         <div class="role" id="userDisplayRole">Ethical Hacker</div>
       </div>
-      <button class="logout-btn" onclick="event.stopPropagation();logout()" title="Sair">⏻</button>
     </div>
+    <button class="logout-full-btn" onclick="logout()">
+      <span class="logout-icon">⏻</span>
+      <span class="logout-text">Sair do Sistema</span>
+    </button>
   </div>
 </aside>
 
