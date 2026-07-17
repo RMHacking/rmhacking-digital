@@ -116,9 +116,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a14;color:#e2e8f
 <body>
 
 <div class="top-bar">
-  <div class="brand">
-    <div class="brand-icon">🔍</div>
-    RMHacking Digital
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="/" onclick="if(history.length>1){event.preventDefault();history.back();}" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:5px 12px;color:#9ca3af;font-size:13px;cursor:pointer;text-decoration:none;transition:all .2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#9ca3af'">← Voltar</a>
+    <div class="brand">
+      <div class="brand-icon">🔍</div>
+      RMHacking Digital
+    </div>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <div class="user-chip">👤 <span id="usernameLabel">—</span></div>
