@@ -1581,6 +1581,7 @@ async function gsRun(q) {
             <div class="gs-field" style="grid-column:span 2"><div class="gs-field-label">Endereço</div><div class="gs-field-value">${[d.logradouro,d.numero,d.complemento,d.bairro].filter(Boolean).join(', ')||'—'}</div></div>
             ${d.ddd_telefone_1 ? `<div class="gs-field"><div class="gs-field-label">Telefone</div><div class="gs-field-value">(${d.ddd_telefone_1.substring(0,2)}) ${d.ddd_telefone_1.substring(2)}</div></div>` : ''}
             ${d.email ? `<div class="gs-field"><div class="gs-field-label">E-mail</div><div class="gs-field-value">${d.email}</div></div>` : ''}
+            ${d.capital_social ? `<div class="gs-field" style="grid-column:span 2"><div class="gs-field-label">💰 Capital Social</div><div class="gs-field-value" style="color:#34d399;font-weight:700;font-size:13px">${Number(d.capital_social).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div></div>` : ''}
           </div>
           ${socios ? `<div class="gs-socios"><div style="font-size:9px;color:#4b5563;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">QUADRO SOCIETÁRIO</div>${socios}</div>` : ''}
           <div class="gs-actions">
