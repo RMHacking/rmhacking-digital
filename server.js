@@ -30,6 +30,11 @@ try {
   console.error('FIREBASE INIT ERROR:', e.message);
 }
 
+// ── Unhandled rejection safety net ───────────────────────────────────────────
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UnhandledRejection:', reason && reason.message ? reason.message : String(reason));
+});
+
 // ── Config ────────────────────────────────────────────────────────────────────
 const app    = express();
 const PORT   = process.env.PORT || 3000;
@@ -205,14 +210,14 @@ async function initDemoData() {
       suspect: 'Carlos Eduardo Mendes', suspect_cpf: '321.654.987-00',
       description: 'Investigação de desvio de recursos e fraude contábil em empresa de tecnologia. Suspeito ocupa cargo de diretor financeiro e possui movimentações atípicas desde 03/2024.',
       deadline: '2025-09-30', client: 'Acionistas Minoritários', created_by: DEMO_USER_ID, created_at: t, updated_at: t,
-      folder: 'Empresarial', tags: 'fraude,contábil,urgente', type: 'Fraude Empresarial'
+      folder: 'Empresarial', tags: 'fraude,contábil,urgente', type: 'Fraude Empresarial', shared_with: []
     },
     {
       id: 9002, title: 'Paradeiro — Ana Paula Rodrigues', status: 'todo', priority: 'media',
       suspect: 'Ana Paula Rodrigues', suspect_cpf: '456.789.123-00',
       description: 'Localização de pessoa física que desapareceu após conflito societário. Última vez vista em São Paulo em 15/06/2025. Possui veículo Corolla prata placa ABC-1234.',
       deadline: '2025-08-15', client: 'Família Rodrigues', created_by: DEMO_USER_ID, created_at: t, updated_at: t,
-      folder: 'Pessoas', tags: 'paradeiro,localização', type: 'Localização de Pessoa'
+      folder: 'Pessoas', tags: 'paradeiro,localização', type: 'Localização de Pessoa', shared_with: []
     },
     {
       id: 9003, title: 'Operação Cascata — Lavagem de Dinheiro', status: 'closed', priority: 'critica',
@@ -220,23 +225,25 @@ async function initDemoData() {
       suspect: 'Roberto Figueiredo Lima', suspect_cpf: '789.123.456-00',
       description: 'Investigação concluída. Identificada rede de lavagem de dinheiro via imóveis. Três empresas de fachada identificadas. Relatório encaminhado ao cliente em 10/07/2025.',
       deadline: '2025-07-10', client: 'Confidencial', created_by: DEMO_USER_ID, created_at: t, updated_at: t,
-      folder: 'Financeiro', tags: 'lavagem,imóveis,concluído', type: 'Investigação Financeira'
+      folder: 'Financeiro', tags: 'lavagem,imóveis,concluído', type: 'Investigação Financeira', shared_with: []
     }
   ];
 
+  // Use batch writes — faster and atomic (top-level collections to match API queries)
+  const batch = fdb.batch();
   for (const inv of cases) {
-    const ref = fdb.collection('investigations').doc(String(inv.id));
-    await ref.set(inv);
-    // Add evidence
-    await ref.collection('evidence').add({ investigation_id: inv.id, title: 'Documento inicial', type: 'documento', description: 'Contrato societário analisado', file_data: '', created_at: t });
-    await ref.collection('evidence').add({ investigation_id: inv.id, title: 'Extrato bancário', type: 'financeiro', description: 'Movimentações suspeitas identificadas', file_data: '', created_at: t });
-    // Add notes
-    await ref.collection('notes').add({ investigation_id: inv.id, text: 'Reunião inicial com cliente realizada. Escopo definido.', author: 'Demo', created_at: t });
-    await ref.collection('notes').add({ investigation_id: inv.id, text: 'Fontes abertas consultadas. Três perfis de redes sociais identificados.', author: 'Demo', created_at: t });
-    // Add events
-    await ref.collection('events').add({ investigation_id: inv.id, title: 'Abertura do caso', description: 'Caso registrado e equipe designada', date: t.split(' ')[0], type: 'marco', created_at: t });
-    await ref.collection('events').add({ investigation_id: inv.id, title: 'Coleta de evidências', description: 'Documentos e registros coletados para análise', date: t.split(' ')[0], type: 'atividade', created_at: t });
+    batch.set(fdb.collection('investigations').doc(String(inv.id)), inv);
+    // Notes in top-level 'notes' collection (matches /api/investigations/:id/notes)
+    batch.set(fdb.collection('notes').doc(String(inv.id)+'_1'), { id:1, investigation_id:inv.id, title:'Análise Inicial', content:'Reunião inicial com cliente realizada. Escopo definido.', color:'#fef9c3', file_url:'', file_name:'', file_type:'', file_data:'', created_at:t, updated_at:t });
+    batch.set(fdb.collection('notes').doc(String(inv.id)+'_2'), { id:2, investigation_id:inv.id, title:'OSINT', content:'Fontes abertas consultadas. Três perfis de redes sociais identificados.', color:'#dbeafe', file_url:'', file_name:'', file_type:'', file_data:'', created_at:t, updated_at:t });
+    // Evidence in top-level 'evidence' collection (matches /api/investigations/:id/evidence)
+    batch.set(fdb.collection('evidence').doc(String(inv.id)+'_1'), { id:1, investigation_id:inv.id, title:'Documento inicial', type:'documento', content:'Contrato societário analisado', tags:'', hash:'', source:'', chain_of_custody:'', file_url:'', file_name:'', file_type:'', file_data:'', created_at:t });
+    batch.set(fdb.collection('evidence').doc(String(inv.id)+'_2'), { id:2, investigation_id:inv.id, title:'Extrato bancário', type:'financeiro', content:'Movimentações suspeitas identificadas', tags:'', hash:'', source:'', chain_of_custody:'', file_url:'', file_name:'', file_type:'', file_data:'', created_at:t });
+    // Events in top-level 'events' collection (matches /api/investigations/:id/events)
+    batch.set(fdb.collection('events').doc(String(inv.id)+'_1'), { id:1, investigation_id:inv.id, title:'Abertura do caso', description:'Caso registrado e equipe designada', event_date:t.split(' ')[0], importance:'alta', file_url:'', file_name:'', file_type:'', created_at:t });
+    batch.set(fdb.collection('events').doc(String(inv.id)+'_2'), { id:2, investigation_id:inv.id, title:'Coleta de evidências', description:'Documentos e registros coletados para análise', event_date:t.split(' ')[0], importance:'normal', file_url:'', file_name:'', file_type:'', created_at:t });
   }
+  await batch.commit();
   console.log('Demo data seeded');
 }
 
@@ -406,9 +413,11 @@ app.delete('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
 });
 
 app.get('/api/stats', requireAuth, async (req, res) => {
-  const snap = await fdb.collection('investigations').get();
-  const invs = snap.docs.map(d => d.data());
-  res.json({ total:invs.length, open:invs.filter(i=>i.status==='open').length, todo:invs.filter(i=>i.status==='todo').length, closed:invs.filter(i=>i.status==='closed').length });
+  try {
+    const snap = await fdb.collection('investigations').get();
+    const invs = snap.docs.map(d => d.data()).filter(i => i.created_by !== 'demo_user_rmhacking');
+    res.json({ total:invs.length, open:invs.filter(i=>i.status==='open').length, todo:invs.filter(i=>i.status==='todo').length, closed:invs.filter(i=>i.status==='closed').length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/investigations/:id/upload', requireAuth, upload.single('file'), (req, res) => {
@@ -432,24 +441,29 @@ app.get('/api/investigations', requireAuth, async (req, res) => {
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
   // Normal mode:
-  const snap = await fdb.collection('investigations').get();
-  const userId = req.session.userId || '';
-  const role = req.session.role || '';
-  const list = snap.docs.map(d=>d.data())
-    .filter(inv => {
-      if (role === 'admin') return true;
-      if (role === 'cliente') return Array.isArray(inv.shared_with) && inv.shared_with.includes(userId);
-      // role 'user': vê todas ou as compartilhadas consigo
-      return !inv.shared_with || inv.shared_with.length === 0 || inv.shared_with.includes(userId);
-    })
-    .sort((a,b)=>b.updated_at>a.updated_at?1:-1);
-  res.json(list);
+  try {
+    const snap = await fdb.collection('investigations').get();
+    const userId = req.session.userId || '';
+    const role = req.session.role || '';
+    const list = snap.docs.map(d=>d.data())
+      .filter(inv => {
+        if (role === 'admin') return true;
+        if (role === 'cliente') return Array.isArray(inv.shared_with) && inv.shared_with.includes(userId);
+        // role 'user': só vê investigações não exclusivas de demo
+        if (inv.created_by === 'demo_user_rmhacking') return false;
+        return !inv.shared_with || inv.shared_with.length === 0 || inv.shared_with.includes(userId);
+      })
+      .sort((a,b)=>b.updated_at>a.updated_at?1:-1);
+    res.json(list);
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/investigations/:id', requireAuth, async (req, res) => {
-  const doc = await fdb.collection('investigations').doc(req.params.id).get();
-  if (!doc.exists) return res.status(404).json({ error:'Nao encontrado' });
-  res.json(doc.data());
+  try {
+    const doc = await fdb.collection('investigations').doc(req.params.id).get();
+    if (!doc.exists) return res.status(404).json({ error:'Nao encontrado' });
+    res.json(doc.data());
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/investigations', requireAuth, async (req, res) => {
