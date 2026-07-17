@@ -959,6 +959,7 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
             <option value="address">🏠 Endereço</option>
             <option value="person">👤 Pessoa</option>
             <option value="company">🏢 Empresa</option>
+            <option value="vehicle">🚗 Veículo</option>
             <option value="incident">⚠️ Incidente</option>
           </select>
         </div>
@@ -969,14 +970,25 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
           <div class="form-row"><label>Lng</label><input type="number" id="mapPinLng" step="0.0001" placeholder="-46.6333"></div>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:8px">
-          <button class="btn-sm" style="flex:1" onclick="geolocateTarget()">📡 Geolocalizar IP</button>
+          <button class="btn-sm" style="flex:1" onclick="geolocateTarget()">📡 Geolocalizar</button>
           <button class="btn-primary" style="flex:1" onclick="addMapPin()">+ Adicionar</button>
         </div>
+        <button class="btn-sm" style="width:100%;margin-bottom:8px;border-color:rgba(52,211,153,.35);color:#34d399" onclick="geocodeCaseData()">📍 Geocodificar dados do caso</button>
         <div id="mapGeoStatus" style="font-size:11px;color:#6b7280"></div>
       </div>
       <div class="panel" style="margin-top:12px">
         <div class="panel-title">📋 Pontos no Mapa <button class="btn-sm" style="font-size:10px" onclick="clearMapPins()">🗑 Limpar</button></div>
         <div class="map-pin-list" id="mapPinList"></div>
+      </div>
+      <div class="panel" style="margin-top:12px">
+        <div class="panel-title">🚗 Busca por Placa</div>
+        <div class="form-row" style="margin-bottom:8px">
+          <input type="text" id="placaInput" placeholder="ABC-1234 ou ABC1D23" maxlength="8"
+            style="text-transform:uppercase;letter-spacing:2px;font-weight:700;font-size:14px"
+            oninput="this.value=this.value.replace(/[^a-zA-Z0-9-]/g,'').toUpperCase()">
+        </div>
+        <button class="btn-primary" style="width:100%;margin-bottom:10px" onclick="searchPlaca()">🔍 Consultar Placa</button>
+        <div id="placaResult" style="font-size:12px"></div>
       </div>
     </div>
   </div>
@@ -3285,6 +3297,67 @@ async function geolocateTarget() {
   }
 }
 
+async function geocodeCaseData() {
+  if (!inv) { toast('Caso ainda não carregado'); return; }
+  document.getElementById('mapGeoStatus').textContent = '⏳ Geocodificando dados do caso...';
+  var added = 0;
+  var points = [];
+  if (inv.company) points.push({label: inv.company + (inv.cnpj?' ('+inv.cnpj+')':''), addr: inv.company + ' Brasil', type:'company'});
+  if (inv.suspect) points.push({label: inv.suspect + (inv.suspect_cpf?' ('+inv.suspect_cpf+')':''), addr: inv.suspect + ' Brasil', type:'person'});
+  if (inv.target) points.push({label: '🎯 Alvo: '+inv.target, addr: inv.target, type:'person'});
+  for (var p of points) {
+    try {
+      var url = 'https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(p.addr);
+      var res = await fetch(url, {headers:{'User-Agent':'RMHacking/1.0'}}).then(x=>x.json());
+      if (res && res.length > 0) {
+        var pin = {id: Date.now()+added, lat:parseFloat(res[0].lat), lng:parseFloat(res[0].lon), label:p.label, type:p.type, target:p.addr};
+        mapPins.push(pin); addMarker(pin); added++;
+        await new Promise(r=>setTimeout(r,600)); // respeita rate limit Nominatim
+      }
+    } catch(e) {}
+  }
+  localStorage.setItem('rmh-map-'+invId, JSON.stringify(mapPins));
+  renderPinList();
+  if (added > 0) {
+    document.getElementById('mapGeoStatus').textContent = '✅ '+added+' ponto(s) adicionado(s) do caso';
+    if (mapInstance && mapPins.length > 0) {
+      var group = L.featureGroup(mapMarkers.map(m=>m.marker));
+      mapInstance.fitBounds(group.getBounds().pad(0.2));
+    }
+  } else {
+    document.getElementById('mapGeoStatus').textContent = '⚠️ Nenhum endereço encontrado nos dados do caso';
+  }
+}
+
+async function searchPlaca() {
+  var placa = document.getElementById('placaInput').value.replace(/[-\s]/g,'').toUpperCase();
+  if (placa.length < 7) { toast('Digite uma placa válida (ex: ABC1234 ou ABC1D23)'); return; }
+  var isMerc = /^[A-Z]{3}\d[A-Z]\d{2}$/.test(placa);
+  var isOld = /^[A-Z]{3}\d{4}$/.test(placa);
+  if (!isMerc && !isOld) { toast('Formato inválido — use ABC-1234 ou ABC1D23'); return; }
+  var fmt = placa.substring(0,3)+'-'+placa.substring(3);
+  var res = document.getElementById('placaResult');
+  res.innerHTML = '<div style="color:#6b7280;padding:8px 0">🔍 Consultando '+fmt+'...</div>';
+  // Sem API pública gratuita para placa no Brasil — mostra card com links
+  res.innerHTML = \`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px">
+    <div style="font-size:15px;font-weight:700;color:#e2e8f0;letter-spacing:2px;margin-bottom:6px">\${fmt}
+      <span style="font-size:10px;font-weight:400;background:rgba(6,182,212,.15);color:#67e8f9;border:1px solid rgba(6,182,212,.3);border-radius:4px;padding:1px 6px;margin-left:6px;letter-spacing:0">\${isMerc?'MERCOSUL':'PADRÃO'}</span>
+    </div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:8px">\${isMerc?'Formato Mercosul (emitido a partir de 2018)':'Formato padrão antigo (emitido até 2018)'}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <a href="https://www.consultaplaca.com.br/\${placa}" target="_blank" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);color:#a5b4fc;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">🔍 ConsultaPlaca</a>
+      <a href="https://placafipe.com.br/\${placa}" target="_blank" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);color:#a5b4fc;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">💰 PlacaFIPE</a>
+      <a href="https://www.google.com/search?q=placa+\${placa}+proprietario" target="_blank" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);color:#a5b4fc;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">🌐 Google</a>
+      <a href="https://transit.detran.sp.gov.br/consultaPublica/exibirConsultaMultas" target="_blank" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">⚠️ Multas DETRAN-SP</a>
+      <a href="https://www.detran.rj.gov.br/" target="_blank" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">⚠️ DETRAN-RJ</a>
+    </div>
+  </div>\`;
+  // Adicionar ao mapa
+  document.getElementById('mapPinLabel').value = 'Veículo '+fmt;
+  document.getElementById('mapPinType').value = 'vehicle';
+  document.getElementById('mapPinTarget').value = fmt;
+}
+
 function addMapPin() {
   var lat = parseFloat(document.getElementById('mapPinLat').value);
   var lng = parseFloat(document.getElementById('mapPinLng').value);
@@ -3306,8 +3379,8 @@ function addMapPin() {
   toast('📍 Ponto adicionado!');
 }
 
-var pinColors = {ip:'#4f46e5',address:'#10b981',person:'#f59e0b',company:'#8b5cf6',incident:'#ef4444'};
-var pinIcons = {ip:'🌐',address:'🏠',person:'👤',company:'🏢',incident:'⚠️'};
+var pinColors = {ip:'#4f46e5',address:'#10b981',person:'#f59e0b',company:'#8b5cf6',vehicle:'#06b6d4',incident:'#ef4444'};
+var pinIcons = {ip:'🌐',address:'🏠',person:'👤',company:'🏢',vehicle:'🚗',incident:'⚠️'};
 function addMarker(pin) {
   if (!mapInstance) return;
   var icon = L.divIcon({

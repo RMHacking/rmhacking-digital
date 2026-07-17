@@ -1516,6 +1516,7 @@ function resetGsHint() {
     <span class="gs-hint-tag" onclick="gsSetExample('12345678000195')">🏢 CNPJ</span>
     <span class="gs-hint-tag" onclick="gsSetExample('12345678909')">👤 CPF</span>
     <span class="gs-hint-tag" onclick="gsSetExample('01310100')">📍 CEP</span>
+    <span class="gs-hint-tag" onclick="gsSetExample('ABC1D23')">🚗 Placa</span>
     <span class="gs-hint-tag" onclick="gsSetExample('Rafael')">🔎 Nome</span>
     <span class="gs-hint-tag" onclick="gsSetExample('@gmail.com')">📧 E-mail</span>
     <div style="width:100%;font-size:11px;color:#374151;margin-top:4px">Digite ou cole qualquer dado — o sistema identifica automaticamente e busca em todas as fontes.</div>
@@ -1548,6 +1549,9 @@ function gsDetect(q) {
   if (digits.length === 8) return 'cep';
   if (/^[\d\s()\-+]{8,15}$/.test(q)) return 'phone';
   if (q.includes('@')) return 'email';
+  // Placa: ABC-1234 (antiga) ou ABC1D23 (Mercosul)
+  const pc = q.replace(/[-\s]/g,'').toUpperCase();
+  if (/^[A-Z]{3}\d{4}$/.test(pc) || /^[A-Z]{3}\d[A-Z]\d{2}$/.test(pc)) return 'placa';
   return 'text';
 }
 
@@ -1676,6 +1680,31 @@ async function gsRun(q) {
     } catch(e) {
       html += `<div class="gs-card"><div class="gs-card-sub">⚠️ Erro ao consultar CEP.</div></div>`;
     }
+  }
+
+  } else if (type === 'placa') {
+    const pc = q.replace(/[-\s]/g,'').toUpperCase();
+    const isMerc = /^[A-Z]{3}\d[A-Z]\d{2}$/.test(pc);
+    const fmt = pc.substring(0,3)+'-'+pc.substring(3);
+    html += `<div class="gs-section-title">🚗 Consulta de Veículo — ${fmt}</div>`;
+    html += `<div class="gs-card">
+      <div class="gs-card-title">${fmt}
+        <span class="gs-badge" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25)">${isMerc?'Mercosul':'Padrão Antigo'}</span>
+      </div>
+      <div class="gs-grid" style="margin-top:8px">
+        <div class="gs-field"><div class="gs-field-label">Formato</div><div class="gs-field-value">${isMerc?'Mercosul — a partir de 2018':'Padrão — até 2018'}</div></div>
+        <div class="gs-field"><div class="gs-field-label">Estado</div><div class="gs-field-value">${isMerc?'Não vinculado a estado':'Pode indicar estado original'}</div></div>
+      </div>
+      <div style="font-size:11px;color:#6b7280;margin:10px 0 4px">Consulte nas fontes para dados de proprietário, débitos, multas e histórico:</div>
+      <div class="gs-actions" style="flex-wrap:wrap;gap:6px">
+        <button class="gs-action-btn" onclick="gsCopyText('${pc}')">📋 Copiar</button>
+        <button class="gs-action-btn" onclick="window.open('https://www.consultaplaca.com.br/${pc}','_blank')">🔍 ConsultaPlaca</button>
+        <button class="gs-action-btn" onclick="window.open('https://placafipe.com.br/${pc}','_blank')">💰 PlacaFIPE</button>
+        <button class="gs-action-btn" onclick="window.open('https://www.detran.sp.gov.br/wps/portal/portaldetran/','_blank')">⚠️ DETRAN-SP</button>
+        <button class="gs-action-btn" onclick="window.open('https://www.google.com/search?q=placa+${pc}+proprietario+veiculo','_blank')">🌐 Google</button>
+        <button class="gs-action-btn" onclick="window.open('https://transit.detran.sp.gov.br/consultaPublica/exibirConsultaMultas','_blank')">🚦 Multas SP</button>
+      </div>
+    </div>`;
   }
 
   if (!html) {
