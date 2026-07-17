@@ -151,6 +151,15 @@ const upload = multer({
 });
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
+app.get('/landing', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+});
+
+app.get('/', (req, res, next) => {
+  if (req.session && req.session.auth) return next(); // pass to static middleware
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+});
+
 app.get('/login', (req, res) => {
   if (req.session && req.session.auth) return res.redirect('/');
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
@@ -1149,3 +1158,4 @@ if (require.main === module) {
   app.listen(PORT, () => console.log('RMHacking Digital — porta ' + PORT));
 }
 module.exports = app;
+              

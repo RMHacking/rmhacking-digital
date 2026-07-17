@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>RMHacking — Investigação Digital de Elite</title>
+<meta name="description" content="Investigação digital para empresas e pessoas físicas. Fraudes, compliance, due diligence, localização de pessoas e bens. Tecnologia e discrição.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07080f;--bg2:#0d0e1c;--bg3:#111224;
+  --purple:#4f46e5;--purple2:#6366f1;--cyan:#06b6d4;--cyan2:#67e8f9;
+  --green:#10b981;--red:#ef4444;--orange:#f59e0b;
+  --text:#e2e8f0;--muted:#6b7280;--border:rgba(255,255,255,.07);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,8,15,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 5%}
+.nav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--purple),var(--cyan));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.nav-logo-text{font-size:17px;font-weight:700;color:var(--text);letter-spacing:.5px}
+.nav-logo-sub{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.nav-links{display:flex;align-items:center;gap:32px}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;transition:.2s}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;transition:.2s}
+.nav-cta:hover{opacity:.85}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:120px 5% 80px;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(79,70,229,.18) 0%,transparent 70%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(6,182,212,.08) 0%,transparent 60%)}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(79,70,229,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(79,70,229,.04) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 0%,transparent 100%)}
+.hero-content{position:relative;max-width:780px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(79,70,229,.12);border:1px solid rgba(79,70,229,.3);border-radius:20px;padding:6px 16px;font-size:12px;font-weight:600;color:var(--purple2);letter-spacing:1px;text-transform:uppercase;margin-bottom:28px}
+.hero-badge span{width:6px;height:6px;background:var(--cyan);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hero h1{font-size:clamp(2.2rem,5vw,3.8rem);font-weight:800;line-height:1.1;letter-spacing:-1px;margin-bottom:24px}
+.hero h1 span{background:linear-gradient(135deg,var(--purple2),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:1.1rem;color:var(--muted);line-height:1.7;max-width:560px;margin:0 auto 40px}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-primary{background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;border:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:.2s;box-shadow:0 4px 24px rgba(79,70,229,.4)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(79,70,229,.5)}
+.btn-secondary{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border);padding:14px 32px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:.2s}
+.btn-secondary:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.15)}
+.hero-stats{display:flex;gap:48px;justify-content:center;margin-top:64px;padding-top:40px;border-top:1px solid var(--border)}
+.hero-stat{text-align:center}
+.hero-stat-num{font-size:2rem;font-weight:800;background:linear-gradient(135deg,var(--purple2),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+
+/* ── SECTIONS ── */
+section{padding:100px 5%}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-tag{font-size:11px;font-weight:700;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+.section-title{font-size:clamp(1.8rem,3.5vw,2.6rem);font-weight:800;line-height:1.2;margin-bottom:16px}
+.section-sub{font-size:1rem;color:var(--muted);line-height:1.7;max-width:560px}
+
+/* ── SERVIÇOS ── */
+.services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:52px}
+.service-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;transition:.3s;position:relative;overflow:hidden}
+.service-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--card-color,rgba(79,70,229,.06)) 0%,transparent 60%);pointer-events:none}
+.service-card:hover{border-color:rgba(79,70,229,.3);transform:translateY(-4px)}
+.service-icon{width:48px;height:48px;border-radius:12px;background:var(--card-icon-bg,rgba(79,70,229,.15));border:1px solid var(--card-icon-border,rgba(79,70,229,.25));display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:20px}
+.service-card h3{font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)}
+.service-card p{font-size:13px;color:var(--muted);line-height:1.6}
+.service-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+.service-tag{font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border)}
+
+/* ── PARA QUEM ── */
+.audience-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:52px}
+@media(max-width:700px){.audience-grid{grid-template-columns:1fr}}
+.audience-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:40px;position:relative;overflow:hidden}
+.audience-card.empresa{border-color:rgba(79,70,229,.25)}
+.audience-card.pessoa{border-color:rgba(6,182,212,.2)}
+.audience-card::after{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;filter:blur(60px);pointer-events:none}
+.audience-card.empresa::after{background:rgba(79,70,229,.12)}
+.audience-card.pessoa::after{background:rgba(6,182,212,.08)}
+.audience-label{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+.audience-card.empresa .audience-label{color:var(--purple2)}
+.audience-card.pessoa .audience-label{color:var(--cyan)}
+.audience-card h3{font-size:1.4rem;font-weight:800;margin-bottom:12px}
+.audience-card p{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:24px}
+.audience-list{list-style:none;display:flex;flex-direction:column;gap:10px}
+.audience-list li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--muted)}
+.audience-list li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;margin-top:1px}
+
+/* ── COMO FUNCIONA ── */
+.steps-bg{background:var(--bg3)}
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0;margin-top:52px;position:relative}
+.steps-grid::before{content:'';position:absolute;top:36px;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(79,70,229,.3) 20%,rgba(79,70,229,.3) 80%,transparent);pointer-events:none}
+.step{text-align:center;padding:0 24px;position:relative}
+.step-num{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--bg2),var(--bg3));border:2px solid rgba(79,70,229,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:1.4rem;font-weight:900;color:var(--purple2);position:relative;z-index:1}
+.step h3{font-size:15px;font-weight:700;margin-bottom:10px}
+.step p{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* ── PLATAFORMA ── */
+.features-wrap{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-top:52px}
+@media(max-width:900px){.features-wrap{grid-template-columns:1fr}}
+.features-list{display:flex;flex-direction:column;gap:20px}
+.feature-item{display:flex;gap:16px;align-items:flex-start}
+.feature-icon{width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px}
+.feature-item h4{font-size:14px;font-weight:700;margin-bottom:6px}
+.feature-item p{font-size:12px;color:var(--muted);line-height:1.6}
+.features-preview{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:28px;position:relative}
+.preview-topbar{display:flex;align-items:center;gap:8px;margin-bottom:20px}
+.preview-dot{width:10px;height:10px;border-radius:50%}
+.preview-title{font-size:12px;color:var(--muted);margin-left:8px}
+.preview-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.preview-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.preview-label{font-size:10px;color:var(--muted)}
+.preview-val{font-size:12px;font-weight:600}
+.preview-bar{height:4px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:8px;overflow:hidden}
+.preview-bar-fill{height:100%;border-radius:2px}
+.preview-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.preview-stat{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
+.preview-stat-num{font-size:1.2rem;font-weight:800;color:var(--purple2)}
+.preview-stat-label{font-size:9px;color:var(--muted);margin-top:2px}
+
+/* ── DEPOIMENTOS ── */
+.testimonials-bg{background:linear-gradient(135deg,rgba(79,70,229,.04) 0%,rgba(6,182,212,.03) 100%)}
+.testimonials-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:52px}
+.testimonial-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px}
+.testimonial-stars{color:var(--orange);font-size:14px;margin-bottom:16px}
+.testimonial-text{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:20px;font-style:italic}
+.testimonial-author{display:flex;align-items:center;gap:12px}
+.testimonial-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.testimonial-name{font-size:13px;font-weight:700}
+.testimonial-role{font-size:11px;color:var(--muted)}
+
+/* ── CTA ── */
+.cta-section{background:linear-gradient(135deg,rgba(79,70,229,.15) 0%,rgba(6,182,212,.08) 100%);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.cta-inner{max-width:700px;margin:0 auto;text-align:center}
+.cta-inner h2{font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:800;margin-bottom:16px}
+.cta-inner p{color:var(--muted);font-size:1rem;line-height:1.7;margin-bottom:36px}
+.cta-form{display:flex;gap:10px;max-width:460px;margin:0 auto;flex-wrap:wrap;justify-content:center}
+.cta-form input{flex:1;min-width:220px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);padding:12px 16px;border-radius:8px;font-size:14px}
+.cta-form input:focus{outline:none;border-color:rgba(79,70,229,.5)}
+.cta-form input::placeholder{color:var(--muted)}
+.cta-note{font-size:11px;color:var(--muted);margin-top:12px}
+
+/* ── FOOTER ── */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:60px 5% 32px}
+.footer-inner{max-width:1200px;margin:0 auto}
+.footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;margin-bottom:48px}
+@media(max-width:800px){.footer-top{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.footer-top{grid-template-columns:1fr}}
+.footer-brand p{font-size:13px;color:var(--muted);line-height:1.7;margin:12px 0 20px}
+.footer-social{display:flex;gap:10px}
+.footer-social a{width:34px;height:34px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;text-decoration:none;transition:.2s}
+.footer-social a:hover{background:rgba(79,70,229,.2);border-color:rgba(79,70,229,.4)}
+.footer-col h4{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.footer-col a{display:block;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:10px;transition:.2s}
+.footer-col a:hover{color:var(--text)}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:24px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px}
+.footer-bottom p{font-size:12px;color:var(--muted)}
+
+/* ── SCROLL ANIMATIONS ── */
+.fade-up{opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease}
+.fade-up.visible{opacity:1;transform:translateY(0)}
+
+@media(max-width:768px){
+  .nav-links{display:none}
+  .hero-stats{gap:24px}
+  .hero-stat-num{font-size:1.5rem}
+  .steps-grid::before{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="/landing" class="nav-logo">
+      <div class="nav-logo-icon">🔍</div>
+      <div>
+        <div class="nav-logo-text">RMHacking</div>
+        <div class="nav-logo-sub">Investigação Digital</div>
+      </div>
+    </a>
+    <div class="nav-links">
+      <a href="#servicos">Serviços</a>
+      <a href="#para-quem">Para quem</a>
+      <a href="#plataforma">Plataforma</a>
+      <a href="#contato">Contato</a>
+    </div>
+    <a href="/login" class="nav-cta">Acessar Sistema →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-badge"><span></span> Investigação Digital de Elite</div>
+    <h1>Descubra a verdade com <span>tecnologia e discrição</span></h1>
+    <p class="hero-sub">Soluções avançadas de investigação digital para empresas e pessoas físicas. Due diligence, detecção de fraudes, localização de ativos e muito mais.</p>
+    <div class="hero-btns">
+      <a href="#contato" class="btn-primary">🚀 Solicitar Demonstração</a>
+      <a href="/login" class="btn-secondary">🔑 Acessar o Sistema</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-num">500+</div>
+        <div class="hero-stat-label">Casos Solucionados</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">98%</div>
+        <div class="hero-stat-label">Taxa de Resolução</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">24h</div>
+        <div class="hero-stat-label">Tempo Médio de Resposta</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVIÇOS -->
+<section id="servicos">
+  <div class="section-inner">
+    <div class="fade-up">
+      <p class="section-tag">Serviços</p>
+      <h2 class="section-title">O que investigamos</h2>
+      <p class="section-sub">Do ambiente corporativo ao pessoal — metodologia profissional e sigilo absoluto em cada caso.</p>
+    </div>
+    <div class="services-grid">
+      <div class="service-card fade-up" style="--card-color:rgba(79,70,229,.08);--card-icon-bg:rgba(79,70,229,.15);--card-icon-border:rgba(79,70,229,.3)">
+        <div class="service-icon">🏢</div>
+        <h3>Due Diligence Corporativa</h3>
+        <p>Investigação completa de sócios, empresas, histórico jurídico e financeiro antes de fechar negócios ou contratos.</p>
+        <div class="service-tags"><span class="service-tag">CNPJ</span><span class="service-tag">Sócios</span><span class="service-tag">Dívidas</span><span class="service-tag">Processos</span></div>
+      </div>
+      <div class="service-card fade-up" style="--card-color:rgba(239,68,68,.06);--card-icon-bg:rgba(239,68,68,.12);--card-icon-border:rgba(239,68,68,.25)">
+        <div class="service-icon">🎭</div>
+        <h3>Investigação de Fraudes</h3>
+        <p>Detecção e análise de fraudes financeiras, desvio de recursos, adulteração de documentos e estelionato digital.</p>
+        <div class="service-tags"><span class="service-tag">Financeiro</span><span class="service-tag">Documentos</span><span class="service-tag">Digital</span></div>
+      </div>
+      <div class="service-card fade-up" style="--card-color:rgba(6,182,212,.06);--card-icon-bg:rgba(6,182,212,.12);--card-icon-border:rgba(6,182,212,.25)">
+        <div class="service-icon">🌐</div>
+        <h3>Investigação OSINT</h3>
+        <p>Coleta e análise de informações públicas em redes sociais, dark web, registros públicos e fontes abertas de dados.</p>
+        <div class="service-tags"><span class="service-tag">Redes Sociais</span><span class="service-tag">Dark Web</span><span class="service-tag">OSINT</span></div>
+      </div>
+      <div class="service-card fade-up" style="--card-color:rgba(16,185,129,.06);--card-icon-bg:rgba(16,185,129,.12);--card-icon-border:rgba(16,185,129,.25)">
+        <div class="service-icon">📍</div>
+        <h3>Localização de Pessoas e Bens</h3>
+        <p>Localização de devedores, herdeiros desaparecidos, ativos ocultos e bens para fins de execução judicial.</p>
+        <div class="service-tags"><span class="service-tag">Devedores</span><span class="service-tag">Ativos</span><span class="service-tag">Judicial</span></div>
+      </div>
+      <div class="service-card fade-up" style="--card-color:rgba(245,158,11,.06);--card-icon-bg:rgba(245,158,11,.12);--card-icon-border:rgba(245,158,11,.25)">
+        <div class="service-icon">🔒</div>
+        <h3>Compliance & Background Check</h3>
+        <p>Verificação de antecedentes de colaboradores, fornecedores e parceiros comerciais para proteção da sua empresa.</p>
+        <div class="service-tags"><span class="service-tag">RH</span><span class="service-tag">Fornecedores</span><span class="service-tag">KYC</span></div>
+      </div>
+      <div class="service-card fade-up" style="--card-color:rgba(139,92,246,.06);--card-icon-bg:rgba(139,92,246,.12);--card-icon-border:rgba(139,92,246,.25)">
+        <div class="service-icon">🚗</div>
+        <h3>Investigação de Veículos</h3>
+        <p>Consulta de placas, histórico de proprietários, multas, restrições e situação do veículo junto aos órgãos competentes.</p>
+        <div class="service-tags"><span class="service-tag">Placa</span><span class="service-tag">DETRAN</span><span class="service-tag">Restrições</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PARA QUEM -->
+<section id="para-quem" style="background:var(--bg3)">
+  <div class="section-inner">
+    <div class="fade-up">
+      <p class="section-tag">Para quem</p>
+      <h2 class="section-title">Soluções para cada necessidade</h2>
+      <p class="section-sub">Atendemos tanto o mercado corporativo quanto demandas pessoais com o mesmo rigor técnico.</p>
+    </div>
+    <div class="audience-grid">
+      <div class="audience-card empresa fade-up">
+        <div class="audience-label">🏢 Empresas</div>
+        <h3>Proteção corporativa completa</h3>
+        <p>Para empresas que precisam de inteligência de negócios, prevenção de fraudes e compliance rigoroso antes de cada decisão.</p>
+        <ul class="audience-list">
+          <li>Due diligence antes de M&A e parcerias</li>
+          <li>Investigação de fraudes internas e externas</li>
+          <li>Background check de executivos e sócios</li>
+          <li>Monitoramento de fornecedores e terceiros</li>
+          <li>Suporte a departamentos jurídico e de RH</li>
+          <li>Relatórios periódicos com hash de integridade</li>
+        </ul>
+      </div>
+      <div class="audience-card pessoa fade-up">
+        <div class="audience-label">👤 Pessoas Físicas</div>
+        <h3>Investigação discreta e confiável</h3>
+        <p>Para quem precisa de respostas precisas e documentadas em situações delicadas, com total sigilo e ética profissional.</p>
+        <ul class="audience-list">
+          <li>Verificação de cônjuges e parceiros</li>
+          <li>Investigação de golpes e estelionato</li>
+          <li>Localização de devedores e herdeiros</li>
+          <li>Verificação de imóveis e veículos usados</li>
+          <li>Coleta de provas para processos judiciais</li>
+          <li>Investigação de perfis falsos em redes sociais</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMO FUNCIONA -->
+<section class="steps-bg" id="como-funciona">
+  <div class="section-inner">
+    <div class="fade-up" style="text-align:center">
+      <p class="section-tag">Processo</p>
+      <h2 class="section-title">Como funciona</h2>
+      <p class="section-sub" style="margin:0 auto">Um processo transparente e seguro do início ao relatório final.</p>
+    </div>
+    <div class="steps-grid" style="margin-top:64px">
+      <div class="step fade-up">
+        <div class="step-num">1</div>
+        <h3>Briefing Inicial</h3>
+        <p>Você descreve o caso, os objetivos e as informações disponíveis. Avaliamos a viabilidade e apresentamos um plano de ação.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-num">2</div>
+        <h3>Investigação</h3>
+        <p>Nossa equipe conduz a investigação com metodologia OSINT, análise de dados e cruzamento de informações em fontes públicas e privadas.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-num">3</div>
+        <h3>Acompanhamento</h3>
+        <p>Você acompanha o progresso em tempo real pelo portal seguro, com atualizações de status e comunicação direta com o investigador.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-num">4</div>
+        <h3>Relatório Final</h3>
+        <p>Entregamos um relatório completo com evidências, cronograma, fontes e hash de integridade digital — pronto para uso judicial.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PLATAFORMA -->
+<section id="plataforma">
+  <div class="section-inner">
+    <div class="features-wrap">
+      <div>
+        <div class="fade-up">
+          <p class="section-tag">Tecnologia</p>
+          <h2 class="section-title">Portal exclusivo para seu caso</h2>
+          <p class="section-sub" style="margin-bottom:36px">Acompanhe cada investigação em tempo real através de um sistema profissional com segurança e rastreabilidade.</p>
+        </div>
+        <div class="features-list">
+          <div class="feature-item fade-up">
+            <div class="feature-icon" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.25)">🗺️</div>
+            <div>
+              <h4>Mapa de Investigação</h4>
+              <p>Visualize conexões entre pessoas, empresas e endereços em um mapa mental interativo com geolocalizações.</p>
+            </div>
+          </div>
+          <div class="feature-item fade-up">
+            <div class="feature-icon" style="background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.2)">🔍</div>
+            <div>
+              <h4>Busca Global Integrada</h4>
+              <p>Consulte CPF, CNPJ, CEP, placa e email diretamente na plataforma com acesso a múltiplas fontes públicas.</p>
+            </div>
+          </div>
+          <div class="feature-item fade-up">
+            <div class="feature-icon" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.2)">📎</div>
+            <div>
+              <h4>Galeria de Evidências</h4>
+              <p>Todas as evidências coletadas organizadas e indexadas com hash SHA-256 para garantir integridade legal.</p>
+            </div>
+          </div>
+          <div class="feature-item fade-up">
+            <div class="feature-icon" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.2)">📄</div>
+            <div>
+              <h4>Relatório com Assinatura Digital</h4>
+              <p>Exportação de dossiê completo em PDF com hash de integridade, válido para processos judiciais.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="features-preview fade-up">
+        <div class="preview-topbar">
+          <div class="preview-dot" style="background:#ef4444"></div>
+          <div class="preview-dot" style="background:#f59e0b"></div>
+          <div class="preview-dot" style="background:#10b981"></div>
+          <span class="preview-title">Portal do Cliente — Caso #1042</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:14px;letter-spacing:1px;text-transform:uppercase">Fraude Contábil — TechBrasil LTDA</div>
+        <div class="preview-stats">
+          <div class="preview-stat"><div class="preview-stat-num" style="color:#f59e0b">12</div><div class="preview-stat-label">Evidências</div></div>
+          <div class="preview-stat"><div class="preview-stat-num" style="color:#10b981">74%</div><div class="preview-stat-label">Progresso</div></div>
+          <div class="preview-stat"><div class="preview-stat-num" style="color:#06b6d4">3</div><div class="preview-stat-label">Suspeitos</div></div>
+        </div>
+        <div style="margin:16px 0 10px;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Linha do Tempo</div>
+        <div class="preview-card">
+          <div class="preview-row"><span class="preview-label">📅 17 Jul 2026</span><span class="preview-val" style="color:#10b981;font-size:11px">✓ Concluído</span></div>
+          <div style="font-size:12px">Cruzamento de CNPJs — 3 empresas vinculadas identificadas</div>
+        </div>
+        <div class="preview-card">
+          <div class="preview-row"><span class="preview-label">📅 16 Jul 2026</span><span class="preview-val" style="color:#f59e0b;font-size:11px">⚡ Em andamento</span></div>
+          <div style="font-size:12px">Análise de movimentações financeiras 2022–2024</div>
+          <div class="preview-bar"><div class="preview-bar-fill" style="width:60%;background:linear-gradient(90deg,#4f46e5,#06b6d4)"></div></div>
+        </div>
+        <div class="preview-card">
+          <div class="preview-row"><span class="preview-label">📅 15 Jul 2026</span><span class="preview-val" style="color:#6b7280;font-size:11px">⏳ Pendente</span></div>
+          <div style="font-size:12px">Geração do relatório final com hash de integridade</div>
+        </div>
+        <div style="text-align:center;margin-top:20px">
+          <a href="/login" style="background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block">Acessar Meu Portal →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEPOIMENTOS -->
+<section class="testimonials-bg">
+  <div class="section-inner">
+    <div class="fade-up" style="text-align:center">
+      <p class="section-tag">Depoimentos</p>
+      <h2 class="section-title">Resultados que falam por si</h2>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial-card fade-up">
+        <div class="testimonial-stars">★★★★★</div>
+        <p class="testimonial-text">"Descobrimos um esquema de desvio de R$ 280 mil em nossa empresa. O relatório foi fundamental para o processo judicial. Trabalho impecável e totalmente sigiloso."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">MF</div>
+          <div><div class="testimonial-name">Marcos F.</div><div class="testimonial-role">Diretor Financeiro — Construtora SP</div></div>
+        </div>
+      </div>
+      <div class="testimonial-card fade-up">
+        <div class="testimonial-stars">★★★★★</div>
+        <p class="testimonial-text">"Precisava verificar informações sobre um parceiro de negócios antes de assinar contrato. Em 48h tinham tudo documentado. Evitei um prejuízo enorme."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">AC</div>
+          <div><div class="testimonial-name">Ana C.</div><div class="testimonial-role">Empresária — Setor de Tecnologia</div></div>
+        </div>
+      </div>
+      <div class="testimonial-card fade-up">
+        <div class="testimonial-stars">★★★★★</div>
+        <p class="testimonial-text">"Fui vítima de golpe online. A equipe localizou o responsável e forneceu todas as provas que meu advogado precisava. Caso ganho."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">RL</div>
+          <div><div class="testimonial-name">Roberto L.</div><div class="testimonial-role">Pessoa Física — Rio de Janeiro</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-section" id="contato">
+  <div class="section-inner">
+    <div class="cta-inner fade-up">
+      <p class="section-tag" style="text-align:center">Comece agora</p>
+      <h2>Pronto para descobrir a verdade?</h2>
+      <p>Entre em contato para uma consulta gratuita e sem compromisso. Avaliamos seu caso e apresentamos o melhor caminho.</p>
+      <div class="cta-form">
+        <input type="email" id="ctaEmail" placeholder="Seu melhor e-mail">
+        <button class="btn-primary" onclick="ctaSubmit()">Solicitar Consulta →</button>
+      </div>
+      <p class="cta-note">🔒 Sigilo garantido · Respondemos em até 2 horas</p>
+      <div style="margin-top:28px;display:flex;gap:20px;justify-content:center;flex-wrap:wrap">
+        <a href="https://wa.me/5511999999999" target="_blank" class="btn-secondary" style="font-size:13px;padding:10px 20px">💬 WhatsApp</a>
+        <a href="mailto:contato@rmhacking.com.br" class="btn-secondary" style="font-size:13px;padding:10px 20px">✉️ E-mail</a>
+        <a href="/login" class="btn-secondary" style="font-size:13px;padding:10px 20px">🔑 Acessar Sistema</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="/landing" class="nav-logo" style="margin-bottom:12px;display:inline-flex">
+          <div class="nav-logo-icon">🔍</div>
+          <div style="margin-left:10px">
+            <div class="nav-logo-text">RMHacking</div>
+            <div class="nav-logo-sub">Investigação Digital</div>
+          </div>
+        </a>
+        <p>Investigação digital profissional para empresas e pessoas físicas. Tecnologia, ética e discrição em cada caso.</p>
+        <div class="footer-social">
+          <a href="#" title="Instagram">📸</a>
+          <a href="#" title="LinkedIn">💼</a>
+          <a href="#" title="WhatsApp">💬</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Serviços</h4>
+        <a href="#servicos">Due Diligence</a>
+        <a href="#servicos">Investigação de Fraudes</a>
+        <a href="#servicos">OSINT</a>
+        <a href="#servicos">Background Check</a>
+        <a href="#servicos">Localização de Bens</a>
+      </div>
+      <div class="footer-col">
+        <h4>Empresa</h4>
+        <a href="#para-quem">Para Empresas</a>
+        <a href="#para-quem">Para Pessoas</a>
+        <a href="#como-funciona">Como Funciona</a>
+        <a href="#plataforma">Plataforma</a>
+      </div>
+      <div class="footer-col">
+        <h4>Acesso</h4>
+        <a href="/login">Entrar no Sistema</a>
+        <a href="/login">Modo Demo</a>
+        <a href="#contato">Solicitar Acesso</a>
+        <a href="mailto:contato@rmhacking.com.br">Contato</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 RMHacking Investigação Digital. Todos os direitos reservados.</p>
+      <p>Rafael Moreno · Ethical Hacker & Investigador Digital</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Scroll animations
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+// CTA submit
+function ctaSubmit() {
+  const email = document.getElementById('ctaEmail').value.trim();
+  if (!email || !email.includes('@')) { alert('Digite um e-mail válido.'); return; }
+  const btn = event.target;
+  btn.textContent = '✓ Solicitação Enviada!';
+  btn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+  btn.disabled = true;
+  // Redirect to WhatsApp or mailto
+  setTimeout(() => {
+    window.open(`mailto:contato@rmhacking.com.br?subject=Consulta via Landing Page&body=E-mail: ${email}%0A%0ADescreva seu caso:`, '_blank');
+  }, 500);
+}
+
+// Smooth nav highlight
+const navLinks = document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll', () => {
+  const pos = window.scrollY + 100;
+  navLinks.forEach(link => {
+    const section = document.querySelector(link.getAttribute('href'));
+    if (section && pos >= section.offsetTop && pos < section.offsetTop + section.offsetHeight) {
+      navLinks.forEach(l => l.style.color = '');
+      link.style.color = '#e2e8f0';
+    }
+  });
+});
+</script>
+
+</body>
+</html>
