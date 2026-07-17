@@ -30,6 +30,9 @@
   .btn-main:active{transform:translateY(0)}
   .btn-secondary{width:100%;background:none;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px;color:#6b7280;font-size:13px;cursor:pointer;transition:all .2s;margin-top:10px}
   .btn-secondary:hover{border-color:rgba(255,255,255,.2);color:#9ca3af}
+  .btn-demo{width:100%;background:linear-gradient(135deg,rgba(16,185,129,.15),rgba(5,150,105,.1));border:1px solid rgba(16,185,129,.35);border-radius:10px;padding:14px;color:#34d399;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px}
+  .btn-demo:hover{background:linear-gradient(135deg,rgba(16,185,129,.25),rgba(5,150,105,.18));border-color:rgba(16,185,129,.6);transform:translateY(-1px);box-shadow:0 6px 20px rgba(16,185,129,.2)}
+  .demo-tag{font-size:9px;background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);border-radius:4px;padding:1px 6px;letter-spacing:1px;text-transform:uppercase}
   .btn-danger{width:100%;background:linear-gradient(135deg,#dc2626,#b91c1c);border:none;border-radius:10px;padding:15px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:4px}
   .btn-danger:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(220,38,38,.3)}
   .alert{border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none}
@@ -77,7 +80,10 @@
     </button>
     <div class="divider"><span>ou</span></div>
     <button class="btn-secondary" onclick="showScreen('screenChange')">🔑 Alterar Senha</button>
-    <div class="footer">🔐 Sessão expira em 8 horas</div>
+    <button class="btn-demo" onclick="demoLogin()">
+      🎮 <span>Entrar no Modo Demo</span> <span class="demo-tag">FAIR</span>
+    </button>
+    <div class="footer">🔐 Sessão expira em 8 horas · Demo não salva dados reais</div>
   </div>
 
   <!-- ── Tela 2FA ── -->
@@ -163,7 +169,20 @@
   }
 
   // ── Login ──────────────────────────────────────────────────────
-  async function login() {
+  async function demoLogin() {
+  const btn = document.querySelector('.btn-demo');
+  if (btn) { btn.textContent = '⏳ Carregando demo...'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/demo-login', { method: 'POST', headers: {'Content-Type':'application/json'} });
+    const d = await r.json();
+    if (d.success) { window.location.href = '/'; }
+    else { if(btn){btn.textContent='🎮 Entrar no Modo Demo';btn.disabled=false;} alert('Erro ao iniciar demo: ' + (d.message||'Tente novamente')); }
+  } catch(e) {
+    if(btn){btn.innerHTML='🎮 <span>Entrar no Modo Demo</span> <span class="demo-tag">FAIR</span>';btn.disabled=false;}
+    showAlert('loginError','Erro de conexão ao iniciar demo.');
+  }
+}
+async function login() {
     var username = document.getElementById('username').value.trim();
     var password = document.getElementById('pwd').value;
     if (!username) { showAlert('loginError', 'Digite o usuário.'); return; }

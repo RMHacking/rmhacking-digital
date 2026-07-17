@@ -190,6 +190,71 @@ app.post('/api/login', async (req, res) => {
   res.status(401).json({ success: false, message: 'Senha incorreta' });
 });
 
+// ── Demo Mode ────────────────────────────────────────────────────────────────
+const DEMO_USER_ID = 'demo_user_rmhacking';
+
+async function initDemoData() {
+  const snap = await fdb.collection('investigations').where('created_by','==',DEMO_USER_ID).limit(1).get();
+  if (!snap.empty) return; // already seeded
+
+  const t = now();
+  const cases = [
+    {
+      id: 9001, title: 'Fraude Contábil — TechBrasil LTDA', status: 'open', priority: 'alta',
+      company: 'TechBrasil LTDA', cnpj: '12.345.678/0001-99',
+      suspect: 'Carlos Eduardo Mendes', suspect_cpf: '321.654.987-00',
+      description: 'Investigação de desvio de recursos e fraude contábil em empresa de tecnologia. Suspeito ocupa cargo de diretor financeiro e possui movimentações atípicas desde 03/2024.',
+      deadline: '2025-09-30', client: 'Acionistas Minoritários', created_by: DEMO_USER_ID, created_at: t, updated_at: t,
+      folder: 'Empresarial', tags: 'fraude,contábil,urgente', type: 'Fraude Empresarial'
+    },
+    {
+      id: 9002, title: 'Paradeiro — Ana Paula Rodrigues', status: 'todo', priority: 'media',
+      suspect: 'Ana Paula Rodrigues', suspect_cpf: '456.789.123-00',
+      description: 'Localização de pessoa física que desapareceu após conflito societário. Última vez vista em São Paulo em 15/06/2025. Possui veículo Corolla prata placa ABC-1234.',
+      deadline: '2025-08-15', client: 'Família Rodrigues', created_by: DEMO_USER_ID, created_at: t, updated_at: t,
+      folder: 'Pessoas', tags: 'paradeiro,localização', type: 'Localização de Pessoa'
+    },
+    {
+      id: 9003, title: 'Operação Cascata — Lavagem de Dinheiro', status: 'closed', priority: 'critica',
+      company: 'Cascata Empreendimentos LTDA', cnpj: '98.765.432/0001-11',
+      suspect: 'Roberto Figueiredo Lima', suspect_cpf: '789.123.456-00',
+      description: 'Investigação concluída. Identificada rede de lavagem de dinheiro via imóveis. Três empresas de fachada identificadas. Relatório encaminhado ao cliente em 10/07/2025.',
+      deadline: '2025-07-10', client: 'Confidencial', created_by: DEMO_USER_ID, created_at: t, updated_at: t,
+      folder: 'Financeiro', tags: 'lavagem,imóveis,concluído', type: 'Investigação Financeira'
+    }
+  ];
+
+  for (const inv of cases) {
+    const ref = fdb.collection('investigations').doc(String(inv.id));
+    await ref.set(inv);
+    // Add evidence
+    await ref.collection('evidence').add({ investigation_id: inv.id, title: 'Documento inicial', type: 'documento', description: 'Contrato societário analisado', file_data: '', created_at: t });
+    await ref.collection('evidence').add({ investigation_id: inv.id, title: 'Extrato bancário', type: 'financeiro', description: 'Movimentações suspeitas identificadas', file_data: '', created_at: t });
+    // Add notes
+    await ref.collection('notes').add({ investigation_id: inv.id, text: 'Reunião inicial com cliente realizada. Escopo definido.', author: 'Demo', created_at: t });
+    await ref.collection('notes').add({ investigation_id: inv.id, text: 'Fontes abertas consultadas. Três perfis de redes sociais identificados.', author: 'Demo', created_at: t });
+    // Add events
+    await ref.collection('events').add({ investigation_id: inv.id, title: 'Abertura do caso', description: 'Caso registrado e equipe designada', date: t.split(' ')[0], type: 'marco', created_at: t });
+    await ref.collection('events').add({ investigation_id: inv.id, title: 'Coleta de evidências', description: 'Documentos e registros coletados para análise', date: t.split(' ')[0], type: 'atividade', created_at: t });
+  }
+  console.log('Demo data seeded');
+}
+
+app.post('/api/demo-login', async (req, res) => {
+  try {
+    await ensureDB();
+    await initDemoData();
+    req.session.auth = true;
+    req.session.userId = DEMO_USER_ID;
+    req.session.username = 'Demo';
+    req.session.role = 'demo';
+    res.json({ success: true });
+  } catch(e) {
+    console.error('Demo login error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 app.post('/api/logout', (req, res) => {
   req.session = null;
   res.json({ success: true });
@@ -356,6 +421,17 @@ app.use('/', requireAuth, express.static(path.join(__dirname, 'public')));
 
 // ── Investigations ────────────────────────────────────────────────────────────
 app.get('/api/investigations', requireAuth, async (req, res) => {
+  // Demo mode: only show demo cases
+  if (req.session.role === 'demo') {
+    try {
+      const snap = await fdb.collection('investigations').where('created_by','==',DEMO_USER_ID).get();
+      const invs = [];
+      snap.forEach(d => invs.push(d.data()));
+      invs.sort((a,b) => (b.id||0)-(a.id||0));
+      return res.json(invs);
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+  // Normal mode:
   const snap = await fdb.collection('investigations').get();
   const userId = req.session.userId || '';
   const role = req.session.role || '';

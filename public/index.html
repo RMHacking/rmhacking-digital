@@ -249,11 +249,27 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .gs-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .gs-action-btn{font-size:11px;padding:5px 12px;background:rgba(79,70,229,.12);border:1px solid rgba(79,70,229,.25);border-radius:6px;color:#818cf8;cursor:pointer;transition:all .15s}
 .gs-action-btn:hover{background:rgba(79,70,229,.22);color:#a5b4fc}
+.demo-banner{position:fixed;top:0;left:0;right:0;z-index:10000;background:linear-gradient(90deg,#065f46,#047857,#065f46);padding:7px 20px;display:none;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(16,185,129,.4);box-shadow:0 2px 12px rgba(16,185,129,.2)}
+.demo-banner.visible{display:flex}
+.demo-banner-left{display:flex;align-items:center;gap:10px}
+.demo-badge-pill{background:rgba(16,185,129,.3);border:1px solid rgba(16,185,129,.5);border-radius:20px;padding:2px 10px;font-size:10px;font-weight:800;color:#6ee7b7;letter-spacing:1.5px;text-transform:uppercase}
+.demo-banner-text{font-size:12px;color:#a7f3d0;font-weight:500}
+.demo-banner-text strong{color:#34d399}
+.demo-exit{font-size:12px;background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);border-radius:6px;padding:4px 12px;color:#34d399;cursor:pointer;transition:all .2s;font-weight:600}
+.demo-exit:hover{background:rgba(16,185,129,.35)}
+body.demo-mode{padding-top:38px}
 </style>
 </head>
 <body>
 
 <!-- Sidebar -->
+<div class="demo-banner" id="demoBanner">
+  <div class="demo-banner-left">
+    <span class="demo-badge-pill">🎮 MODO DEMO</span>
+    <span class="demo-banner-text">Você está visualizando <strong>dados fictícios</strong> para demonstração. Alterações não são salvas.</span>
+  </div>
+  <button class="demo-exit" onclick="exitDemo()">✕ Sair do Demo</button>
+</div>
 <button class="sidebar-expand-btn" id="sidebarExpandBtn" onclick="toggleSidebar()" title="Expandir menu">▶</button>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
@@ -1460,6 +1476,24 @@ function saveSettings() {
 checkRole();
 init();
 applyConfig();
+
+// Demo mode detection
+async function checkDemoMode() {
+  try {
+    const r = await fetch('/api/me', {credentials:'include'});
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.role === 'demo') {
+      document.getElementById('demoBanner').classList.add('visible');
+      document.body.classList.add('demo-mode');
+    }
+  } catch(e) {}
+}
+checkDemoMode();
+
+function exitDemo() {
+  fetch('/api/logout', {method:'POST'}).then(() => window.location.href = '/login');
+}
 window.addEventListener('pageshow', e => { if (e.persisted) loadAll(); });
 
 // ── Global Search ─────────────────────────────────────────────────────────────
@@ -1855,38 +1889,4 @@ function gsCopyText(txt) {
 <div id="logsModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;z-index:1000" onclick="if(event.target===this)closeLogsModal()">
   <div class="modal" style="max-width:640px;width:100%;margin:20px">
     <h3>📜 Logs de Acesso <button class="modal-close" onclick="closeLogsModal()">×</button></h3>
-    <div id="logsContent" style="max-height:420px;overflow-y:auto;border:1px solid rgba(255,255,255,.06);border-radius:8px"></div>
-  </div>
-</div>
-
-<!-- Modal Atividade -->
-<div id="activityModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;z-index:1000" onclick="if(event.target===this)closeActivityModal()">
-  <div class="modal" style="max-width:640px;width:100%;margin:20px">
-    <h3>📊 Histórico de Atividade <button class="modal-close" onclick="closeActivityModal()">×</button></h3>
-    <div id="activityContent" style="max-height:420px;overflow-y:auto;border:1px solid rgba(255,255,255,.06);border-radius:8px"></div>
-  </div>
-</div>
-
-<!-- ── Global Search Modal ─────────────────────────────────────────────── -->
-<div class="gs-overlay" id="gsOverlay" onclick="if(event.target===this)closeGlobalSearch()">
-  <div class="gs-box">
-    <div class="gs-input-row">
-      <span class="gs-icon">🔍</span>
-      <input class="gs-input" id="gsInput" placeholder="CNPJ, CPF, CEP, nome, telefone, e-mail..." oninput="gsOnInput()" autocomplete="off">
-      <span class="gs-shortcut">ESC</span>
-    </div>
-    <div id="gsResults">
-      <div class="gs-hint" id="gsHint">
-        <span class="gs-hint-tag" onclick="gsSetExample('12345678000195')">🏢 CNPJ</span>
-        <span class="gs-hint-tag" onclick="gsSetExample('12345678909')">👤 CPF</span>
-        <span class="gs-hint-tag" onclick="gsSetExample('01310100')">📍 CEP</span>
-        <span class="gs-hint-tag" onclick="gsSetExample('Rafael')">🔎 Nome</span>
-        <span class="gs-hint-tag" onclick="gsSetExample('@gmail.com')">📧 E-mail</span>
-        <div style="width:100%;font-size:11px;color:#374151;margin-top:4px">Digite ou cole qualquer dado — o sistema identifica automaticamente e busca em todas as fontes.</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-</body>
-</html>
+    <div id="logsContent" style="max-height:420px;overflow-y:auto;border:1px solid rgba(255,255,255
