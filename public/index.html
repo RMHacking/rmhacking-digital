@@ -23,6 +23,8 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .sidebar-logo p{font-size:10px;color:#6366f1;margin-top:1px;letter-spacing:1.2px;text-transform:uppercase;white-space:nowrap;font-weight:600}
 .sidebar-toggle{background:none;border:none;cursor:pointer;color:#4b5563;font-size:14px;padding:6px;border-radius:6px;transition:all .2s;flex-shrink:0;margin-right:10px;position:relative;z-index:1}
 .sidebar-toggle:hover{background:rgba(79,70,229,.15);color:#a5b4fc}
+.sidebar-expand-btn{display:none;position:fixed;left:42px;top:22px;width:26px;height:26px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;z-index:2000;box-shadow:0 2px 10px rgba(79,70,229,.6);align-items:center;justify-content:center;transition:all .2s;line-height:1}
+.sidebar-expand-btn:hover{transform:scale(1.15);box-shadow:0 4px 14px rgba(79,70,229,.8)}
 .sidebar-nav{padding:14px 8px;flex:1;overflow:hidden}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:#6b7280;transition:all .15s;text-decoration:none;margin-bottom:1px;white-space:nowrap;overflow:hidden}
 .nav-item:hover{background:rgba(79,70,229,.1);color:#c7d2fe}
@@ -209,6 +211,7 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 <body>
 
 <!-- Sidebar -->
+<button class="sidebar-expand-btn" id="sidebarExpandBtn" onclick="toggleSidebar()" title="Expandir menu">▶</button>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-bg"></div>
@@ -1157,10 +1160,12 @@ function toggleSidebar() {
   const sb = document.getElementById('sidebar');
   const main = document.querySelector('.main');
   const btn = document.getElementById('sidebarToggleBtn');
+  const expandBtn = document.getElementById('sidebarExpandBtn');
   const collapsed = sb.classList.toggle('collapsed');
   main.classList.toggle('sidebar-collapsed', collapsed);
   btn.textContent = collapsed ? '▶' : '◀';
   btn.title = collapsed ? 'Expandir menu' : 'Recolher menu';
+  if (expandBtn) expandBtn.style.display = collapsed ? 'flex' : 'none';
   localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
 }
 // Restaurar estado salvo
@@ -1172,6 +1177,8 @@ function toggleSidebar() {
     if (sb) sb.classList.add('collapsed');
     if (main) main.classList.add('sidebar-collapsed');
     if (btn) { btn.textContent = '▶'; btn.title = 'Expandir menu'; }
+    const expandBtn = document.getElementById('sidebarExpandBtn');
+    if (expandBtn) expandBtn.style.display = 'flex';
   }
 })();
 
