@@ -1158,4 +1158,3 @@ if (require.main === module) {
   app.listen(PORT, () => console.log('RMHacking Digital — porta ' + PORT));
 }
 module.exports = app;
-              
