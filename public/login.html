@@ -81,7 +81,7 @@
     <div class="divider"><span>ou</span></div>
     <button class="btn-secondary" onclick="showScreen('screenChange')">🔑 Alterar Senha</button>
     <button class="btn-demo" onclick="demoLogin()">
-      🎮 <span>Entrar no Modo Demo</span> <span class="demo-tag">FAIR</span>
+      🎮 Entrar no Modo Demo
     </button>
     <div class="footer">🔐 Sessão expira em 8 horas · Demo não salva dados reais</div>
   </div>
@@ -178,7 +178,7 @@
     if (d.success) { window.location.href = '/'; }
     else { if(btn){btn.textContent='🎮 Entrar no Modo Demo';btn.disabled=false;} alert('Erro ao iniciar demo: ' + (d.message||'Tente novamente')); }
   } catch(e) {
-    if(btn){btn.innerHTML='🎮 <span>Entrar no Modo Demo</span> <span class="demo-tag">FAIR</span>';btn.disabled=false;}
+    if(btn){btn.innerHTML='🎮 Entrar no Modo Demo';btn.disabled=false;}
     showAlert('loginError','Erro de conexão ao iniciar demo.');
   }
 }
