@@ -447,10 +447,10 @@ app.get('/api/investigations', requireAuth, async (req, res) => {
     const role = req.session.role || '';
     const list = snap.docs.map(d=>d.data())
       .filter(inv => {
+        // Casos demo nunca aparecem para usuários reais
+        if (inv.created_by === 'demo_user_rmhacking') return false;
         if (role === 'admin') return true;
         if (role === 'cliente') return Array.isArray(inv.shared_with) && inv.shared_with.includes(userId);
-        // role 'user': só vê investigações não exclusivas de demo
-        if (inv.created_by === 'demo_user_rmhacking') return false;
         return !inv.shared_with || inv.shared_with.length === 0 || inv.shared_with.includes(userId);
       })
       .sort((a,b)=>b.updated_at>a.updated_at?1:-1);
