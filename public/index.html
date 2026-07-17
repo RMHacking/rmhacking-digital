@@ -35,7 +35,7 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .sidebar.collapsed .nav-item{justify-content:center;padding:10px 0}
 .sidebar-footer{padding:12px 8px;border-top:1px solid rgba(255,255,255,.05);overflow:hidden}
 /* Brand watermark in sidebar footer */
-.sidebar-brand-mark{text-align:center;padding:8px 4px 4px;opacity:.06;pointer-events:none;overflow:hidden;transition:opacity .2s}
+.sidebar-brand-mark{text-align:center;padding:10px 8px 4px;opacity:.10;pointer-events:none;overflow:hidden;transition:opacity .2s}
 .sidebar-brand-mark img{width:80%;max-width:160px;filter:grayscale(1) brightness(2)}
 .sidebar.collapsed .sidebar-brand-mark{display:none}
 .user-badge{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(79,70,229,.08);border-radius:10px;border:1px solid rgba(79,70,229,.15);overflow:hidden;cursor:pointer;transition:all .2s}
@@ -279,6 +279,7 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
   </nav>
 
   <div class="sidebar-footer">
+    <div class="sidebar-brand-mark" id="sidebarBrandMark"></div>
     <div class="user-card" onclick="showSettingsModal()">
       <div class="avatar" id="userAvatar" style="overflow:hidden;flex-shrink:0">RM</div>
       <div class="user-card-info">
@@ -1235,6 +1236,15 @@ function applyConfig() {
   // Background image
   if (cfg.bg) {
     document.body.style.backgroundImage = `url('${cfg.bg}')`;
+  }
+  // Logo watermark no sidebar footer
+  const brandMark = document.getElementById('sidebarBrandMark');
+  if (brandMark) {
+    if (cfg.bg) {
+      brandMark.innerHTML = `<img src="${cfg.bg}" alt="logo">`;
+    } else {
+      brandMark.innerHTML = '';
+    }
   }
   // Overlay opacity
   if (cfg.overlay) {
