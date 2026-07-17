@@ -1889,4 +1889,30 @@ function gsCopyText(txt) {
 <div id="logsModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;z-index:1000" onclick="if(event.target===this)closeLogsModal()">
   <div class="modal" style="max-width:640px;width:100%;margin:20px">
     <h3>📜 Logs de Acesso <button class="modal-close" onclick="closeLogsModal()">×</button></h3>
-    <div id="logsContent" style="max-height:420px;overflow-y:auto;border:1px solid rgba(255,255,255
+    <div id="logsContent" style="max-height:420px;overflow-y:auto;.06);border-radius:8px"></div>
+  </div>
+</div>
+<!-- Modal Atividade -->
+<div id="activityModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;z-index:1000" onclick="if(event.target===this)closeActivityModal()">
+  <div class="modal" style="max-width:640px;width:100%;margin:20px">
+    <h3>📊 Histórico de Atividade <button class="modal-close" onclick="closeActivityModal()">×</button></h3>
+    <div id="activityContent" style="max-height:420px;overflow-y:auto;border:1px solid rgba(255,255,255,.06);border-radius:8px"></div>
+  </div>
+</div>
+
+<!-- Busca Global Overlay -->
+<div class="gs-overlay" id="gsOverlay" onclick="if(event.target===this)closeGlobalSearch()">
+  <div class="gs-box">
+    <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px">
+      <span style="font-size:16px">🔍</span>
+      <input id="gsInput" type="text" placeholder="CNPJ, CPF, CEP, nome, email, telefone..."
+        style="flex:1;background:none;border:none;outline:none;color:#e2e8f0;font-size:15px;font-family:inherit"
+        oninput="gsOnInput()" autocomplete="off" spellcheck="false">
+      <span style="font-size:11px;color:#374151;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:5px;padding:2px 7px">ESC</span>
+    </div>
+    <div id="gsResults" style="padding:12px;max-height:480px;overflow-y:auto"></div>
+  </div>
+</div>
+
+</body>
+</html>
