@@ -1161,7 +1161,7 @@ async function disable2FA() {
 }
 
 // Mostrar menu de usuários só para admin
-async function checkRole() {
+async async function checkRole() {
   try {
     const r = await fetch('/api/users');
     if (r.ok) {
