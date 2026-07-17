@@ -3339,19 +3339,17 @@ async function searchPlaca() {
   var res = document.getElementById('placaResult');
   res.innerHTML = '<div style="color:#6b7280;padding:8px 0">🔍 Consultando '+fmt+'...</div>';
   // Sem API pública gratuita para placa no Brasil — mostra card com links
-  res.innerHTML = \`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px">
-    <div style="font-size:15px;font-weight:700;color:#e2e8f0;letter-spacing:2px;margin-bottom:6px">\${fmt}
-      <span style="font-size:10px;font-weight:400;background:rgba(6,182,212,.15);color:#67e8f9;border:1px solid rgba(6,182,212,.3);border-radius:4px;padding:1px 6px;margin-left:6px;letter-spacing:0">\${isMerc?'MERCOSUL':'PADRÃO'}</span>
-    </div>
-    <div style="font-size:11px;color:#6b7280;margin-bottom:8px">\${isMerc?'Formato Mercosul (emitido a partir de 2018)':'Formato padrão antigo (emitido até 2018)'}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      <a href="https://www.consultaplaca.com.br/\${placa}" target="_blank" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);color:#a5b4fc;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">🔍 ConsultaPlaca</a>
-      <a href="https://placafipe.com.br/\${placa}" target="_blank" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);color:#a5b4fc;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">💰 PlacaFIPE</a>
-      <a href="https://www.google.com/search?q=placa+\${placa}+proprietario" target="_blank" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);color:#a5b4fc;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">🌐 Google</a>
-      <a href="https://transit.detran.sp.gov.br/consultaPublica/exibirConsultaMultas" target="_blank" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">⚠️ Multas DETRAN-SP</a>
-      <a href="https://www.detran.rj.gov.br/" target="_blank" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">⚠️ DETRAN-RJ</a>
-    </div>
-  </div>\`;
+  res.innerHTML = '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px">'
+    +'<div style="font-size:15px;font-weight:700;color:#e2e8f0;letter-spacing:2px;margin-bottom:6px">'+fmt
+    +'<span style="font-size:10px;font-weight:400;background:rgba(6,182,212,.15);color:#67e8f9;border:1px solid rgba(6,182,212,.3);border-radius:4px;padding:1px 6px;margin-left:6px;letter-spacing:0">'+(isMerc?'MERCOSUL':'PADRÃO')+'</span></div>'
+    +'<div style="font-size:11px;color:#6b7280;margin-bottom:8px">'+(isMerc?'Formato Mercosul (a partir de 2018)':'Formato padrão antigo (até 2018)')+'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+    +'<a href="https://www.consultaplaca.com.br/'+placa+'" target="_blank" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);color:#a5b4fc;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">🔍 ConsultaPlaca</a>'
+    +'<a href="https://placafipe.com.br/'+placa+'" target="_blank" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);color:#a5b4fc;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">💰 PlacaFIPE</a>'
+    +'<a href="https://www.google.com/search?q=placa+'+placa+'+proprietario" target="_blank" style="background:rgba(79,70,229,.15);border:1px solid rgba(79,70,229,.3);color:#a5b4fc;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">🌐 Google</a>'
+    +'<a href="https://transit.detran.sp.gov.br/consultaPublica/exibirConsultaMultas" target="_blank" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">⚠️ Multas DETRAN-SP</a>'
+    +'<a href="https://www.detran.rj.gov.br/" target="_blank" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:none">⚠️ DETRAN-RJ</a>'
+    +'</div></div>';
   // Adicionar ao mapa
   document.getElementById('mapPinLabel').value = 'Veículo '+fmt;
   document.getElementById('mapPinType').value = 'vehicle';
@@ -4241,4 +4239,7 @@ function escapeHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
 
-// Chat polling é
+// Chat polling é controlado diretamente no switchTab original
+</script>
+</body>
+</html>
