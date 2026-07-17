@@ -1599,11 +1599,23 @@ async function gsRun(q) {
   } else if (type === 'cpf') {
     html += `<div class="gs-section-title">👤 CPF</div>`;
     const valid = gsValidateCPF(digits);
+    const cpfFmt = digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
     html += `<div class="gs-card">
-      <div class="gs-card-title">CPF ${digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4')} 
+      <div class="gs-card-title">CPF ${cpfFmt}
         <span class="gs-status ${valid?'ativa':'inativa'}">${valid?'✅ Dígitos Válidos':'❌ CPF Inválido'}</span>
       </div>
-      <div class="gs-card-sub" style="margin-top:6px">Consulta de CPF requer autorização judicial. Verifique se esse CPF consta em algum dos seus casos acima.</div>
+      ${valid ? `
+      <div style="margin-top:10px;font-size:10px;font-weight:700;color:#4b5563;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">CONSULTAR NAS FONTES PÚBLICAS</div>
+      <div class="gs-actions" style="flex-wrap:wrap">
+        <button class="gs-action-btn" style="background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.25);color:#34d399" onclick="window.open('https://www.jusbrasil.com.br/consulta-processual/?cpf=${digits}','_blank')">⚖️ Jusbrasil</button>
+        <button class="gs-action-btn" style="background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.25);color:#a5b4fc" onclick="window.open('https://www.escavador.com/busca?q=${cpfFmt}','_blank')">🔎 Escavador</button>
+        <button class="gs-action-btn" onclick="window.open('https://www.google.com/search?q=%22${cpfFmt}%22','_blank')">🌐 Google</button>
+        <button class="gs-action-btn" onclick="window.open('https://www.google.com/search?q=%22${cpfFmt}%22+site:diariooficial.com.br','_blank')">📰 Diário Oficial</button>
+        <button class="gs-action-btn" onclick="window.open('https://www.google.com/search?q=%22${cpfFmt}%22+inurl:tjsp+OR+inurl:tjrj+OR+inurl:tjmg','_blank')">🏛️ Tribunais</button>
+        <button class="gs-action-btn" onclick="window.open('https://servicos.receita.fazenda.gov.br/Servicos/CPF/ConsultaSituacao/ConsultaPublica.asp','_blank')">🏦 Receita Federal</button>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:#374151">Clique em qualquer fonte para abrir a consulta em nova aba com o CPF já preenchido.</div>
+      ` : '<div class="gs-card-sub" style="margin-top:6px;color:#f87171">CPF com dígitos inválidos — verifique se digitou corretamente.</div>'}
     </div>`;
 
   } else if (type === 'cep') {
