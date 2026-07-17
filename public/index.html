@@ -16,7 +16,8 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .sidebar-logo{padding:0;border-bottom:1px solid rgba(79,70,229,.1);display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative;min-height:70px}
 .sidebar-logo-bg{position:absolute;inset:0;background:linear-gradient(135deg,rgba(79,70,229,.18) 0%,rgba(124,58,237,.08) 100%);pointer-events:none}
 .sidebar-logo-inner{display:flex;align-items:center;gap:10px;padding:16px 18px;position:relative;z-index:1;flex:1;min-width:0}
-.sidebar-logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;box-shadow:0 4px 12px rgba(79,70,229,.4)}
+.sidebar-logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;box-shadow:0 4px 12px rgba(79,70,229,.4);overflow:hidden}
+.sidebar-logo-icon img{width:100%;height:100%;object-fit:contain;border-radius:9px}
 .sidebar-logo-text{min-width:0;transition:opacity .2s}
 .sidebar.collapsed .sidebar-logo-text{opacity:0;pointer-events:none;width:0}
 .sidebar-logo h1{font-size:14px;font-weight:800;color:#fff;white-space:nowrap;letter-spacing:.3px}
@@ -35,8 +36,8 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .sidebar.collapsed .nav-item{justify-content:center;padding:10px 0}
 .sidebar-footer{padding:12px 8px;border-top:1px solid rgba(255,255,255,.05);overflow:hidden}
 /* Brand watermark in sidebar footer */
-.sidebar-brand-mark{text-align:center;padding:10px 8px 4px;opacity:.10;pointer-events:none;overflow:hidden;transition:opacity .2s}
-.sidebar-brand-mark img{width:80%;max-width:160px;filter:grayscale(1) brightness(2)}
+.sidebar-brand-mark{text-align:center;padding:10px 8px 6px;opacity:.22;pointer-events:none;overflow:hidden;transition:opacity .2s}
+.sidebar-brand-mark img{width:80%;max-width:140px;filter:none;border-radius:8px}
 .sidebar.collapsed .sidebar-brand-mark{display:none}
 .user-badge{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(79,70,229,.08);border-radius:10px;border:1px solid rgba(79,70,229,.15);overflow:hidden;cursor:pointer;transition:all .2s}
 .user-badge:hover{background:rgba(79,70,229,.13);border-color:rgba(79,70,229,.3)}
@@ -222,7 +223,7 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
   <div class="sidebar-logo">
     <div class="sidebar-logo-bg"></div>
     <div class="sidebar-logo-inner">
-      <div class="sidebar-logo-icon">🔍</div>
+      <div class="sidebar-logo-icon" id="sidebarLogoIcon">🔍</div>
       <div class="sidebar-logo-text">
         <h1>RMHacking</h1>
         <p>Investigação Digital</p>
@@ -1237,14 +1238,17 @@ function applyConfig() {
   if (cfg.bg) {
     document.body.style.backgroundImage = `url('${cfg.bg}')`;
   }
-  // Logo watermark no sidebar footer
+  // Logo no icone do topo e brand mark no rodape
+  const logoSrc = cfg.logo || null;
+  const logoIcon = document.getElementById('sidebarLogoIcon');
+  if (logoIcon) {
+    logoIcon.innerHTML = logoSrc
+      ? `<img src="${logoSrc}" alt="logo">`
+      : '🔍';
+  }
   const brandMark = document.getElementById('sidebarBrandMark');
   if (brandMark) {
-    if (cfg.bg) {
-      brandMark.innerHTML = `<img src="${cfg.bg}" alt="logo">`;
-    } else {
-      brandMark.innerHTML = '';
-    }
+    brandMark.innerHTML = logoSrc ? `<img src="${logoSrc}" alt="logo">` : '';
   }
   // Overlay opacity
   if (cfg.overlay) {
@@ -1262,6 +1266,16 @@ function applyOverlayStyle(val) {
 
 function showSettingsModal() {
   const cfg = loadConfig();
+  // Load logo preview
+  const logoBox = document.getElementById('logoPreviewBox');
+  if (logoBox) {
+    if (cfg.logo) {
+      logoBox.innerHTML = `<img src="${cfg.logo}" style="width:100%;height:100%;object-fit:contain;border-radius:8px">`;
+    } else {
+      logoBox.innerHTML = '<span id="logoPreviewIcon" style="font-size:22px;color:#374151">🏷️</span>';
+    }
+    logoBox._pendingLogo = null;
+  }
   document.getElementById('cfgName').value    = cfg.name || '';
   document.getElementById('cfgRole').value    = cfg.role_label || '';
   document.getElementById('cfgBirth').value   = cfg.birth || '';
@@ -1358,6 +1372,25 @@ function previewOverlay(val) {
   applyOverlayStyle(val);
 }
 
+function handleLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 500000) { toast('❌ Logo muito grande (máx 500 KB)'); return; }
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const src = ev.target.result;
+    const box = document.getElementById('logoPreviewBox');
+    box.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:contain;border-radius:8px">`;
+    box._pendingLogo = src;
+  };
+  reader.readAsDataURL(file);
+}
+function removeLogo() {
+  const box = document.getElementById('logoPreviewBox');
+  box.innerHTML = '<span id="logoPreviewIcon" style="font-size:22px;color:#374151">🏷️</span>';
+  box._pendingLogo = '__remove__';
+}
+
 function saveSettings() {
   const cfg = loadConfig();
   cfg.name        = document.getElementById('cfgName').value.trim() || cfg.name;
@@ -1374,6 +1407,10 @@ function saveSettings() {
   const bgPrev = document.getElementById('bgPreview');
   if (bgPrev._pendingBg === '__remove__') delete cfg.bg;
   else if (bgPrev._pendingBg) cfg.bg = bgPrev._pendingBg;
+  // Logo
+  const logoPrev = document.getElementById('logoPreviewBox');
+  if (logoPrev && logoPrev._pendingLogo === '__remove__') delete cfg.logo;
+  else if (logoPrev && logoPrev._pendingLogo) cfg.logo = logoPrev._pendingLogo;
 
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   applyConfig();
@@ -1426,6 +1463,24 @@ window.addEventListener('pageshow', e => { if (e.persisted) loadAll(); });
           <input type="text" id="cfgCity" placeholder="São Paulo, SP">
         </div>
       </div>
+      <!-- Logo da empresa -->
+      <div class="form-row" style="margin-top:4px">
+        <label>🏷️ Logo da Empresa / Marca</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+          <div id="logoPreviewBox" onclick="document.getElementById('logoFileInput').click()" style="width:64px;height:64px;background:#111827;border:2px dashed rgba(79,70,229,.4);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0;transition:border-color .2s" onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='rgba(79,70,229,.4)'">
+            <span id="logoPreviewIcon" style="font-size:22px;color:#374151">🏷️</span>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Aparece no topo e rodapé da sidebar. PNG com fundo transparente funciona melhor.</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-secondary" style="font-size:11px;padding:5px 10px" onclick="document.getElementById('logoFileInput').click()">📁 Enviar logo</button>
+              <button class="btn-secondary" style="font-size:11px;padding:5px 10px;color:#f87171" onclick="removeLogo()">✕ Remover</button>
+            </div>
+          </div>
+        </div>
+        <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+      </div>
+
       <div class="form-row">
         <label>Rede Social (Instagram / LinkedIn)</label>
         <input type="text" id="cfgSocial" placeholder="@rmhacking ou linkedin.com/in/...">
