@@ -304,6 +304,9 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
         <span style="color:#4b5563">🔎</span>
         <input type="text" id="searchInput" placeholder="Buscar investigações..." oninput="renderBoard()">
       </div>
+      <button class="btn-secondary" onclick="openGlobalSearch()" title="Busca Global (Ctrl+K)" style="display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:13px">
+        <span>🔍</span><span>Busca Global</span><span style="font-size:9px;color:#4b5563;border:1px solid rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;margin-left:2px">Ctrl K</span>
+      </button>
       <button class="btn-primary" onclick="showCreateModal()">
         + Nova Investigação
       </button>
@@ -1422,6 +1425,198 @@ checkRole();
 init();
 applyConfig();
 window.addEventListener('pageshow', e => { if (e.persisted) loadAll(); });
+
+// ── Global Search ─────────────────────────────────────────────────────────────
+let gsTimer = null;
+let gsLastQuery = '';
+
+function openGlobalSearch() {
+  document.getElementById('gsOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('gsInput').focus(), 80);
+}
+function closeGlobalSearch() {
+  document.getElementById('gsOverlay').classList.remove('open');
+  document.getElementById('gsInput').value = '';
+  gsLastQuery = '';
+  document.getElementById('gsResults').innerHTML = document.getElementById('gsHint') ? document.getElementById('gsHint').outerHTML : '';
+  resetGsHint();
+}
+function resetGsHint() {
+  document.getElementById('gsResults').innerHTML = `<div class="gs-hint" id="gsHint">
+    <span class="gs-hint-tag" onclick="gsSetExample('12345678000195')">🏢 CNPJ</span>
+    <span class="gs-hint-tag" onclick="gsSetExample('12345678909')">👤 CPF</span>
+    <span class="gs-hint-tag" onclick="gsSetExample('01310100')">📍 CEP</span>
+    <span class="gs-hint-tag" onclick="gsSetExample('Rafael')">🔎 Nome</span>
+    <span class="gs-hint-tag" onclick="gsSetExample('@gmail.com')">📧 E-mail</span>
+    <div style="width:100%;font-size:11px;color:#374151;margin-top:4px">Digite ou cole qualquer dado — o sistema identifica automaticamente e busca em todas as fontes.</div>
+  </div>`;
+}
+function gsSetExample(val) {
+  document.getElementById('gsInput').value = val;
+  gsOnInput();
+}
+
+// Ctrl+K shortcut
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openGlobalSearch(); }
+  if (e.key === 'Escape') closeGlobalSearch();
+});
+
+function gsOnInput() {
+  const q = document.getElementById('gsInput').value.trim();
+  if (q === gsLastQuery) return;
+  gsLastQuery = q;
+  clearTimeout(gsTimer);
+  if (!q) { resetGsHint(); return; }
+  gsTimer = setTimeout(() => gsRun(q), 320);
+}
+
+function gsDetect(q) {
+  const digits = q.replace(/\D/g,'');
+  if (digits.length === 14) return 'cnpj';
+  if (digits.length === 11) return 'cpf';
+  if (digits.length === 8) return 'cep';
+  if (/^[\d\s()\-+]{8,15}$/.test(q)) return 'phone';
+  if (q.includes('@')) return 'email';
+  return 'text';
+}
+
+function gsLoading(msg) {
+  document.getElementById('gsResults').innerHTML = `<div class="gs-loading">⏳ ${msg}</div>`;
+}
+function gsRender(html) {
+  document.getElementById('gsResults').innerHTML = html;
+}
+
+async function gsRun(q) {
+  const type = gsDetect(q);
+  const digits = q.replace(/\D/g,'');
+  gsLoading('Buscando em todas as fontes...');
+
+  let html = '';
+
+  // ── Busca nos casos ──────────────────────────────────────────────────────
+  try {
+    const resp = await fetch('/api/investigations', {credentials:'include'});
+    if (resp.ok) {
+      const data = await resp.json();
+      const invs = Array.isArray(data) ? data : (data.investigations || []);
+      const ql = q.toLowerCase().replace(/\D/g,'').length >= 3 ? q.toLowerCase() : q.toLowerCase();
+      const matches = invs.filter(inv => {
+        const hay = [inv.title,inv.description,inv.suspect,inv.suspect_cpf,inv.suspect_cnpj,
+                     inv.company,inv.cnpj,inv.phone,inv.email,inv.address,inv.status,
+                     inv.target_name,inv.target_cpf,inv.target_cnpj,inv.target_email]
+          .filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(ql) || (digits.length >= 5 && hay.replace(/\D/g,'').includes(digits));
+      });
+      if (matches.length > 0) {
+        html += `<div class="gs-section-title">📁 Casos Encontrados (${matches.length})</div>`;
+        matches.slice(0,6).forEach(inv => {
+          const statusMap = {todo:'🕐 Para Fazer',open:'🔍 Em Processo',closed:'✅ Finalizado'};
+          html += `<div class="gs-card" onclick="window.location='/investigacao.html?id=${inv.id}'">
+            <div class="gs-card-title">${inv.title||'Sem título'} <span class="gs-badge match">${statusMap[inv.status]||inv.status}</span></div>
+            <div class="gs-card-sub">${[inv.suspect||inv.company||inv.target_name,inv.suspect_cpf||inv.target_cpf||inv.suspect_cnpj||inv.cnpj,inv.phone||inv.email].filter(Boolean).join(' · ')}</div>
+          </div>`;
+        });
+        if (matches.length > 6) html += `<div style="font-size:11px;color:#4b5563;text-align:center;padding:4px">+ ${matches.length-6} casos adicionais</div>`;
+      }
+    }
+  } catch(e) {}
+
+  // ── APIs externas por tipo ───────────────────────────────────────────────
+  if (type === 'cnpj') {
+    html += `<div class="gs-section-title">🏢 Dados da Receita Federal</div>`;
+    try {
+      const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+      if (r.ok) {
+        const d = await r.json();
+        const sit = (d.descricao_situacao_cadastral||'').toLowerCase().includes('ativa');
+        const socios = (d.qsa||[]).slice(0,4).map(s=>
+          `<div style="font-size:11px;color:#d1d5db;padding:3px 0">👤 ${s.nome_socio||s.nome} <span style="color:#6b7280">(${s.qualificacao_socio||s.qualificacao||'Sócio'})</span></div>`
+        ).join('');
+        html += `<div class="gs-card">
+          <div class="gs-card-title">${d.razao_social||'—'} <span class="gs-badge cnpj">CNPJ</span> <span class="gs-status ${sit?'ativa':'inativa'}">${d.descricao_situacao_cadastral||'—'}</span></div>
+          ${d.nome_fantasia ? `<div style="font-size:11px;color:#9ca3af;margin-bottom:6px">Nome fantasia: ${d.nome_fantasia}</div>` : ''}
+          <div class="gs-grid">
+            <div class="gs-field"><div class="gs-field-label">CNPJ</div><div class="gs-field-value">${digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5')}</div></div>
+            <div class="gs-field"><div class="gs-field-label">Abertura</div><div class="gs-field-value">${d.data_inicio_atividade||'—'}</div></div>
+            <div class="gs-field"><div class="gs-field-label">Natureza</div><div class="gs-field-value">${d.natureza_juridica||'—'}</div></div>
+            <div class="gs-field"><div class="gs-field-label">Município</div><div class="gs-field-value">${d.municipio||'—'}/${d.uf||''}</div></div>
+            <div class="gs-field" style="grid-column:span 2"><div class="gs-field-label">Endereço</div><div class="gs-field-value">${[d.logradouro,d.numero,d.complemento,d.bairro].filter(Boolean).join(', ')||'—'}</div></div>
+            ${d.ddd_telefone_1 ? `<div class="gs-field"><div class="gs-field-label">Telefone</div><div class="gs-field-value">(${d.ddd_telefone_1.substring(0,2)}) ${d.ddd_telefone_1.substring(2)}</div></div>` : ''}
+            ${d.email ? `<div class="gs-field"><div class="gs-field-label">E-mail</div><div class="gs-field-value">${d.email}</div></div>` : ''}
+          </div>
+          ${socios ? `<div class="gs-socios"><div style="font-size:9px;color:#4b5563;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">QUADRO SOCIETÁRIO</div>${socios}</div>` : ''}
+          <div class="gs-actions">
+            <button class="gs-action-btn" onclick="gsCopyText(\`${(d.razao_social||'').replace(/`/g,"'")}\`)">📋 Copiar nome</button>
+            <button class="gs-action-btn" onclick="gsCopyText(\`CNPJ: ${digits}\nRazão Social: ${(d.razao_social||'').replace(/`/g,"'")}\nEndereço: ${[d.logradouro,d.numero,d.bairro,d.municipio,d.uf].filter(Boolean).join(', ').replace(/`/g,"'")}\`)">📋 Copiar dossiê</button>
+          </div>
+        </div>`;
+      } else {
+        html += `<div class="gs-card"><div class="gs-card-sub">⚠️ CNPJ não encontrado ou inválido.</div></div>`;
+      }
+    } catch(e) {
+      html += `<div class="gs-card"><div class="gs-card-sub">⚠️ Erro ao consultar Receita Federal.</div></div>`;
+    }
+
+  } else if (type === 'cpf') {
+    html += `<div class="gs-section-title">👤 CPF</div>`;
+    const valid = gsValidateCPF(digits);
+    html += `<div class="gs-card">
+      <div class="gs-card-title">CPF ${digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4')} 
+        <span class="gs-status ${valid?'ativa':'inativa'}">${valid?'✅ Dígitos Válidos':'❌ CPF Inválido'}</span>
+      </div>
+      <div class="gs-card-sub" style="margin-top:6px">Consulta de CPF requer autorização judicial. Verifique se esse CPF consta em algum dos seus casos acima.</div>
+    </div>`;
+
+  } else if (type === 'cep') {
+    html += `<div class="gs-section-title">📍 Endereço (CEP)</div>`;
+    try {
+      const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${digits}`);
+      if (r.ok) {
+        const d = await r.json();
+        html += `<div class="gs-card">
+          <div class="gs-card-title">CEP ${digits.replace(/(\d{5})(\d{3})/,'$1-$2')} <span class="gs-badge cep">CEP</span></div>
+          <div class="gs-grid" style="margin-top:8px">
+            <div class="gs-field" style="grid-column:span 2"><div class="gs-field-label">Logradouro</div><div class="gs-field-value">${d.street||'—'}</div></div>
+            <div class="gs-field"><div class="gs-field-label">Bairro</div><div class="gs-field-value">${d.neighborhood||'—'}</div></div>
+            <div class="gs-field"><div class="gs-field-label">Cidade</div><div class="gs-field-value">${d.city||'—'} / ${d.state||''}</div></div>
+          </div>
+          <div class="gs-actions" style="margin-top:10px">
+            <button class="gs-action-btn" onclick="gsCopyText('${(d.street||'')+', '+d.city+'/'+d.state}')">📋 Copiar endereço</button>
+            <button class="gs-action-btn" onclick="window.open('https://maps.google.com/?q=${encodeURIComponent((d.street||'')+' '+d.city+' '+d.state)}','_blank')">🗺️ Ver no mapa</button>
+          </div>
+        </div>`;
+      } else {
+        html += `<div class="gs-card"><div class="gs-card-sub">⚠️ CEP não encontrado.</div></div>`;
+      }
+    } catch(e) {
+      html += `<div class="gs-card"><div class="gs-card-sub">⚠️ Erro ao consultar CEP.</div></div>`;
+    }
+  }
+
+  if (!html) {
+    html = `<div class="gs-empty"><div class="gs-empty-icon">🔍</div><div style="font-size:13px;color:#6b7280">Nenhum resultado para "<strong style="color:#9ca3af">${q}</strong>"</div></div>`;
+  }
+
+  gsRender(html);
+}
+
+function gsValidateCPF(cpf) {
+  if (cpf.length !== 11 || /^(\d)+$/.test(cpf)) return false;
+  let s = 0;
+  for (let i=0;i<9;i++) s += parseInt(cpf[i])*(10-i);
+  let r = (s*10)%11; if(r===10||r===11)r=0;
+  if(r!==parseInt(cpf[9]))return false;
+  s=0;
+  for(let i=0;i<10;i++)s+=parseInt(cpf[i])*(11-i);
+  r=(s*10)%11; if(r===10||r===11)r=0;
+  return r===parseInt(cpf[10]);
+}
+
+function gsCopyText(txt) {
+  navigator.clipboard.writeText(txt).then(()=>toast('📋 Copiado!')).catch(()=>toast('Erro ao copiar'));
+}
 </script>
 
 <!-- Modal Configurações -->
@@ -1620,6 +1815,27 @@ window.addEventListener('pageshow', e => { if (e.persisted) loadAll(); });
   <div class="modal" style="max-width:640px;width:100%;margin:20px">
     <h3>📊 Histórico de Atividade <button class="modal-close" onclick="closeActivityModal()">×</button></h3>
     <div id="activityContent" style="max-height:420px;overflow-y:auto;border:1px solid rgba(255,255,255,.06);border-radius:8px"></div>
+  </div>
+</div>
+
+<!-- ── Global Search Modal ─────────────────────────────────────────────── -->
+<div class="gs-overlay" id="gsOverlay" onclick="if(event.target===this)closeGlobalSearch()">
+  <div class="gs-box">
+    <div class="gs-input-row">
+      <span class="gs-icon">🔍</span>
+      <input class="gs-input" id="gsInput" placeholder="CNPJ, CPF, CEP, nome, telefone, e-mail..." oninput="gsOnInput()" autocomplete="off">
+      <span class="gs-shortcut">ESC</span>
+    </div>
+    <div id="gsResults">
+      <div class="gs-hint" id="gsHint">
+        <span class="gs-hint-tag" onclick="gsSetExample('12345678000195')">🏢 CNPJ</span>
+        <span class="gs-hint-tag" onclick="gsSetExample('12345678909')">👤 CPF</span>
+        <span class="gs-hint-tag" onclick="gsSetExample('01310100')">📍 CEP</span>
+        <span class="gs-hint-tag" onclick="gsSetExample('Rafael')">🔎 Nome</span>
+        <span class="gs-hint-tag" onclick="gsSetExample('@gmail.com')">📧 E-mail</span>
+        <div style="width:100%;font-size:11px;color:#374151;margin-top:4px">Digite ou cole qualquer dado — o sistema identifica automaticamente e busca em todas as fontes.</div>
+      </div>
+    </div>
   </div>
 </div>
 
