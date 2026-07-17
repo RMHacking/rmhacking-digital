@@ -9,13 +9,26 @@ const multer       = require('multer');
 const os           = require('os');
 
 // ── Firebase ──────────────────────────────────────────────────────────────────
-if (!admin.apps.length) {
-  const cred = process.env.FIREBASE_SERVICE_ACCOUNT
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    : (() => { try { return require('./serviceAccountKey.json'); } catch(e) { throw new Error('Configure FIREBASE_SERVICE_ACCOUNT'); } })();
-  admin.initializeApp({ credential: admin.credential.cert(cred) });
+let fdb = null;
+let _firebaseError = null;
+try {
+  if (!admin.apps.length) {
+    const rawCred = process.env.FIREBASE_SERVICE_ACCOUNT;
+    let cred;
+    if (rawCred) {
+      cred = JSON.parse(rawCred);
+    } else {
+      try { cred = require('./serviceAccountKey.json'); }
+      catch(e) { throw new Error('FIREBASE_SERVICE_ACCOUNT nao configurada no Vercel'); }
+    }
+    admin.initializeApp({ credential: admin.credential.cert(cred) });
+  }
+  fdb = admin.firestore();
+  console.log('Firebase OK');
+} catch(e) {
+  _firebaseError = e.message;
+  console.error('FIREBASE INIT ERROR:', e.message);
 }
-const fdb = admin.firestore();
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const app    = express();
@@ -98,7 +111,15 @@ app.use(cookieSession({
   sameSite: 'lax',
   secure: process.env.NODE_ENV === 'production'
 }));
-app.use(async (req, res, next) => { try { await ensureDB(); next(); } catch(e) { next(e); } });
+app.use(async (req, res, next) => {
+  if (_firebaseError) {
+    if (req.path.startsWith('/api/')) {
+      return res.status(503).json({ error: 'Erro Firebase: ' + _firebaseError + '. Verifique FIREBASE_SERVICE_ACCOUNT no Vercel.' });
+    }
+    return next(); // serve static files even if Firebase is down
+  }
+  try { await ensureDB(); next(); } catch(e) { next(e); }
+});
 
 function requireAuth(req, res, next) {
   if (req.session && req.session.auth) return next();
