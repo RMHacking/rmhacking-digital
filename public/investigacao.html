@@ -249,7 +249,7 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 </head>
 <body>
 <div class="topbar">
-  <a class="back-btn" href="/">← Voltar</a>
+  <a class="back-btn" href="/" onclick="if(history.length>1){event.preventDefault();history.back();}">← Voltar</a>
   <div class="inv-title" id="invTitle">Carregando...</div>
   <span class="status-pill" id="statusPill">...</span>
   <div style="display:flex;gap:6px;align-items:center">
@@ -4168,7 +4168,4 @@ function escapeHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
 
-// Chat polling é controlado diretamente no switchTab original
-</script>
-</body>
-</html>
+// Chat polling é
