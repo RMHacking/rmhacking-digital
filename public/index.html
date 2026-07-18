@@ -212,7 +212,28 @@ body{background:#07080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .card-progress{height:3px;background:rgba(255,255,255,.06);border-radius:3px;margin:8px 0 4px;overflow:hidden}
 .card-progress-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#4f46e5,#7c3aed);transition:width .6s ease}
 
-@media(max-width:900px){.sidebar{transform:translateX(-100%)}.main{margin-left:0}.board{grid-template-columns:1fr}.stats-bar{grid-template-columns:repeat(2,1fr)}.charts-row{grid-template-columns:1fr}}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%);transition:transform .28s ease;z-index:200}
+  .sidebar.mobile-open{transform:translateX(0)!important}
+  .sidebar-overlay{display:block}
+  .main{margin-left:0!important}
+  .board{grid-template-columns:1fr}
+  .stats-bar{grid-template-columns:repeat(2,1fr)}
+  .charts-row{grid-template-columns:1fr}
+  .topbar{padding:12px 16px}
+  .topbar h2{font-size:14px}
+  .search-bar{display:none}
+  .hamburger-btn{display:flex}
+  .topbar-right .btn-new{font-size:12px;padding:8px 12px}
+}
+@media(max-width:480px){
+  .stats-bar{grid-template-columns:repeat(2,1fr)}
+  .topbar-right{gap:8px}
+  .topbar-right .btn-new span:last-child{display:none}
+}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:199;backdrop-filter:blur(2px)}
+.hamburger-btn{display:none;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:7px 10px;cursor:pointer;color:#e2e8f0;font-size:18px;align-items:center;justify-content:center;line-height:1;margin-right:8px}
+.hamburger-btn:hover{background:rgba(79,70,229,.2)}
 .gs-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);z-index:9000;display:none;align-items:flex-start;justify-content:center;padding-top:80px}
 .gs-overlay.open{display:flex}
 .gs-box{background:#0d0e1c;border:1px solid rgba(79,70,229,.35);border-radius:16px;width:100%;max-width:680px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6)}
@@ -271,6 +292,7 @@ body.demo-mode{padding-top:38px}
   <button class="demo-exit" onclick="exitDemo()">✕ Sair do Demo</button>
 </div>
 <button class="sidebar-expand-btn" id="sidebarExpandBtn" onclick="toggleSidebar()" title="Expandir menu">▶</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-bg"></div>
@@ -350,7 +372,8 @@ body.demo-mode{padding-top:38px}
 <!-- Main -->
 <main class="main">
   <div class="topbar">
-    <h2 id="pageTitle">Todas as Investigações</h2>
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMobileSidebar()">☰</button>
+      <h2 id="pageTitle">Todas as Investigações</h2>
     <div class="topbar-right">
       <div class="search-bar">
         <span style="color:#4b5563">🔎</span>
@@ -1727,6 +1750,26 @@ function gsValidateCPF(cpf) {
 function gsCopyText(txt) {
   navigator.clipboard.writeText(txt).then(()=>toast('📋 Copiado!')).catch(()=>toast('Erro ao copiar'));
 }
+
+// ── Mobile Sidebar ───────────────────────────────────────────────────────────
+function toggleMobileSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  if (sidebar.classList.contains('mobile-open')) {
+    sidebar.classList.remove('mobile-open');
+    overlay.style.display = 'none';
+  } else {
+    sidebar.classList.add('mobile-open');
+    overlay.style.display = 'block';
+  }
+}
+function closeMobileSidebar() {
+  document.querySelector('.sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebarOverlay').style.display = 'none';
+}
+document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+  link.addEventListener('click', () => { if (window.innerWidth <= 900) closeMobileSidebar(); });
+});
 </script>
 
 <!-- Modal Configurações -->
