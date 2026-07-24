@@ -274,6 +274,10 @@ app.get('/landing', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
+app.get('/logo.png', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'logo.png'));
+});
+
 app.get('/planos', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'planos.html'));
 });
