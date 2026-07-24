@@ -538,7 +538,7 @@ body.demo-mode{padding-top:38px}
             </div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div>
             <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:4px">Perfil de acesso</label>
             <select id="newUserRole" style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f1f5f9;font-size:13px;outline:none">
@@ -546,6 +546,21 @@ body.demo-mode{padding-top:38px}
               <option value="cliente">👁 Cliente — somente leitura</option>
               <option value="admin">🔑 Admin — controle total</option>
             </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:4px">Plano</label>
+            <select id="newUserPlan" style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f1f5f9;font-size:13px;outline:none">
+              <option value="">— Sem plano (admin)</option>
+              <option value="gratuito">🆓 Gratuito — 3 casos/mês</option>
+              <option value="basico">⭐ Básico — 10 casos/mês</option>
+              <option value="pro">🚀 Pro — ilimitado</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:4px">E-mail (opcional)</label>
+            <input id="newUserEmail" type="email" placeholder="cliente@email.com" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#f1f5f9;font-size:13px;outline:none">
           </div>
           <div style="display:flex;align-items:flex-end;padding-bottom:2px">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#9ca3af">
@@ -971,25 +986,56 @@ async function loadUsersList() {
     const isAdmin   = u.role === 'admin';
     const isCliente = u.role === 'cliente';
     const isTemp    = u.temporary === true;
-    const badge = isAdmin
+    const roleBadge = isAdmin
       ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(79,70,229,.2);color:#a5b4fc;font-weight:700">ADMIN</span>'
       : isCliente
         ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(6,182,212,.15);color:#67e8f9;font-weight:700">CLIENTE</span>'
         : isTemp
           ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(245,158,11,.15);color:#fbbf24;font-weight:700">TEMPORÁRIO</span>'
           : '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.06);color:#9ca3af;font-weight:700">USUÁRIO</span>';
+    // Plano
+    const plan = u.plan || '';
+    const planStatus = u.plan_status || '';
+    const planBadge = !plan ? '' :
+      plan === 'pro'
+        ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(16,185,129,.15);color:#34d399;font-weight:700">PRO 🚀</span>'
+        : plan === 'basico'
+          ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(251,191,36,.12);color:#fbbf24;font-weight:700">BÁSICO ⭐</span>'
+          : '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(107,114,128,.15);color:#9ca3af;font-weight:700">GRÁTIS 🆓</span>';
+    const canceledBadge = planStatus === 'canceled' ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(239,68,68,.12);color:#f87171;font-weight:700">CANCELADO</span>' : '';
+    const casesInfo = u.plan && u.plan !== 'pro' && u.cases_used !== undefined
+      ? `<span style="color:#6b7280">${u.cases_used||0}/${u.plan==='gratuito'?3:10} casos</span>` : '';
     return `
     <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px">
       <div style="width:36px;height:36px;border-radius:50%;background:${isAdmin?'#4f46e5':isCliente?'rgba(6,182,212,.3)':isTemp?'rgba(245,158,11,.3)':'#374151'};display:flex;align-items:center;justify-content:center;font-size:16px">${isAdmin?'🔑':isCliente?'👁':isTemp?'⏳':'👤'}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:#f9fafb;display:flex;align-items:center;gap:6px">${u.username} ${badge}</div>
-        <div style="font-size:11px;color:#6b7280;margin-top:2px">Criado em ${(u.created_at||'').substring(0,10)}</div>
+        <div style="font-size:13px;font-weight:600;color:#f9fafb;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${u.username} ${roleBadge} ${planBadge} ${canceledBadge}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px;display:flex;gap:8px">${(u.email||'')} ${casesInfo}</div>
       </div>
+      <button onclick="changePlan('${u.id}','${u.username}','${plan}')" title="Alterar plano" style="background:rgba(99,102,241,.1);border:none;border-radius:6px;padding:5px 10px;color:#818cf8;cursor:pointer;font-size:11px">📦</button>
       <button onclick="copyCredentials('${u.username}')" title="Copiar credenciais" style="background:rgba(16,185,129,.1);border:none;border-radius:6px;padding:5px 10px;color:#34d399;cursor:pointer;font-size:11px">📋</button>
       <button onclick="resetUserPwd('${u.id}','${u.username}')" style="background:rgba(79,70,229,.15);border:none;border-radius:6px;padding:5px 10px;color:#818cf8;cursor:pointer;font-size:11px">🔑</button>
       ${!isAdmin ? `<button onclick="deleteUser('${u.id}','${u.username}')" style="background:rgba(239,68,68,.1);border:none;border-radius:6px;padding:5px 10px;color:#ef4444;cursor:pointer;font-size:11px">✕</button>` : ''}
     </div>`
   }).join('');
+}
+
+async function changePlan(userId, username, currentPlan) {
+  const opts = ['(sem plano)', 'gratuito', 'basico', 'pro'];
+  const labels = ['— Sem plano (interno)', '🆓 Gratuito — 3 casos/mês', '⭐ Básico — 10 casos/mês', '🚀 Pro — Ilimitado'];
+  const msg = 'Alterar plano de "' + username + '":\n\n' + opts.map((o,i) => (i+1)+'. '+labels[i]).join('\n') + '\n\nDigite o número:';
+  const choice = prompt(msg);
+  if (!choice) return;
+  const idx = parseInt(choice) - 1;
+  if (idx < 0 || idx >= opts.length) { alert('Opção inválida.'); return; }
+  const plan = opts[idx];
+  const plan_status = plan ? 'active' : null;
+  const body = plan ? { plan, plan_status: 'active' } : { plan: null, plan_status: null };
+  const r = await fetch('/api/subscriptions/' + userId, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const d = await r.json();
+  if (d.error) { alert(d.error); return; }
+  await loadUsersList();
+  toast('✅ Plano de "' + username + '" atualizado!');
 }
 
 function genPassword() {
@@ -1012,24 +1058,32 @@ function copyCredentials(username) {
 }
 
 async function createUser() {
-  const username = document.getElementById('newUsername').value.trim().toLowerCase();
-  const password = document.getElementById('newUserPwd').value;
-  const role     = document.getElementById('newUserRole').value;
+  const username  = document.getElementById('newUsername').value.trim().toLowerCase();
+  const password  = document.getElementById('newUserPwd').value;
+  const role      = document.getElementById('newUserRole').value;
   const temporary = document.getElementById('newUserTemp').checked;
-  const errEl    = document.getElementById('usersError');
+  const plan      = document.getElementById('newUserPlan').value;
+  const email     = (document.getElementById('newUserEmail').value||'').trim();
+  const errEl     = document.getElementById('usersError');
   errEl.style.display = 'none';
   if (!username) { errEl.textContent='Informe o nome de usuário.'; errEl.style.display='block'; return; }
   if (!password || password.length<6) { errEl.textContent='Senha mínimo 6 caracteres.'; errEl.style.display='block'; return; }
-  const r = await fetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password,role,temporary}) });
+  const body = { username, password, role, temporary };
+  if (plan) { body.plan = plan; body.plan_status = 'active'; }
+  if (email) body.email = email;
+  const r = await fetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
   const d = await r.json();
   if (d.error) { errEl.textContent=d.error; errEl.style.display='block'; return; }
   // Copia credenciais automaticamente
   const site = window.location.origin + '/login';
-  const text = `🔐 Acesso RMHacking Digital\nSite: ${site}\nUsuário: ${username}\nSenha: ${password}`;
+  const planLabel = plan === 'pro' ? ' | Plano Pro 🚀' : plan === 'basico' ? ' | Plano Básico ⭐' : plan === 'gratuito' ? ' | Plano Gratuito 🆓' : '';
+  const text = '🔐 Acesso RMHacking Digital\nSite: ' + site + '\nUsuário: ' + username + '\nSenha: ' + password + planLabel;
   navigator.clipboard.writeText(text).catch(()=>{});
   document.getElementById('newUsername').value = '';
   document.getElementById('newUserPwd').value = '';
+  document.getElementById('newUserEmail').value = '';
   document.getElementById('newUserTemp').checked = false;
+  document.getElementById('newUserPlan').value = '';
   await loadUsersList();
   toast('✅ Usuário criado! Credenciais copiadas.');
 }

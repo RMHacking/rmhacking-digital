@@ -242,11 +242,13 @@ async function checkPlanLimit(userId, role) {
     if (u.plan_status !== 'active') return { allowed: false, reason: 'Assinatura inativa. Acesse /planos para reativar.' };
     // Pro = ilimitado
     if (u.plan === 'pro') return { allowed: true };
-    // Básico = 10 casos/mês
+    // Básico = 10 casos/mês | Gratuito = 3 casos/mês
     const thisMonth = new Date().toISOString().substring(0,7); // YYYY-MM
     const cases_month = u.cases_month || '';
     const cases_count = cases_month === thisMonth ? (u.cases_this_month || 0) : 0;
-    if (cases_count >= 10) return { allowed: false, reason: 'Limite de 10 casos/mês do Plano Básico atingido. Faça upgrade para o Plano Pro.' };
+    const limit = u.plan === 'gratuito' ? 3 : 10;
+    const planName = u.plan === 'gratuito' ? 'Gratuito' : 'Básico';
+    if (cases_count >= limit) return { allowed: false, reason: `Limite de ${limit} casos/mês do Plano ${planName} atingido. Entre em contato para fazer upgrade.` };
     return { allowed: true, cases_count, thisMonth };
   } catch(e) { return { allowed: true }; }
 }
@@ -518,22 +520,47 @@ app.get('/api/me', requireAuth, async (req, res) => {
 // ── Gestão de Usuários ────────────────────────────────────────────────────────
 app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
   const snap = await fdb.collection('users').get();
+  const thisMonth = new Date().toISOString().substring(0,7);
   const users = snap.docs.map(d => {
     const u = d.data();
-    return { id:u.id, username:u.username, role:u.role, temporary:u.temporary||false, created_at:u.created_at };
+    return {
+      id: u.id, username: u.username, role: u.role,
+      temporary: u.temporary||false, created_at: u.created_at,
+      email: u.email || u.hotmart_email || '',
+      plan: u.plan || null, plan_status: u.plan_status || null,
+      cases_used: u.cases_month === thisMonth ? (u.cases_this_month||0) : 0,
+    };
   });
   res.json(users);
 });
 
 app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
-  const { username, password, role, temporary } = req.body;
+  const { username, password, role, temporary, plan, plan_status, email } = req.body;
   if (!username || !password) return res.status(400).json({ error:'Username e senha obrigatórios' });
   if (password.length < 6) return res.status(400).json({ error:'Senha mínimo 6 caracteres' });
   const existing = await fdb.collection('users').where('username','==',username.toLowerCase().trim()).get();
   if (!existing.empty) return res.status(400).json({ error:'Usuário já existe' });
-  const user = { id:'u_'+Date.now(), username:username.toLowerCase().trim(), password_hash:hashPassword(password), role:role||'user', temporary:temporary===true, created_at:now() };
+  const user = {
+    id: 'u_'+Date.now(),
+    username: username.toLowerCase().trim(),
+    password_hash: hashPassword(password),
+    role: role||'user',
+    temporary: temporary===true,
+    created_at: now(),
+  };
+  if (email) { user.email = email.toLowerCase().trim(); }
+  if (plan) {
+    user.plan = plan;
+    user.plan_status = plan_status || 'active';
+    user.cases_this_month = 0;
+    user.cases_month = new Date().toISOString().substring(0,7);
+    // Enviar email de boas-vindas se tiver email
+    if (email) {
+      sendWelcomeEmail(email, username, user.username, password, plan).catch(()=>{});
+    }
+  }
   await fdb.collection('users').doc(user.id).set(user);
-  res.json({ id:user.id, username:user.username, role:user.role, temporary:user.temporary, created_at:user.created_at });
+  res.json({ id:user.id, username:user.username, role:user.role, temporary:user.temporary, created_at:user.created_at, plan:user.plan||null });
 });
 
 app.put('/api/users/:id/password', requireAuth, requireAdmin, async (req, res) => {
