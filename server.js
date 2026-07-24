@@ -128,6 +128,8 @@ app.use(async (req, res, next) => {
 
 function requireAuth(req, res, next) {
   if (req.session && req.session.auth) return next();
+  // Rotas públicas — não precisam de autenticação
+  if (req.path === '/api/hotmart/webhook') return next();
   if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Nao autenticado' });
   res.redirect('/login');
 }
