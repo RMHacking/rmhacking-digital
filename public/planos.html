@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Planos — RMHacking Investigação Digital</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#07080f;--bg2:#0d0e1c;--bg3:#111224;--purple:#4f46e5;--purple2:#6366f1;--cyan:#06b6d4;--green:#10b981;--text:#e2e8f0;--muted:#6b7280;--border:rgba(255,255,255,.07)}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+nav{background:rgba(7,8,15,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 5%}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--purple),var(--cyan));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.nav-logo-text{font-size:15px;font-weight:700;color:var(--text)}
+.hero{text-align:center;padding:80px 5% 60px;background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(79,70,229,.15) 0%,transparent 70%)}
+.hero h1{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;margin-bottom:12px}
+.hero h1 span{background:linear-gradient(135deg,var(--purple2),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{color:var(--muted);font-size:1rem;max-width:480px;margin:0 auto 12px;line-height:1.6}
+.billing-toggle{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px;gap:4px;margin-top:20px}
+.billing-btn{padding:6px 16px;border-radius:5px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;color:var(--muted);background:none}
+.billing-btn.active{background:var(--purple);color:#fff}
+.plans{max-width:800px;margin:0 auto;padding:0 5% 80px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:600px){.plans{grid-template-columns:1fr}}
+.plan-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px;position:relative;transition:.3s}
+.plan-card.popular{border-color:rgba(79,70,229,.5);background:linear-gradient(145deg,rgba(79,70,229,.08),var(--bg2))}
+.popular-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:.5px;white-space:nowrap}
+.plan-name{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
+.plan-price{margin-bottom:8px}
+.plan-price .amount{font-size:2.8rem;font-weight:900;color:var(--text)}
+.plan-price .period{font-size:13px;color:var(--muted)}
+.plan-price .old{font-size:13px;color:var(--muted);text-decoration:line-through;margin-left:8px}
+.plan-desc{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+.plan-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+.plan-features li{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.plan-features li .check{color:var(--green);font-weight:700;flex-shrink:0}
+.plan-features li .cross{color:#4b5563;flex-shrink:0}
+.plan-features li.active{color:var(--text)}
+.plan-btn{display:block;width:100%;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;text-align:center;text-decoration:none;transition:.2s}
+.plan-btn.primary{background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;box-shadow:0 4px 20px rgba(79,70,229,.35)}
+.plan-btn.primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(79,70,229,.45)}
+.plan-btn.secondary{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border)}
+.plan-btn.secondary:hover{background:rgba(255,255,255,.1)}
+.guarantee{text-align:center;padding:0 5% 60px;color:var(--muted);font-size:13px}
+.guarantee strong{color:var(--text)}
+.faq{max-width:680px;margin:0 auto;padding:0 5% 80px}
+.faq h2{text-align:center;font-size:1.4rem;font-weight:800;margin-bottom:32px}
+.faq-item{border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.faq-q{padding:16px 20px;font-size:13px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--bg2)}
+.faq-q:hover{background:var(--bg3)}
+.faq-a{padding:0 20px;font-size:13px;color:var(--muted);line-height:1.7;max-height:0;overflow:hidden;transition:.3s}
+.faq-a.open{padding:16px 20px;max-height:200px}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="/landing" class="nav-logo">
+      <div class="nav-logo-icon">🔍</div>
+      <div class="nav-logo-text">RMHacking</div>
+    </a>
+    <a href="/login" style="background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">Já tenho conta →</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Escolha seu <span>plano</span></h1>
+  <p>Acesso completo ao sistema de investigação digital mais avançado do Brasil. Cancele quando quiser.</p>
+  <div class="billing-toggle">
+    <button class="billing-btn active" id="btnMensal" onclick="setBilling('mensal')">Mensal</button>
+    <button class="billing-btn" id="btnAnual" onclick="setBilling('anual')">Anual <span style="color:#10b981;font-size:10px">-20%</span></button>
+  </div>
+</div>
+
+<div class="plans">
+  <!-- PLANO BÁSICO -->
+  <div class="plan-card">
+    <div class="plan-name">Básico</div>
+    <div class="plan-price">
+      <span class="amount" id="priceBasico">R$197</span>
+      <span class="period">/mês</span>
+    </div>
+    <p class="plan-desc">Ideal para investigadores autônomos com volume moderado de casos.</p>
+    <ul class="plan-features">
+      <li class="active"><span class="check">✓</span> Até 10 casos por mês</li>
+      <li class="active"><span class="check">✓</span> Busca Global (CPF, CNPJ, CEP, Placa)</li>
+      <li class="active"><span class="check">✓</span> Mapa de investigação</li>
+      <li class="active"><span class="check">✓</span> Galeria de evidências</li>
+      <li class="active"><span class="check">✓</span> Portal do cliente</li>
+      <li class="active"><span class="check">✓</span> Linha do tempo</li>
+      <li><span class="cross">✗</span> Exportação PDF com hash</li>
+      <li><span class="cross">✗</span> Relatório com assinatura digital</li>
+      <li><span class="cross">✗</span> Casos ilimitados</li>
+    </ul>
+    <a href="#" id="linkBasico" class="plan-btn secondary" onclick="assinar('basico')">Assinar Plano Básico</a>
+  </div>
+
+  <!-- PLANO PRO -->
+  <div class="plan-card popular">
+    <div class="popular-badge">⚡ MAIS POPULAR</div>
+    <div class="plan-name">Pro</div>
+    <div class="plan-price">
+      <span class="amount" id="pricePro">R$397</span>
+      <span class="period">/mês</span>
+    </div>
+    <p class="plan-desc">Para profissionais que precisam de poder total, sem limites e com relatórios legais.</p>
+    <ul class="plan-features">
+      <li class="active"><span class="check">✓</span> <strong>Casos ilimitados</strong></li>
+      <li class="active"><span class="check">✓</span> Busca Global (CPF, CNPJ, CEP, Placa)</li>
+      <li class="active"><span class="check">✓</span> Mapa de investigação</li>
+      <li class="active"><span class="check">✓</span> Galeria de evidências</li>
+      <li class="active"><span class="check">✓</span> Portal do cliente</li>
+      <li class="active"><span class="check">✓</span> Linha do tempo</li>
+      <li class="active"><span class="check">✓</span> <strong>Exportação PDF com hash</strong></li>
+      <li class="active"><span class="check">✓</span> <strong>Relatório com assinatura digital</strong></li>
+      <li class="active"><span class="check">✓</span> Suporte prioritário</li>
+    </ul>
+    <a href="#" id="linkPro" class="plan-btn primary" onclick="assinar('pro')">Assinar Plano Pro</a>
+  </div>
+</div>
+
+<div class="guarantee">
+  🔒 <strong>Pagamento 100% seguro via Hotmart.</strong> Cancele a qualquer momento · Sem fidelidade · Suporte em português
+</div>
+
+<div class="faq">
+  <h2>Dúvidas frequentes</h2>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">Como funciona o acesso após o pagamento? <span>+</span></div>
+    <div class="faq-a">Após confirmação do pagamento pela Hotmart, você recebe um e-mail com seu usuário e senha de acesso em até 5 minutos. O acesso é imediato.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">Posso cancelar quando quiser? <span>+</span></div>
+    <div class="faq-a">Sim. Você pode cancelar sua assinatura a qualquer momento pelo painel da Hotmart. O acesso permanece até o fim do período pago.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">O que é o limite de 10 casos do plano Básico? <span>+</span></div>
+    <div class="faq-a">Você pode ter até 10 investigações ativas no mês. No dia 1° de cada mês o contador é zerado. Casos arquivados não contam para o limite.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">O relatório PDF é aceito judicialmente? <span>+</span></div>
+    <div class="faq-a">O relatório exportado no Plano Pro inclui hash SHA-256 de integridade digital, carimbo de data/hora e identificação do investigador — elementos que reforçam a validade documental. Recomendamos sempre consultar seu advogado.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">Posso fazer upgrade do Básico para o Pro? <span>+</span></div>
+    <div class="faq-a">Sim. Cancele o plano atual na Hotmart e assine o Pro. Todos os seus dados e casos são preservados.</div>
+  </div>
+</div>
+
+<script>
+// URLs dos produtos na Hotmart — substitua pelos links reais após criar os produtos
+const HOTMART_LINKS = {
+  basico_mensal: 'https://pay.hotmart.com/PRODUTO_BASICO_MENSAL',
+  basico_anual:  'https://pay.hotmart.com/PRODUTO_BASICO_ANUAL',
+  pro_mensal:    'https://pay.hotmart.com/PRODUTO_PRO_MENSAL',
+  pro_anual:     'https://pay.hotmart.com/PRODUTO_PRO_ANUAL',
+};
+
+let currentBilling = 'mensal';
+
+function setBilling(type) {
+  currentBilling = type;
+  document.getElementById('btnMensal').classList.toggle('active', type==='mensal');
+  document.getElementById('btnAnual').classList.toggle('active', type==='anual');
+  document.getElementById('priceBasico').textContent = type==='mensal' ? 'R$197' : 'R$158';
+  document.getElementById('pricePro').textContent    = type==='mensal' ? 'R$397' : 'R$317';
+}
+
+function assinar(plano) {
+  const key = plano + '_' + currentBilling;
+  const url = HOTMART_LINKS[key];
+  if (!url || url.includes('PRODUTO_')) {
+    alert('Link de pagamento não configurado ainda. Entre em contato para assinar.');
+    return;
+  }
+  window.open(url, '_blank');
+}
+
+function toggleFaq(el) {
+  const ans = el.nextElementSibling;
+  const icon = el.querySelector('span');
+  const isOpen = ans.classList.contains('open');
+  document.querySelectorAll('.faq-a').forEach(a => a.classList.remove('open'));
+  document.querySelectorAll('.faq-q span').forEach(s => s.textContent='+');
+  if (!isOpen) { ans.classList.add('open'); icon.textContent='−'; }
+}
+</script>
+</body>
+</html>

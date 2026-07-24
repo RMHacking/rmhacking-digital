@@ -150,9 +150,128 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 }
 });
 
+// ── Email (Nodemailer) ────────────────────────────────────────────────────────
+let _mailer = null;
+function getMailer() {
+  if (_mailer) return _mailer;
+  try {
+    const nodemailer = require('nodemailer');
+    if (process.env.SMTP_HOST || process.env.GMAIL_USER) {
+      _mailer = nodemailer.createTransport(
+        process.env.SMTP_HOST ? {
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT||587),
+          secure: process.env.SMTP_SECURE==='true',
+          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        } : {
+          service: 'gmail',
+          auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS }
+        }
+      );
+    }
+  } catch(e) { console.warn('Nodemailer nao disponivel:', e.message); }
+  return _mailer;
+}
+
+async function sendWelcomeEmail(to, name, username, password, plan) {
+  const mailer = getMailer();
+  const planLabel = plan === 'pro' ? 'Pro' : 'Básico';
+  const html = `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto">
+<div style="background:#07080f;padding:24px;border-radius:12px;text-align:center">
+<h1 style="color:#6366f1;margin:0">RMHacking</h1>
+<p style="color:#94a3b8;font-size:12px">Investigação Digital</p>
+</div>
+<div style="background:#f8fafc;padding:24px;border:1px solid #e2e8f0;border-radius:0 0 12px 12px">
+<h2 style="color:#1e293b">Bem-vindo, ${name}! 🎉</h2>
+<p style="color:#475569">Sua assinatura do Plano <strong>${planLabel}</strong> foi confirmada. Aqui estão seus dados de acesso:</p>
+<div style="background:#1e293b;border-radius:8px;padding:16px;margin:16px 0">
+<p style="color:#94a3b8;margin:0;font-size:12px">USUÁRIO</p>
+<p style="color:#e2e8f0;margin:4px 0 12px;font-size:16px;font-weight:bold">${username}</p>
+<p style="color:#94a3b8;margin:0;font-size:12px">SENHA TEMPORÁRIA</p>
+<p style="color:#e2e8f0;margin:4px 0;font-size:16px;font-weight:bold">${password}</p>
+</div>
+<p style="color:#475569">Acesse agora:</p>
+<a href="https://rminvestigacaodigital.vercel.app/login" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Entrar no Sistema →</a>
+<p style="color:#94a3b8;font-size:12px;margin-top:24px">Altere sua senha após o primeiro acesso. Dúvidas? Responda este email.</p>
+</div>
+</div>`;
+  if (mailer) {
+    try {
+      await mailer.sendMail({
+        from: process.env.EMAIL_FROM || process.env.GMAIL_USER || 'noreply@rminvestigacaodigital.com',
+        to,
+        subject: `✅ Acesso liberado — RMHacking ${planLabel}`,
+        html
+      });
+      console.log('Email enviado para', to);
+    } catch(e) { console.error('Erro ao enviar email:', e.message); }
+  } else {
+    console.log('=== NOVO USUARIO (email nao configurado) ===');
+    console.log('Para:', to, '| Usuario:', username, '| Senha:', password, '| Plano:', plan);
+  }
+}
+
+// ── Helpers de Plano ──────────────────────────────────────────────────────────
+function genPassword(len=10) {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+  let p = '';
+  const bytes = crypto.randomBytes(len);
+  for (let i=0;i<len;i++) p += chars[bytes[i] % chars.length];
+  return p;
+}
+
+function planFromProduct(productId, price) {
+  const proId = process.env.HOTMART_PRODUCT_PRO_ID;
+  const basicId = process.env.HOTMART_PRODUCT_BASICO_ID;
+  if (proId && String(productId) === String(proId)) return 'pro';
+  if (basicId && String(productId) === String(basicId)) return 'basico';
+  // Fallback por preço
+  return price >= 300 ? 'pro' : 'basico';
+}
+
+async function checkPlanLimit(userId, role) {
+  if (role === 'admin' || role === 'demo') return { allowed: true };
+  if (!userId) return { allowed: true };
+  try {
+    const doc = await fdb.collection('users').doc(userId).get();
+    if (!doc.exists) return { allowed: true };
+    const u = doc.data();
+    // Sem plano = conta manual do admin, libera
+    if (!u.plan) return { allowed: true };
+    // Plano inativo = bloqueado
+    if (u.plan_status !== 'active') return { allowed: false, reason: 'Assinatura inativa. Acesse /planos para reativar.' };
+    // Pro = ilimitado
+    if (u.plan === 'pro') return { allowed: true };
+    // Básico = 10 casos/mês
+    const thisMonth = new Date().toISOString().substring(0,7); // YYYY-MM
+    const cases_month = u.cases_month || '';
+    const cases_count = cases_month === thisMonth ? (u.cases_this_month || 0) : 0;
+    if (cases_count >= 10) return { allowed: false, reason: 'Limite de 10 casos/mês do Plano Básico atingido. Faça upgrade para o Plano Pro.' };
+    return { allowed: true, cases_count, thisMonth };
+  } catch(e) { return { allowed: true }; }
+}
+
+async function incrementCaseCount(userId) {
+  if (!userId) return;
+  try {
+    const doc = await fdb.collection('users').doc(userId).get();
+    if (!doc.exists || !doc.data().plan) return;
+    const u = doc.data();
+    if (u.plan === 'pro') return; // ilimitado
+    const thisMonth = new Date().toISOString().substring(0,7);
+    const cases_month = u.cases_month || '';
+    const newCount = cases_month === thisMonth ? (u.cases_this_month || 0) + 1 : 1;
+    await fdb.collection('users').doc(userId).update({ cases_this_month: newCount, cases_month: thisMonth });
+  } catch(e) { console.error('incrementCaseCount:', e.message); }
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 app.get('/landing', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+});
+
+app.get('/planos', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'planos.html'));
 });
 
 app.get('/', (req, res, next) => {
@@ -374,12 +493,26 @@ app.get('/api/2fa/status', requireAuth, async (req, res) => {
 });
 
 // ── Sessão atual ─────────────────────────────────────────────────────────────
-app.get('/api/me', requireAuth, (req, res) => {
-  res.json({
+app.get('/api/me', requireAuth, async (req, res) => {
+  const base = {
     userId:   req.session.userId,
     username: req.session.username || 'usuário',
     role:     req.session.role     || 'user',
-  });
+  };
+  try {
+    if (req.session.userId && req.session.role !== 'demo') {
+      const doc = await fdb.collection('users').doc(req.session.userId).get();
+      if (doc.exists) {
+        const u = doc.data();
+        const thisMonth = new Date().toISOString().substring(0,7);
+        base.plan        = u.plan || null;
+        base.plan_status = u.plan_status || null;
+        base.cases_used  = u.cases_month === thisMonth ? (u.cases_this_month||0) : 0;
+        base.cases_limit = u.plan === 'pro' ? null : 10;
+      }
+    }
+  } catch(e) {}
+  res.json(base);
 });
 
 // ── Gestão de Usuários ────────────────────────────────────────────────────────
@@ -476,12 +609,18 @@ app.get('/api/investigations/:id', requireAuth, async (req, res) => {
 });
 
 app.post('/api/investigations', requireAuth, async (req, res) => {
+  // Verificar limite do plano
+  const limit = await checkPlanLimit(req.session.userId, req.session.role);
+  if (!limit.allowed) return res.status(403).json({ error: limit.reason });
+
   const b = req.body;
   const id = await nextInvId();
-  const inv = { id, title:b.title||'', description:b.description||'', status:b.status||'open', tags:b.tags||'', color:b.color||'#4f46e5', priority:b.priority||'medium', target:b.target||'', deadline:b.deadline||'', folder:b.folder||'', shared_with:[], overview:'', empresa_notes:'', dossie:{}, created_at:now(), updated_at:now() };
+  const inv = { id, title:b.title||'', description:b.description||'', status:b.status||'open', tags:b.tags||'', color:b.color||'#4f46e5', priority:b.priority||'medium', target:b.target||'', deadline:b.deadline||'', folder:b.folder||'', shared_with:[], overview:'', empresa_notes:'', dossie:{}, created_by:req.session.userId||'', created_at:now(), updated_at:now() };
   // Log atividade
   fdb.collection('activity').add({ action:'create_investigation', title:inv.title, username:req.session.username||'admin', at:now() }).catch(()=>{});
   await fdb.collection('investigations').doc(String(id)).set(inv);
+  // Incrementar contador do plano Básico
+  await incrementCaseCount(req.session.userId);
   res.json(inv);
 });
 
@@ -1149,6 +1288,137 @@ app.patch('/api/investigations/:id/gallery/:itemId', requireAuth, async (req, re
     const { title, comment } = req.body;
     await fdb.collection('investigations').doc(req.params.id)
       .collection('gallery').doc(req.params.itemId).update({ title, comment, updated_at: now() });
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Hotmart Webhook ───────────────────────────────────────────────────────────
+app.post('/api/hotmart/webhook', async (req, res) => {
+  // Verificar hottok de segurança
+  const hottok = process.env.HOTMART_HOTTOK;
+  if (hottok) {
+    const received = req.headers['x-hotmart-hottok'] || req.headers['hottok'] || req.query.hottok || '';
+    if (received !== hottok) {
+      console.warn('Hotmart webhook: hottok invalido');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
+  const body = req.body;
+  const event = body.event || '';
+  const data  = body.data || {};
+  const buyer = data.buyer || {};
+  const purchase = data.purchase || {};
+  const product = data.product || {};
+  const subscription = data.subscription || {};
+
+  console.log('Hotmart webhook:', event, '| email:', buyer.email);
+
+  try {
+    // === COMPRA APROVADA — criar ou reativar usuário ===
+    if (event === 'PURCHASE_APPROVED' || event === 'SUBSCRIPTION_REACTIVATED') {
+      const email = (buyer.email || '').toLowerCase().trim();
+      if (!email) return res.json({ ok: true, msg: 'email vazio' });
+
+      const productId = product.id || product.product_id || '';
+      const price = purchase.full_price?.value || purchase.price?.value || 0;
+      const plan = planFromProduct(productId, price);
+
+      // Verificar se usuário já existe pelo hotmart_email
+      let existingSnap = await fdb.collection('users').where('hotmart_email','==',email).limit(1).get();
+      if (existingSnap.empty) {
+        // Tentar pelo username derivado do email
+        const baseUser = email.split('@')[0].replace(/[^a-z0-9]/gi,'_').toLowerCase().substring(0,20);
+        existingSnap = await fdb.collection('users').where('username','==',baseUser).limit(1).get();
+      }
+
+      if (!existingSnap.empty) {
+        // Reativar plano existente
+        const docRef = existingSnap.docs[0].ref;
+        await docRef.update({
+          plan, plan_status: 'active',
+          plan_updated_at: now(),
+          hotmart_transaction: purchase.transaction || '',
+          hotmart_subscription: subscription.subscriber?.code || '',
+        });
+        console.log('Plano reativado para', email, '—', plan);
+        return res.json({ ok: true, action: 'reactivated', plan });
+      }
+
+      // Criar novo usuário
+      const baseUser = email.split('@')[0].replace(/[^a-z0-9]/gi,'_').toLowerCase().substring(0,20);
+      let username = baseUser;
+      // Garantir unicidade
+      let snap2 = await fdb.collection('users').where('username','==',username).limit(1).get();
+      if (!snap2.empty) username = baseUser + '_' + Date.now().toString().slice(-4);
+
+      const password = genPassword(10);
+      const newUser = {
+        id: 'h_' + Date.now(),
+        username,
+        password_hash: hashPassword(password),
+        role: 'user',
+        email,
+        hotmart_email: email,
+        hotmart_transaction: purchase.transaction || '',
+        hotmart_subscription: subscription.subscriber?.code || '',
+        plan,
+        plan_status: 'active',
+        plan_updated_at: now(),
+        cases_this_month: 0,
+        cases_month: new Date().toISOString().substring(0,7),
+        temporary: false,
+        created_at: now(),
+      };
+      await fdb.collection('users').doc(newUser.id).set(newUser);
+      console.log('Novo usuario criado:', username, '| plano:', plan);
+
+      // Enviar email de boas-vindas
+      await sendWelcomeEmail(email, buyer.name || username, username, password, plan);
+
+      return res.json({ ok: true, action: 'created', username, plan });
+    }
+
+    // === CANCELAMENTO / REEMBOLSO — desativar plano ===
+    if (['SUBSCRIPTION_CANCELLATION','PURCHASE_REFUNDED','PURCHASE_CHARGEBACK','SUBSCRIPTION_INACTIVE'].includes(event)) {
+      const email = (buyer.email || '').toLowerCase().trim();
+      if (!email) return res.json({ ok: true, msg: 'email vazio' });
+      const snap = await fdb.collection('users').where('hotmart_email','==',email).limit(1).get();
+      if (!snap.empty) {
+        await snap.docs[0].ref.update({ plan_status: 'canceled', plan_updated_at: now() });
+        console.log('Plano cancelado para', email);
+      }
+      return res.json({ ok: true, action: 'canceled' });
+    }
+
+    // Outros eventos — apenas confirmar recebimento
+    res.json({ ok: true, event, ignored: true });
+  } catch(e) {
+    console.error('Hotmart webhook erro:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Admin — Assinaturas ───────────────────────────────────────────────────────
+app.get('/api/subscriptions', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const snap = await fdb.collection('users').where('plan','!=','').get();
+    const subs = snap.docs.map(d => {
+      const u = d.data();
+      return { id:u.id, username:u.username, email:u.hotmart_email||u.email||'', plan:u.plan, plan_status:u.plan_status, plan_updated_at:u.plan_updated_at||'', cases_this_month:u.cases_this_month||0, cases_month:u.cases_month||'' };
+    });
+    res.json(subs);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Alterar plano manualmente (admin)
+app.put('/api/subscriptions/:userId', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { plan, plan_status } = req.body;
+    const update = { plan_updated_at: now() };
+    if (plan) update.plan = plan;
+    if (plan_status) update.plan_status = plan_status;
+    await fdb.collection('users').doc(req.params.userId).update(update);
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
