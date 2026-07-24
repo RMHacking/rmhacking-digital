@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ferramentas — RMHacking</title>
+<title>Ferramentas — Codebreakers Forense</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:100vh;display:flex}
@@ -98,8 +98,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e2e8f
 
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <h1>🔍 RMHacking</h1>
-    <p>Investigação Digital</p>
+    <h1>🔍 Codebreakers Forense</h1>
+    <p>Investigação Forense Digital</p>
   </div>
   <nav class="sidebar-nav">
     <a class="nav-item" href="/">
@@ -1136,7 +1136,7 @@ function downloadWordlist() {
   const blob = new Blob([_wordlistData], {type:'text/plain'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'wordlist_rmhacking.txt';
+  a.download = 'wordlist_codebreakers.txt';
   a.click();
   URL.revokeObjectURL(a.href);
 }

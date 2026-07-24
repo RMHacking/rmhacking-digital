@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RMHacking — Investigação Digital</title>
+<title>Codebreakers Forense — Investigação Forense Digital</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 
@@ -299,8 +299,8 @@ body.demo-mode{padding-top:38px}
     <div class="sidebar-logo-inner">
       <div class="sidebar-logo-icon" id="sidebarLogoIcon">🔍</div>
       <div class="sidebar-logo-text">
-        <h1>RMHacking</h1>
-        <p>Investigação Digital</p>
+        <h1>Codebreakers Forense</h1>
+        <p>Investigação Forense Digital</p>
       </div>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()" id="sidebarToggleBtn" title="Recolher menu">◀</button>
@@ -1053,7 +1053,7 @@ function generateTempPwd() {
 function copyCredentials(username) {
   const pwd = document.getElementById('newUserPwd').value;
   const site = window.location.origin + '/login';
-  const text = `🔐 Acesso RMHacking Digital\nSite: ${site}\nUsuário: ${username}\nSenha: ${pwd||'(veja a senha definida)'}`;
+  const text = `🔐 Acesso Codebreakers Forense\nSite: ${site}\nUsuário: ${username}\nSenha: ${pwd||'(veja a senha definida)'}`;
   navigator.clipboard.writeText(text).then(()=>toast('✅ Credenciais copiadas!')).catch(()=>toast('Copie manualmente: '+username));
 }
 
@@ -1077,7 +1077,7 @@ async function createUser() {
   // Copia credenciais automaticamente
   const site = window.location.origin + '/login';
   const planLabel = plan === 'pro' ? ' | Plano Pro 🚀' : plan === 'basico' ? ' | Plano Básico ⭐' : plan === 'gratuito' ? ' | Plano Gratuito 🆓' : '';
-  const text = '🔐 Acesso RMHacking Digital\nSite: ' + site + '\nUsuário: ' + username + '\nSenha: ' + password + planLabel;
+  const text = '🔐 Acesso Codebreakers Forense\nSite: ' + site + '\nUsuário: ' + username + '\nSenha: ' + password + planLabel;
   navigator.clipboard.writeText(text).catch(()=>{});
   document.getElementById('newUsername').value = '';
   document.getElementById('newUserPwd').value = '';
@@ -1126,7 +1126,7 @@ async function sendDeadlineNotif(inv, diff) {
   const granted = await requestNotifPermission();
   if (!granted) return;
   const msg = diff < 0 ? `Prazo VENCIDO há ${Math.abs(diff)} dia(s)` : diff === 0 ? 'Prazo vence HOJE!' : `Prazo em ${diff} dia(s)`;
-  const n = new Notification('⚠️ RMHacking — ' + inv.title, {
+  const n = new Notification('⚠️ Codebreakers Forense — ' + inv.title, {
     body: msg + ' • ' + inv.deadline,
     icon: '/favicon.ico',
     badge: '/favicon.ico',
@@ -1351,7 +1351,7 @@ function toggleSidebar() {
 })();
 
 // ── Configurações / Perfil ────────────────────────────────────────────────────
-const CFG_KEY = 'rmhacking_config';
+const CFG_KEY = 'codebreakers_config';
 
 function loadConfig() {
   try { return JSON.parse(localStorage.getItem(CFG_KEY) || '{}'); } catch(e) { return {}; }
@@ -1493,7 +1493,7 @@ async function ativarNotificacoes() {
     btn.textContent = '✅ Notificações Ativas';
     btn.style.background = 'rgba(16,185,129,.2)';
     toast('✅ Notificações ativadas! Você será avisado sobre prazos.');
-    new Notification('✅ RMHacking — Notificações ativadas!', { body: 'Você receberá alertas de prazo aqui.', icon: '/favicon.ico' });
+    new Notification('✅ Codebreakers Forense — Notificações ativadas!', { body: 'Você receberá alertas de prazo aqui.', icon: '/favicon.ico' });
   } else {
     toast('❌ Permissão negada. Habilite nas configurações do navegador.');
   }
@@ -1885,7 +1885,7 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
 
       <div class="form-row">
         <label>Rede Social (Instagram / LinkedIn)</label>
-        <input type="text" id="cfgSocial" placeholder="@rmhacking ou linkedin.com/in/...">
+        <input type="text" id="cfgSocial" placeholder="@codebreakers ou linkedin.com/in/...">
       </div>
       <div class="form-row">
         <label>Bio / Descrição</label>

@@ -178,7 +178,7 @@ async function sendWelcomeEmail(to, name, username, password, plan) {
   const planLabel = plan === 'pro' ? 'Pro' : 'Básico';
   const html = `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto">
 <div style="background:#07080f;padding:24px;border-radius:12px;text-align:center">
-<h1 style="color:#6366f1;margin:0">RMHacking</h1>
+<h1 style="color:#6366f1;margin:0">Codebreakers Forense</h1>
 <p style="color:#94a3b8;font-size:12px">Investigação Digital</p>
 </div>
 <div style="background:#f8fafc;padding:24px;border:1px solid #e2e8f0;border-radius:0 0 12px 12px">
@@ -200,7 +200,7 @@ async function sendWelcomeEmail(to, name, username, password, plan) {
       await mailer.sendMail({
         from: process.env.EMAIL_FROM || process.env.GMAIL_USER || 'noreply@rminvestigacaodigital.com',
         to,
-        subject: `✅ Acesso liberado — RMHacking ${planLabel}`,
+        subject: `✅ Acesso liberado — Codebreakers Forense ${planLabel}`,
         html
       });
       console.log('Email enviado para', to);
@@ -461,7 +461,7 @@ app.post('/api/2fa/login', async (req, res) => {
 // Gerar segredo TOTP para configuração
 app.post('/api/2fa/setup', requireAuth, async (req, res) => {
   if (!speakeasy) return res.status(500).json({ error:'2FA não disponível.' });
-  const secret = speakeasy.generateSecret({ name:`RMHacking (${req.session.username||'usuario'})`, length:20 });
+  const secret = speakeasy.generateSecret({ name:`Codebreakers Forense (${req.session.username||'usuario'})`, length:20 });
   // Salva o segredo temporário até confirmar com um token
   await fdb.collection('users').doc(req.session.userId).update({ totp_pending_secret: secret.base32 });
   res.json({ secret: secret.base32, otpauth_url: secret.otpauth_url });
@@ -914,7 +914,7 @@ app.get('/api/investigations/:id/backup', requireAuth, async (req, res) => {
   const invId = Number(req.params.id);
   const doc = await fdb.collection('investigations').doc(req.params.id).get();
   if (!doc.exists) return res.status(404).json({ error:'Nao encontrado' });
-  const backup = { _version:2, _exported_at:now(), _app:'RMHacking-Digital', investigation:doc.data() };
+  const backup = { _version:2, _exported_at:now(), _app:'Codebreakers-Forense', investigation:doc.data() };
   for (const col of ['nodes','edges','notes','evidence','events','osint','custody']) {
     const snap = await fdb.collection(col).where('investigation_id','==',invId).get();
     backup[col] = snap.docs.map(d=>d.data());
@@ -987,7 +987,7 @@ const dns_mod   = require('dns').promises;
 
 function httpGet(url) {
   return new Promise((resolve, reject) => {
-    https_mod.get(url, { headers:{'User-Agent':'RMHacking-Digital/1.0','Accept':'application/json'} }, res => {
+    https_mod.get(url, { headers:{'User-Agent':'Codebreakers-Forense/1.0','Accept':'application/json'} }, res => {
       let body='';
       res.on('data',c=>body+=c);
       res.on('end',()=>{ try{resolve(JSON.parse(body));}catch(e){resolve({_raw:body});} });
@@ -1452,6 +1452,6 @@ app.put('/api/subscriptions/:userId', requireAuth, requireAdmin, async (req, res
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 if (require.main === module) {
-  app.listen(PORT, () => console.log('RMHacking Digital — porta ' + PORT));
+  app.listen(PORT, () => console.log('Codebreakers Forense — porta ' + PORT));
 }
 module.exports = app;

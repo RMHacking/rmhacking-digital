@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<title>RMHacking — Investigação</title>
+<title>Codebreakers Forense — Investigação</title>
 <!-- Mapa mental implementado sem dependências externas -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -300,7 +300,7 @@ body{background:#0d0d14;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
   <div class="sidebar-brand">
     <div class="sidebar-brand-name" id="sidebarUsername">Rafael Moreno</div>
     <div class="sidebar-brand-role">Investigador Digital</div>
-    <div class="sidebar-brand-badge">🔒 RMHacking</div>
+    <div class="sidebar-brand-badge">🔒 Codebreakers Forense</div>
   </div>
 </div>
 <div class="content">
@@ -1377,7 +1377,7 @@ async function loadInvestigation() {
     inv = await r.json();
     if (!inv || !inv.title) { window.location.href = '/'; return; }
   } catch(e) { console.error('loadInvestigation falhou:', e); window.location.href = '/'; return; }
-  document.title = `RMHacking — ${inv.title}`;
+  document.title = `Codebreakers Forense — ${inv.title}`;
   document.getElementById('invTitle').textContent = inv.title;
   const sp = document.getElementById('statusPill');
   const stMap = {open:'🟣 Em Processo',todo:'🟡 Para Fazer',closed:'🟢 Finalizada'};
@@ -2406,10 +2406,10 @@ async function saveCNPJAsEvidence() {
 
 // ── Empresas Salvas (localStorage) ─────────────────────────────────────────
 function getEmpresasSalvas() {
-  try { return JSON.parse(localStorage.getItem('rmhacking_empresa_'+invId)||'[]'); } catch(e){ return []; }
+  try { return JSON.parse(localStorage.getItem('codebreakers_empresa_'+invId)||'[]'); } catch(e){ return []; }
 }
 function setEmpresasSalvas(arr) {
-  localStorage.setItem('rmhacking_empresa_'+invId, JSON.stringify(arr));
+  localStorage.setItem('codebreakers_empresa_'+invId, JSON.stringify(arr));
 }
 function renderEmpresasSalvas() {
   var arr = getEmpresasSalvas();
@@ -2553,7 +2553,7 @@ function exportReport() {
 async function exportPDF() {
   toast('⏳ Gerando PDF...');
   // Busca username do usuário logado
-  var currentUser = (_me && _me.username) ? _me.username : 'rmhacking';
+  var currentUser = (_me && _me.username) ? _me.username : 'codebreakers';
   // Fetch all data
   var [ev,nt,evt,osint,nodes,custody,gallery] = await Promise.all([
     fetch('/api/investigations/'+invId+'/evidence').then(r=>r.json()),
@@ -2608,8 +2608,8 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#1a1a2e;backgro
     <div class="case">${esc(inv.title)}${inv.target?' · Alvo: '+esc(inv.target):''}</div>
   </div>
   <div class="header-right">
-    <div class="brand">🔍 RMHacking Digital</div>
-    <div>Investigação Digital Profissional</div>
+    <div class="brand">🔍 Codebreakers Forense</div>
+    <div>Investigação Forense Digital Profissional</div>
     <div style="margin-top:4px">${ts}</div>
   </div>
 </div>
@@ -2696,7 +2696,7 @@ ${inv.description?`<div class="section"><h2>Descrição</h2><div style="font-siz
   var hashHex = hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
 
   html += `<div class="footer">
-  <div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;color:#4f46e5">@${currentUser}</span> · RMHacking Investigação Digital</div>
+  <div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;color:#4f46e5">@${currentUser}</span> · Codebreakers Forense</div>
   <div>Gerado em ${ts}</div>
 </div>
 <div style="border-top:1px dashed #e2e8f0;padding:10px 0;margin-top:8px;font-family:monospace;font-size:9px;color:#9ca3af;word-break:break-all">
@@ -2746,7 +2746,7 @@ async function generateReport() {
     nodes.forEach(function(n){ html+='<span style="background:rgba(79,70,229,.1);border:1px solid rgba(79,70,229,.2);border-radius:6px;padding:3px 10px;font-size:12px;color:#a5b4fc">'+esc(n.label)+'</span>'; });
     html+='</div>';
   }
-  html+='<hr style="border-color:rgba(255,255,255,.07);margin:20px 0"><p style="color:#4b5563;font-size:11px">Relatório gerado em '+new Date().toLocaleString('pt-BR')+' — RMHacking Investigação Digital</p>';
+  html+='<hr style="border-color:rgba(255,255,255,.07);margin:20px 0"><p style="color:#4b5563;font-size:11px">Relatório gerado em '+new Date().toLocaleString('pt-BR')+' — Codebreakers Forense</p>';
   document.getElementById('reportContent').innerHTML=html;
 }
 
@@ -2793,7 +2793,7 @@ function printAIReport() {
   var text=(o&&o.style.display!=='none'?o.value:o2&&o2.style.display!=='none'?o2.value:'');
   if (!text) { toast('Nenhum relatório para imprimir'); return; }
   var w=window.open('','_blank');
-  w.document.write('<html><head><title>Relatório IA</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#222;line-height:1.6}pre{white-space:pre-wrap}.brand{text-align:right;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:10px;margin-top:30px}</style></head><body><pre>'+esc(text)+'</pre><div class="brand">Rafael Moreno · Investigador Digital · RMHacking Digital Investigation System</div></body></html>');
+  w.document.write('<html><head><title>Relatório IA</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#222;line-height:1.6}pre{white-space:pre-wrap}.brand{text-align:right;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:10px;margin-top:30px}</style></head><body><pre>'+esc(text)+'</pre><div class="brand">Rafael Moreno · Investigador Digital · Codebreakers Forense Investigation System</div></body></html>');
   w.document.close(); w.print();
 }
 
@@ -2822,7 +2822,7 @@ function gerarPropostaPDF() {
   const prazo= document.getElementById('pPrazo').value.trim();
   const pag  = document.getElementById('pPagamento').value;
   const valid= document.getElementById('pValidade').value.trim();
-  const user = (_me&&_me.username) ? _me.username : 'RMHacking';
+  const user = (_me&&_me.username) ? _me.username : 'Codebreakers Forense';
   const dataFmt = data ? new Date(data+'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
   const htmlDoc = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Proposta Comercial</title>
 <style>
@@ -2850,7 +2850,7 @@ body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a2e;background:#fff}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body><div class="page">
 <div class="header">
-  <div><div class="brand">🔍 RMHacking</div><div class="brand-sub">Investigação Digital Profissional</div></div>
+  <div><div class="brand">🔍 Codebreakers Forense</div><div class="brand-sub">Investigação Forense Digital Profissional</div></div>
   <div class="doc-title"><h1>PROPOSTA COMERCIAL</h1><div class="num">Data: ${dataFmt} &nbsp;|&nbsp; Investigador: @${user}</div></div>
 </div>
 
@@ -2881,11 +2881,11 @@ body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a2e;background:#fff}
 
 <div style="display:flex;justify-content:space-between;margin-top:48px">
   <div class="assinatura">Contratante<br><br><small>${esc(cli)}</small></div>
-  <div class="assinatura">Prestador de Serviço<br><br><small>@${user} — RMHacking</small></div>
+  <div class="assinatura">Prestador de Serviço<br><br><small>@${user} — Codebreakers Forense</small></div>
 </div>
 
 <div class="footer">
-  <div>RMHacking Investigação Digital · @${user}</div>
+  <div>Codebreakers Forense · @${user}</div>
   <div>Gerado em ${new Date().toLocaleString('pt-BR')}</div>
 </div>
 </div></body></html>`;
@@ -2922,7 +2922,7 @@ function gerarContratoPDF() {
   const prazo = document.getElementById('cPrazo').value.trim();
   const pag   = document.getElementById('cPagamento').value.trim();
   const claus = document.getElementById('cClausulas').value.trim();
-  const user  = (_me&&_me.username) ? _me.username : 'RMHacking';
+  const user  = (_me&&_me.username) ? _me.username : 'Codebreakers Forense';
   const dataFmt = dataV ? new Date(dataV+'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
   const htmlDoc = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Contrato de Serviço</title>
 <style>
@@ -2945,12 +2945,12 @@ body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a2e;background:#fff}
 </style></head><body><div class="page">
 <div class="header">
   <h1>Contrato de Prestação de Serviços</h1>
-  <div class="sub">Investigação Digital Profissional · RMHacking · @${user}</div>
+  <div class="sub">Investigação Forense Digital Profissional · Codebreakers Forense · @${user}</div>
 </div>
 
 <div class="clause">
   <h3>Cláusula 1ª — Das Partes</h3>
-  <p><strong>CONTRATADO:</strong> @${user} — RMHacking Investigação Digital, doravante denominado CONTRATADO.</p>
+  <p><strong>CONTRATADO:</strong> @${user} — Codebreakers Forense, doravante denominado CONTRATADO.</p>
   <p style="margin-top:8px"><strong>CONTRATANTE:</strong> ${esc(contratante)}${doc?' — CPF/CNPJ: '+esc(doc):''}${end?', com endereço em '+esc(end):''}, doravante denominado CONTRATANTE.</p>
 </div>
 
@@ -2989,10 +2989,10 @@ ${claus?`<div class="clause"><h3>Cláusula 7ª — Disposições Adicionais</h3>
 
 <div class="assinaturas">
   <div class="assinatura"><div class="linha">${esc(contratante)}<br>CONTRATANTE</div></div>
-  <div class="assinatura"><div class="linha">@${user} — RMHacking<br>CONTRATADO</div></div>
+  <div class="assinatura"><div class="linha">@${user} — Codebreakers Forense<br>CONTRATADO</div></div>
 </div>
 
-<div class="footer">RMHacking Investigação Digital · @${user} · Gerado em ${new Date().toLocaleString('pt-BR')}</div>
+<div class="footer">Codebreakers Forense · @${user} · Gerado em ${new Date().toLocaleString('pt-BR')}</div>
 </div></body></html>`;
   const w = window.open('','_blank','width=860,height=700');
   w.document.write(htmlDoc);
@@ -3162,10 +3162,10 @@ function updatePersonLinks(name, cpf) {
 
 // ── Pessoas Salvas (localStorage) ───────────────────────────────────────────
 function getPessoasSalvas() {
-  try { return JSON.parse(localStorage.getItem('rmhacking_pessoa_'+invId)||'[]'); } catch(e){ return []; }
+  try { return JSON.parse(localStorage.getItem('codebreakers_pessoa_'+invId)||'[]'); } catch(e){ return []; }
 }
 function setPessoasSalvas(arr) {
-  localStorage.setItem('rmhacking_pessoa_'+invId, JSON.stringify(arr));
+  localStorage.setItem('codebreakers_pessoa_'+invId, JSON.stringify(arr));
 }
 function renderPessoasSalvas() {
   var arr = getPessoasSalvas();
@@ -3283,7 +3283,7 @@ async function geolocateTarget() {
     } else {
       // Try geocoding via Nominatim
       var url = 'https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(target);
-      var res = await fetch(url, {headers:{'User-Agent':'RMHacking-Investigation/1.0'}}).then(x=>x.json());
+      var res = await fetch(url, {headers:{'User-Agent':'Codebreakers Forense-Investigation/1.0'}}).then(x=>x.json());
       if (res && res.length > 0) {
         document.getElementById('mapPinLat').value = parseFloat(res[0].lat).toFixed(5);
         document.getElementById('mapPinLng').value = parseFloat(res[0].lon).toFixed(5);
@@ -3308,7 +3308,7 @@ async function geocodeCaseData() {
   for (var p of points) {
     try {
       var url = 'https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(p.addr);
-      var res = await fetch(url, {headers:{'User-Agent':'RMHacking/1.0'}}).then(x=>x.json());
+      var res = await fetch(url, {headers:{'User-Agent':'Codebreakers-Forense/1.0'}}).then(x=>x.json());
       if (res && res.length > 0) {
         var pin = {id: Date.now()+added, lat:parseFloat(res[0].lat), lng:parseFloat(res[0].lon), label:p.label, type:p.type, target:p.addr};
         mapPins.push(pin); addMarker(pin); added++;
@@ -3978,7 +3978,7 @@ function printCustody() {
         +'<div class="field" style="color:#666">Data/Hora: '+c.created_at+'</div></div>';
     }).join('')+'</div>'
     +'</body></html>');
-  w.document.write('<div style="text-align:right;font-size:10px;color:#999;border-top:1px solid #eee;padding-top:8px;margin-top:20px">Rafael Moreno · Investigador Digital · RMHacking Digital Investigation System</div></body></html>');
+  w.document.write('<div style="text-align:right;font-size:10px;color:#999;border-top:1px solid #eee;padding-top:8px;margin-top:20px">Rafael Moreno · Investigador Digital · Codebreakers Forense Investigation System</div></body></html>');
   w.document.close();
   setTimeout(function(){w.print();},600);
 }
